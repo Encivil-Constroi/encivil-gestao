@@ -1,77 +1,35 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Obra } from '@/app/types'
+import { useAsync } from '@/app/lib/useAsync'
+import { useMutation } from '@/app/lib/useMutation'
 import {
-  listarObras,
-  buscarObra,
-  criarObra,
-  atualizarObra,
-  type NovaObra,
+  listarObras, buscarObra, criarObra, atualizarObra,
   type AtualizarObra,
 } from '../services/obrasService'
 
 export function useObras(apenasAtivas = true) {
-  const [obras, setObras] = useState<Obra[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      setObras(await listarObras(apenasAtivas))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar obras')
-    } finally {
-      setLoading(false)
-    }
-  }, [apenasAtivas])
-
-  useEffect(() => { load() }, [load])
-
-  return { obras, loading, error, reload: load }
+  const { data, loading, error, reload } = useAsync(
+    () => listarObras(apenasAtivas), [apenasAtivas],
+    { errorMsg: 'Erro ao carregar obras' }
+  )
+  return { obras: data ?? [], loading, error, reload }
 }
 
 export function useObra(id: string | undefined) {
-  const [obra, setObra] = useState<Obra | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    if (!id) { setLoading(false); return }
-    setLoading(true)
-    setError(null)
-    try {
-      setObra(await buscarObra(id))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Obra não encontrada')
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => { load() }, [load])
-
-  return { obra, loading, error, reload: load }
+  const { data: obra, loading, error, reload } = useAsync(
+    () => buscarObra(id!), [id],
+    { enabled: !!id, errorMsg: 'Obra não encontrada' }
+  )
+  return { obra, loading, error, reload }
 }
 
 export function useCriarObra() {
-  const [loading, setLoading] = useState(false)
-  const criar = async (input: NovaObra): Promise<Obra | null> => {
-    setLoading(true)
-    try { return await criarObra(input) }
-    catch { return null }
-    finally { setLoading(false) }
-  }
-  return { criar, loading }
+  const { mutate: criar, loading, error } = useMutation(criarObra, 'Erro ao criar obra')
+  return { criar, loading, error }
 }
 
 export function useAtualizarObra() {
-  const [loading, setLoading] = useState(false)
-  const atualizar = async (id: string, input: AtualizarObra): Promise<Obra | null> => {
-    setLoading(true)
-    try { return await atualizarObra(id, input) }
-    catch { return null }
-    finally { setLoading(false) }
-  }
-  return { atualizar, loading }
+  const { mutate: atualizar, loading, error } = useMutation(
+    (id: string, input: AtualizarObra) => atualizarObra(id, input),
+    'Erro ao atualizar obra'
+  )
+  return { atualizar, loading, error }
 }

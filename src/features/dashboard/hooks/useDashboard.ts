@@ -17,27 +17,22 @@ export function useDashboard() {
 
       const [
         { count: totalProducts, error: e1 },
-        { count: todayEntries, error: e2 },
-        { count: todayExits, error: e3 },
-        { data: allProducts, error: e4 },
-        { data: recentRaw, error: e5 },
+        { count: todayEntries,  error: e2 },
+        { count: todayExits,    error: e3 },
+        { data: alertRaw,       error: e4 },
+        { data: recentRaw,      error: e5 },
       ] = await Promise.all([
         supabase.from('produtos').select('*', { count: 'exact', head: true }).eq('ativo', true),
-        supabase
-          .from('movimentos_stock')
+        supabase.from('movimentos_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tipo', 'entrada')
           .gte('created_at', todayStart.toISOString()),
-        supabase
-          .from('movimentos_stock')
+        supabase.from('movimentos_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tipo', 'saida')
           .gte('created_at', todayStart.toISOString()),
-        supabase.from('produtos')
-          .select('id, nome, unidade, stock_atual, stock_minimo')
-          .eq('ativo', true),
-        supabase
-          .from('movimentos_stock')
+        supabase.rpc('produtos_em_alerta'),           // only alert products, server-filtered
+        supabase.from('movimentos_stock')
           .select('*, produtos(nome, unidade)')
           .order('created_at', { ascending: false })
           .limit(5),
@@ -45,27 +40,19 @@ export function useDashboard() {
 
       if (e1 || e2 || e3 || e4 || e5) throw e1 ?? e2 ?? e3 ?? e4 ?? e5
 
-      type ProdRow = {
-        id: string; nome: string; unidade: string
-        stock_atual: number; stock_minimo: number
-      }
-      type MovRow = {
+      type AlertRow = { id: string; nome: string; unidade: string; stock_atual: number; stock_minimo: number }
+      type MovRow   = {
         id: string; produto_id: string; tipo: MovementType; quantidade: number
         stock_antes: number; stock_depois: number; responsavel: string
         destino_obra: string | null; observacoes: string | null; created_at: string
         created_by: string; produtos: { nome: string; unidade: string } | null
       }
 
-      const mapProduct = (p: ProdRow): LowStockItem => ({
+      const lowStockItems: LowStockItem[] = (alertRaw as AlertRow[]).slice(0, 5).map(p => ({
         id: p.id, name: p.nome, unit: p.unidade as Unit,
         currentStock: p.stock_atual, minStock: p.stock_minimo,
         status: calcStatus(p.stock_atual, p.stock_minimo),
-      })
-
-      const products = (allProducts as ProdRow[]).map(mapProduct)
-      const lowStockItems = products
-        .filter(p => p.status === 'baixo' || p.status === 'sem-stock')
-        .slice(0, 5)
+      }))
 
       const recentMovements: Movement[] = (recentRaw as MovRow[]).map(m => ({
         id: m.id, productId: m.produto_id,
@@ -77,10 +64,10 @@ export function useDashboard() {
       }))
 
       setStats({
-        totalProducts: totalProducts ?? 0,
-        todayEntries: todayEntries ?? 0,
-        todayExits: todayExits ?? 0,
-        lowStockProducts: products.filter(p => p.status !== 'normal').length,
+        totalProducts:    totalProducts ?? 0,
+        todayEntries:     todayEntries  ?? 0,
+        todayExits:       todayExits    ?? 0,
+        lowStockProducts: (alertRaw as AlertRow[]).length,
         recentMovements,
         lowStockItems,
       })

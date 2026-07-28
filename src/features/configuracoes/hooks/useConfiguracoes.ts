@@ -1,46 +1,27 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useAsync } from '@/app/lib/useAsync'
+import { useMutation } from '@/app/lib/useMutation'
 import {
-  buscarConfiguracoes,
-  atualizarConfiguracoes,
-  type Configuracoes,
+  buscarConfiguracoes, atualizarConfiguracoes,
   type AtualizarConfiguracoes,
 } from '../services/configuracoesService'
 
 export function useConfiguracoes() {
-  const [config, setConfig] = useState<Configuracoes | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { data: config, loading, error, reload } = useAsync(
+    buscarConfiguracoes, [],
+    { errorMsg: 'Erro ao carregar configurações' }
+  )
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await buscarConfiguracoes()
-      setConfig(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar configurações')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  const { mutate: _guardar, loading: saving, error: saveError } = useMutation(
+    (input: AtualizarConfiguracoes) => atualizarConfiguracoes(config!.id, input),
+    'Erro ao guardar configurações'
+  )
 
   const atualizar = async (input: AtualizarConfiguracoes): Promise<boolean> => {
     if (!config) return false
-    setSaving(true)
-    try {
-      const updated = await atualizarConfiguracoes(config.id, input)
-      setConfig(updated)
-      return true
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao guardar configurações')
-      return false
-    } finally {
-      setSaving(false)
-    }
+    const updated = await _guardar(input)
+    if (updated) reload()
+    return updated !== null
   }
 
-  return { config, loading, saving, error, atualizar, reload: load }
+  return { config, loading, saving, error: error ?? saveError, atualizar, reload }
 }

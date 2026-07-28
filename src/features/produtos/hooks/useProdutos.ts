@@ -1,152 +1,61 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Product } from '@/app/types'
+import { useAsync } from '@/app/lib/useAsync'
+import { useMutation } from '@/app/lib/useMutation'
 import {
-  listarProdutos,
-  listarProdutosArquivados,
-  buscarProduto,
-  criarProduto,
-  atualizarProduto,
-  desativarProduto,
-  restaurarProduto,
-  deletarProduto,
-  type NovoProduto,
-  type AtualizarProduto,
+  listarProdutos, listarProdutosArquivados, buscarProduto,
+  criarProduto, atualizarProduto, desativarProduto, restaurarProduto, deletarProduto,
 } from '../services/produtosService'
 
 export function useProdutos(apenasAtivos = true) {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await listarProdutos(apenasAtivos)
-      setProducts(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar produtos')
-    } finally {
-      setLoading(false)
-    }
-  }, [apenasAtivos])
-
-  useEffect(() => { load() }, [load])
-
-  return { products, loading, error, reload: load }
+  const { data, loading, error, reload } = useAsync(
+    () => listarProdutos(apenasAtivos), [apenasAtivos],
+    { errorMsg: 'Erro ao carregar produtos' }
+  )
+  return { products: data ?? [], loading, error, reload }
 }
 
 export function useProduto(id: string | undefined) {
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: product, loading, error, reload } = useAsync(
+    () => buscarProduto(id!), [id],
+    { enabled: !!id, errorMsg: 'Produto não encontrado' }
+  )
+  return { product, loading, error, reload }
+}
 
-  const load = useCallback(async () => {
-    if (!id) return
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await buscarProduto(id)
-      setProduct(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Produto não encontrado')
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => { load() }, [load])
-
-  return { product, loading, error, reload: load }
+export function useProdutosArquivados(enabled = true) {
+  const { data, loading, reload } = useAsync(listarProdutosArquivados, [], { enabled })
+  return { products: data ?? [], loading, reload }
 }
 
 export function useCriarProduto() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const criar = async (input: NovoProduto): Promise<Product | null> => {
-    setLoading(true)
-    setError(null)
-    try {
-      return await criarProduto(input)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao criar produto'
-      setError(msg)
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  const { mutate: criar, loading, error } = useMutation(criarProduto, 'Erro ao criar produto')
   return { criar, loading, error }
 }
 
 export function useAtualizarProduto() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const atualizar = async (id: string, input: AtualizarProduto): Promise<Product | null> => {
-    setLoading(true)
-    setError(null)
-    try {
-      return await atualizarProduto(id, input)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao atualizar produto'
-      setError(msg)
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  const { mutate: atualizar, loading, error } = useMutation(atualizarProduto, 'Erro ao atualizar produto')
   return { atualizar, loading, error }
 }
 
-export function useProdutosArquivados(enabled = true) {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const load = useCallback(async () => {
-    if (!enabled) return
-    setLoading(true)
-    try { setProducts(await listarProdutosArquivados()) }
-    catch { setProducts([]) }
-    finally { setLoading(false) }
-  }, [enabled])
-
-  useEffect(() => { load() }, [load])
-  return { products, loading, reload: load }
-}
-
 export function useDesativarProduto() {
-  const [loading, setLoading] = useState(false)
-  const desativar = async (id: string): Promise<boolean> => {
-    setLoading(true)
-    try { await desativarProduto(id); return true }
-    catch { return false }
-    finally { setLoading(false) }
-  }
+  const { mutate, loading } = useMutation(
+    async (id: string): Promise<true> => { await desativarProduto(id); return true }
+  )
+  const desativar = async (id: string) => (await mutate(id)) === true
   return { desativar, loading }
 }
 
 export function useRestaurarProduto() {
-  const [loading, setLoading] = useState(false)
-  const restaurar = async (id: string): Promise<boolean> => {
-    setLoading(true)
-    try { await restaurarProduto(id); return true }
-    catch { return false }
-    finally { setLoading(false) }
-  }
+  const { mutate, loading } = useMutation(
+    async (id: string): Promise<true> => { await restaurarProduto(id); return true }
+  )
+  const restaurar = async (id: string) => (await mutate(id)) === true
   return { restaurar, loading }
 }
 
 export function useDeletarProduto() {
-  const [loading, setLoading] = useState(false)
-  const deletar = async (id: string): Promise<boolean> => {
-    setLoading(true)
-    try { await deletarProduto(id); return true }
-    catch { return false }
-    finally { setLoading(false) }
-  }
+  const { mutate, loading } = useMutation(
+    async (id: string): Promise<true> => { await deletarProduto(id); return true }
+  )
+  const deletar = async (id: string) => (await mutate(id)) === true
   return { deletar, loading }
 }

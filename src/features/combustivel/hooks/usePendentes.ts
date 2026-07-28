@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+import { useAsync } from '@/app/lib/useAsync'
 
 export type AbastecimentoPendente = {
   id: string
@@ -16,42 +17,32 @@ export type AbastecimentoPendente = {
   criado_em: string
 }
 
+async function fetchPendentes(): Promise<AbastecimentoPendente[]> {
+  const { data, error } = await supabase
+    .from('comb_abastecimentos_pendentes')
+    .select('*')
+    .order('criado_em', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as AbastecimentoPendente[]
+}
+
 export function usePendentes() {
-  const [items,   setItems]   = useState<AbastecimentoPendente[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const { data, loading, error, reload } = useAsync(fetchPendentes, [])
+  const items = data ?? []
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase
-      .from('comb_abastecimentos_pendentes')
-      .select('*')
-      .order('criado_em', { ascending: false })
-    if (err) {
-      setError(err.message)
-      setItems([])
-    } else {
-      setItems((data ?? []) as AbastecimentoPendente[])
-    }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  const aprovar = async (id: string): Promise<boolean> => {
+  const aprovar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('aprovar_abastecimento_pendente', { p_id: id })
     if (err) return false
-    setItems(prev => prev.filter(p => p.id !== id))
+    reload()
     return true
-  }
+  }, [reload])
 
-  const rejeitar = async (id: string): Promise<boolean> => {
+  const rejeitar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('rejeitar_abastecimento_pendente', { p_id: id })
     if (err) return false
-    setItems(prev => prev.filter(p => p.id !== id))
+    reload()
     return true
-  }
+  }, [reload])
 
-  return { items, loading, error, reload: load, aprovar, rejeitar }
+  return { items, loading, error, reload, aprovar, rejeitar }
 }

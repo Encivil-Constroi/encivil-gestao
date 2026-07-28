@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ToolLoan } from '@/app/types'
+import { useAsync } from '@/app/lib/useAsync'
+import { useMutation } from '@/app/lib/useMutation'
 import {
   listarEmprestimos,
   listarEmprestimosPaginados,
@@ -7,38 +9,20 @@ import {
   registarDevolucao,
   LOANS_PAGE_SIZE,
   type FiltrosEmprestimos,
-  type RegistarEmprestimoInput,
-  type RegistarDevolucaoInput,
 } from '../services/emprestimosService'
 
 export function useEmprestimos(filtros: FiltrosEmprestimos = {}) {
-  const [loans, setLoans] = useState<ToolLoan[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const filtrosKey = JSON.stringify(filtros)
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await listarEmprestimos(filtros)
-      setLoans(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar empréstimos')
-    } finally {
-      setLoading(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtrosKey])
-
-  useEffect(() => { load() }, [load])
-
-  return { loans, loading, error, reload: load }
+  const key = JSON.stringify(filtros)
+  const { data, loading, error, reload } = useAsync(
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => listarEmprestimos(filtros), [key],
+    { errorMsg: 'Erro ao carregar empréstimos' }
+  )
+  return { loans: data ?? [], loading, error, reload }
 }
 
+// Pagination is stateful — keep manual implementation
 export function useEmprestimosPaginados(filtros: FiltrosEmprestimos = {}) {
   const [loans, setLoans] = useState<ToolLoan[]>([])
   const [count, setCount] = useState(0)
@@ -67,58 +51,24 @@ export function useEmprestimosPaginados(filtros: FiltrosEmprestimos = {}) {
 
   useEffect(() => { load(page) }, [load, page])
 
-  const totalPages = Math.ceil(count / LOANS_PAGE_SIZE)
-
   return {
-    loans,
-    count,
-    page,
-    totalPages,
-    loading,
-    error,
-    setPage,
+    loans, count, page,
+    totalPages: Math.ceil(count / LOANS_PAGE_SIZE),
+    loading, error, setPage,
     reload: () => load(page),
   }
 }
 
 export function useRegistarEmprestimo() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const registar = async (input: RegistarEmprestimoInput): Promise<ToolLoan | null> => {
-    setLoading(true)
-    setError(null)
-    try {
-      return await registarEmprestimo(input)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao registar empréstimo'
-      setError(msg)
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  const { mutate: registar, loading, error } = useMutation(
+    registarEmprestimo, 'Erro ao registar empréstimo'
+  )
   return { registar, loading, error }
 }
 
 export function useRegistarDevolucao() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const devolver = async (input: RegistarDevolucaoInput): Promise<ToolLoan | null> => {
-    setLoading(true)
-    setError(null)
-    try {
-      return await registarDevolucao(input)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao registar devolução'
-      setError(msg)
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  const { mutate: devolver, loading, error } = useMutation(
+    registarDevolucao, 'Erro ao registar devolução'
+  )
   return { devolver, loading, error }
 }

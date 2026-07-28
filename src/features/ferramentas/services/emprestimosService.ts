@@ -66,9 +66,11 @@ export type FiltrosEmprestimos = {
 
 export const LOANS_PAGE_SIZE = 50
 
-function aplicarFiltros<T>(query: T, filtros: FiltrosEmprestimos) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q = query as any
+export async function listarEmprestimos(filtros: FiltrosEmprestimos = {}): Promise<ToolLoan[]> {
+  let q = supabase
+    .from('emprestimos_ferramentas')
+    .select('*, ferramentas(nome, codigo)')
+    .order('data_emprestimo', { ascending: false })
   if (filtros.ferramentaId) q = q.eq('ferramenta_id', filtros.ferramentaId)
   if (filtros.estado)       q = q.eq('estado', filtros.estado)
   if (filtros.funcionario)  q = q.ilike('funcionario_nome', `%${filtros.funcionario}%`)
@@ -76,24 +78,12 @@ function aplicarFiltros<T>(query: T, filtros: FiltrosEmprestimos) {
   if (filtros.obraId)       q = q.eq('obra_id', filtros.obraId)
   if (filtros.dataInicio)   q = q.gte('data_emprestimo', filtros.dataInicio.toISOString())
   if (filtros.dataFim) {
-    const fim = new Date(filtros.dataFim)
-    fim.setDate(fim.getDate() + 1)
+    const fim = new Date(filtros.dataFim); fim.setDate(fim.getDate() + 1)
     q = q.lt('data_emprestimo', fim.toISOString())
   }
-  return q
-}
-
-export async function listarEmprestimos(filtros: FiltrosEmprestimos = {}): Promise<ToolLoan[]> {
-  let query = supabase
-    .from('emprestimos_ferramentas')
-    .select('*, ferramentas(nome, codigo)')
-    .order('data_emprestimo', { ascending: false })
-
-  query = aplicarFiltros(query, filtros)
-  if (filtros.limit)  query = query.limit(filtros.limit)
-  if (filtros.offset) query = query.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
-
-  const { data, error } = await query
+  if (filtros.limit)  q = q.limit(filtros.limit)
+  if (filtros.offset) q = q.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
+  const { data, error } = await q
   if (error) throw error
   return (data as EmprestimoRow[]).map(toLoan)
 }
@@ -103,22 +93,24 @@ export async function listarEmprestimosPaginados(
   page = 0,
 ): Promise<{ data: ToolLoan[]; count: number }> {
   const from = page * LOANS_PAGE_SIZE
-  const to   = from + LOANS_PAGE_SIZE - 1
-
-  let query = supabase
+  let q = supabase
     .from('emprestimos_ferramentas')
     .select('*, ferramentas(nome, codigo)', { count: 'exact' })
     .order('data_emprestimo', { ascending: false })
-    .range(from, to)
-
-  query = aplicarFiltros(query, filtros)
-
-  const { data, error, count } = await query
-  if (error) throw error
-  return {
-    data:  (data as EmprestimoRow[]).map(toLoan),
-    count: count ?? 0,
+    .range(from, from + LOANS_PAGE_SIZE - 1)
+  if (filtros.ferramentaId) q = q.eq('ferramenta_id', filtros.ferramentaId)
+  if (filtros.estado)       q = q.eq('estado', filtros.estado)
+  if (filtros.funcionario)  q = q.ilike('funcionario_nome', `%${filtros.funcionario}%`)
+  if (filtros.destino)      q = q.ilike('destino_obra', `%${filtros.destino}%`)
+  if (filtros.obraId)       q = q.eq('obra_id', filtros.obraId)
+  if (filtros.dataInicio)   q = q.gte('data_emprestimo', filtros.dataInicio.toISOString())
+  if (filtros.dataFim) {
+    const fim = new Date(filtros.dataFim); fim.setDate(fim.getDate() + 1)
+    q = q.lt('data_emprestimo', fim.toISOString())
   }
+  const { data, error, count } = await q
+  if (error) throw error
+  return { data: (data as EmprestimoRow[]).map(toLoan), count: count ?? 0 }
 }
 
 export type RegistarEmprestimoInput = {

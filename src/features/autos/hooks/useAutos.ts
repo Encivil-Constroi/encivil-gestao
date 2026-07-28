@@ -1,101 +1,49 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Measurement } from '@/app/types'
+import { useAsync } from '@/app/lib/useAsync'
+import { useMutation } from '@/app/lib/useMutation'
 import {
-  listarAutos,
-  buscarAuto,
-  criarAuto,
-  atualizarAuto,
-  eliminarAuto,
-  validarAuto,
-  type NovoAuto,
+  listarAutos, buscarAuto, criarAuto, atualizarAuto, eliminarAuto, validarAuto,
   type AtualizarAuto,
 } from '../services/autosService'
 
 export function useAutos(subId: string | undefined) {
-  const [autos, setAutos] = useState<Measurement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    if (!subId) { setLoading(false); return }
-    setLoading(true)
-    setError(null)
-    try {
-      setAutos(await listarAutos(subId))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar autos')
-    } finally {
-      setLoading(false)
-    }
-  }, [subId])
-
-  useEffect(() => { load() }, [load])
-
-  return { autos, loading, error, reload: load }
+  const { data, loading, error, reload } = useAsync(
+    () => listarAutos(subId!), [subId],
+    { enabled: !!subId, errorMsg: 'Erro ao carregar autos' }
+  )
+  return { autos: data ?? [], loading, error, reload }
 }
 
 export function useAuto(id: string | undefined) {
-  const [auto, setAuto] = useState<Measurement | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    if (!id) { setLoading(false); return }
-    setLoading(true)
-    setError(null)
-    try {
-      setAuto(await buscarAuto(id))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Auto não encontrado')
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => { load() }, [load])
-
-  return { auto, loading, error, reload: load }
+  const { data: auto, loading, error, reload } = useAsync(
+    () => buscarAuto(id!), [id],
+    { enabled: !!id, errorMsg: 'Auto não encontrado' }
+  )
+  return { auto, loading, error, reload }
 }
 
 export function useGuardarAuto() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const criar = async (input: NovoAuto): Promise<Measurement | null> => {
-    setLoading(true); setError(null)
-    try { return await criarAuto(input) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Erro ao guardar'); return null }
-    finally { setLoading(false) }
+  const criador    = useMutation(criarAuto,    'Erro ao guardar')
+  const atualizador = useMutation(
+    (id: string, input: AtualizarAuto) => atualizarAuto(id, input),
+    'Erro ao guardar'
+  )
+  return {
+    criar:    criador.mutate,
+    atualizar: atualizador.mutate,
+    loading:  criador.loading || atualizador.loading,
+    error:    criador.error   || atualizador.error,
   }
-
-  const atualizar = async (id: string, input: AtualizarAuto): Promise<Measurement | null> => {
-    setLoading(true); setError(null)
-    try { return await atualizarAuto(id, input) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Erro ao guardar'); return null }
-    finally { setLoading(false) }
-  }
-
-  return { criar, atualizar, loading, error }
 }
 
 export function useValidarAuto() {
-  const [loading, setLoading] = useState(false)
-  const validar = async (id: string): Promise<Measurement | null> => {
-    setLoading(true)
-    try { return await validarAuto(id) }
-    catch { return null }
-    finally { setLoading(false) }
-  }
+  const { mutate: validar, loading } = useMutation(validarAuto, 'Erro ao validar')
   return { validar, loading }
 }
 
 export function useEliminarAuto() {
-  const [loading, setLoading] = useState(false)
-  const eliminar = async (id: string): Promise<boolean> => {
-    setLoading(true)
-    try { await eliminarAuto(id); return true }
-    catch { return false }
-    finally { setLoading(false) }
-  }
+  const { mutate, loading } = useMutation(
+    async (id: string): Promise<true> => { await eliminarAuto(id); return true }
+  )
+  const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }
 }
