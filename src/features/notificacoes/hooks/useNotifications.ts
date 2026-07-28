@@ -27,7 +27,8 @@ export function useNotifications() {
     const today = new Date().toISOString().split('T')[0]
 
     const [produtosRes, atrasoRes, subsPend, autosPend, combustPend] = await Promise.all([
-      supabase.from('produtos').select('id, nome, unidade, stock_atual, stock_minimo').eq('ativo', true),
+      // RPC filtra no servidor — devolve só produtos com stock_atual <= stock_minimo
+      supabase.rpc('produtos_em_alerta'),
       supabase
         .from('emprestimos_ferramentas')
         .select('id, ferramenta_id, funcionario_nome, data_prevista_devolucao, ferramentas(nome, codigo)')
@@ -47,11 +48,9 @@ export function useNotifications() {
 
     const notifs: AppNotification[] = []
 
-    // 1. Stock baixo / sem stock
+    // 1. Stock baixo / sem stock — RPC já filtra e ordena no servidor
     type ProdRow = { id: string; nome: string; unidade: string; stock_atual: number; stock_minimo: number }
-    ;(((produtosRes.data ?? []) as ProdRow[])
-      .filter(p => p.stock_atual <= p.stock_minimo)
-      .sort((a, b) => a.stock_atual - b.stock_atual))
+    ;((produtosRes.data ?? []) as ProdRow[])
       .forEach(p => {
         const semStock = p.stock_atual <= 0
         notifs.push({

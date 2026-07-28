@@ -39,7 +39,6 @@ export interface Movement {
   unit: Unit;
   responsible: string;
   destination?: string;
-  obra?: string;
   obraId?: string;
   notes?: string;
   date: Date;

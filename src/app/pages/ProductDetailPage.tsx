@@ -1,4 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
+
+const PRODUCT_DETAIL_HEADERS = ['Data/Hora','Tipo','Quantidade','Stock Anterior','Novo Stock','Responsável','Destino'] as const;
 import { useParams, useNavigate, Link } from 'react-router';
 import {
   ArrowLeft, ArrowDownCircle, ArrowUpCircle,
@@ -329,7 +331,7 @@ export function ProductDetailPage() {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    {['Data/Hora','Tipo','Quantidade','Stock Anterior','Novo Stock','Responsável','Destino'].map(h => (
+                    {PRODUCT_DETAIL_HEADERS.map(h => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>

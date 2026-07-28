@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { TablesUpdate } from '@/integrations/supabase/types'
-import type { Product, ProductCategory, StockStatus, Unit } from '@/app/types'
+import type { Product, ProductCategory, Unit } from '@/app/types'
+import { calcStatus } from '@/app/lib/stockUtils'
 
 type ProdutoRow = {
   id: string
@@ -15,12 +16,6 @@ type ProdutoRow = {
   observacoes: string | null
   created_at: string
   updated_at: string
-}
-
-function calcStatus(stockAtual: number, stockMinimo: number): StockStatus {
-  if (stockAtual <= 0) return 'sem-stock'
-  if (stockAtual < stockMinimo) return 'baixo'
-  return 'normal'
 }
 
 function toProduct(row: ProdutoRow): Product {

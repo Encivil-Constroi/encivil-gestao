@@ -1,14 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import type { DashboardStats, LowStockItem, Movement, Unit, MovementType } from '@/app/types'
-
-type StockStatus = 'normal' | 'baixo' | 'sem-stock'
-
-function calcStatus(s: number, min: number): StockStatus {
-  if (s <= 0) return 'sem-stock'
-  if (s < min) return 'baixo'
-  return 'normal'
-}
+import { calcStatus } from '@/app/lib/stockUtils'
 
 export function useDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -79,7 +72,7 @@ export function useDashboard() {
         productName: m.produtos?.nome ?? '', type: m.tipo,
         quantity: m.quantidade, unit: (m.produtos?.unidade ?? '') as Unit,
         responsible: m.responsavel, destination: m.destino_obra ?? undefined,
-        obra: m.destino_obra ?? undefined, notes: m.observacoes ?? undefined,
+        notes: m.observacoes ?? undefined,
         date: new Date(m.created_at), previousStock: m.stock_antes, newStock: m.stock_depois,
       }))
 

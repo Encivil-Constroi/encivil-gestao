@@ -755,6 +755,24 @@ export type Database = {
     }
     Functions: {
       aprovar_abastecimento_pendente: { Args: { p_id: string }; Returns: void }
+      criar_auto_rpc: {
+        Args: {
+          p_sub_id: string
+          p_data: string
+          p_percentagem: number | null
+          p_valor: number
+          p_notas?: string | null
+        }
+        Returns: { id: string; numero: number }[]
+      }
+      custos_materiais_por_obra: {
+        Args: Record<string, never>
+        Returns: { obra_id: string; materiais: number; combustivel: number }[]
+      }
+      produtos_em_alerta: {
+        Args: Record<string, never>
+        Returns: { id: string; nome: string; unidade: string; stock_atual: number; stock_minimo: number }[]
+      }
       auth_role: { Args: never; Returns: string }
       gerar_codigo_ferramenta: { Args: never; Returns: string }
       gerar_codigo_produto: { Args: never; Returns: string }

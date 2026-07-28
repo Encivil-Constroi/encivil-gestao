@@ -92,35 +92,16 @@ export type NovoAuto = {
   lines?: LinhaInput[]
 }
 
-async function proximoNumero(subId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from('autos_medicao')
-    .select('numero')
-    .eq('subempreiteiro_id', subId)
-    .order('numero', { ascending: false })
-    .limit(1)
-  if (error) throw error
-  const rows = data as { numero: number }[]
-  return rows.length ? rows[0].numero + 1 : 1
-}
-
 export async function criarAuto(input: NovoAuto): Promise<Measurement> {
-  const numero = await proximoNumero(input.subcontractorId)
-  const { data, error } = await supabase
-    .from('autos_medicao')
-    .insert({
-      subempreiteiro_id: input.subcontractorId,
-      numero,
-      data_medicao: input.date,
-      percentagem_periodo: input.periodPercentage ?? null,
-      valor_periodo: input.periodValue,
-      observacoes: input.notes ?? null,
-    })
-    .select('id')
-    .single()
+  const { data, error } = await supabase.rpc('criar_auto_rpc', {
+    p_sub_id:      input.subcontractorId,
+    p_data:        input.date,
+    p_percentagem: input.periodPercentage ?? null,
+    p_valor:       input.periodValue,
+    p_notas:       input.notes ?? null,
+  })
   if (error) throw error
-
-  const id = (data as { id: string }).id
+  const { id } = (data as { id: string; numero: number }[])[0]
   if (input.lines?.length) await substituirLinhas(id, input.lines)
   return buscarAuto(id)
 }

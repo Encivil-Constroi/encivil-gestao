@@ -102,16 +102,17 @@ export function useAtualizarProduto() {
   return { atualizar, loading, error }
 }
 
-export function useProdutosArquivados() {
+export function useProdutosArquivados(enabled = true) {
   const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const load = useCallback(async () => {
+    if (!enabled) return
     setLoading(true)
     try { setProducts(await listarProdutosArquivados()) }
     catch { setProducts([]) }
     finally { setLoading(false) }
-  }, [])
+  }, [enabled])
 
   useEffect(() => { load() }, [load])
   return { products, loading, reload: load }

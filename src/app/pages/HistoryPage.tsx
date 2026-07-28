@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+
+const HISTORY_TABLE_HEADERS = ['Data','Produto','Tipo','Quantidade','Novo Stock','Responsável','Destino/Obra'] as const;
 import { useSearchParams } from 'react-router';
 import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -227,7 +229,7 @@ export function HistoryPage() {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    {['Data','Produto','Tipo','Quantidade','Novo Stock','Responsável','Destino/Obra'].map(h => (
+                    {HISTORY_TABLE_HEADERS.map(h => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>

@@ -39,29 +39,14 @@ export async function custoObra(obraId: string, orcamento?: number): Promise<Cus
   }
 }
 
-// Versão em lote (para o relatório): materiais e combustível por obra em 2
-// queries. Os subempreiteiros vêm à parte de listarSubempreiteirosComExecutado().
 export type CustoParcialObra = { materiais: number; combustivel: number }
 
 export async function custosMateriaisCombustivelPorObra(): Promise<Record<string, CustoParcialObra>> {
-  const [matRes, fuelRes] = await Promise.all([
-    supabase
-      .from('movimentos_stock')
-      .select('obra_id, quantidade, produtos(custo_unitario)')
-      .eq('tipo', 'saida')
-      .not('obra_id', 'is', null),
-    supabase.from('comb_abastecimentos').select('obra_id, custo_total').not('obra_id', 'is', null),
-  ])
-
+  const { data, error } = await supabase.rpc('custos_materiais_por_obra')
+  if (error) throw error
   const map: Record<string, CustoParcialObra> = {}
-  const bump = (id: string) => (map[id] ??= { materiais: 0, combustivel: 0 })
-
-  ;((matRes.data ?? []) as (MovCustoRow & { obra_id: string })[]).forEach(r => {
-    bump(r.obra_id).materiais += Number(r.quantidade) * Number(r.produtos?.custo_unitario ?? 0)
-  })
-  ;((fuelRes.data ?? []) as { obra_id: string; custo_total: number }[]).forEach(r => {
-    bump(r.obra_id).combustivel += Number(r.custo_total)
-  })
-
+  for (const row of (data as { obra_id: string; materiais: number; combustivel: number }[])) {
+    map[row.obra_id] = { materiais: Number(row.materiais), combustivel: Number(row.combustivel) }
+  }
   return map
 }

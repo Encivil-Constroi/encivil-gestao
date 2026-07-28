@@ -27,7 +27,6 @@ function toMovement(row: MovimentoRow): Movement {
     unit: (row.produtos?.unidade ?? '') as Unit,
     responsible: row.responsavel,
     destination: row.destino_obra ?? undefined,
-    obra: row.destino_obra ?? undefined,
     obraId: row.obra_id ?? undefined,
     notes: row.observacoes ?? undefined,
     date: new Date(row.created_at),

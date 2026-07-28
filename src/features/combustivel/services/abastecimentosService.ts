@@ -93,10 +93,10 @@ export async function criarAbastecimento(input: NovoAbastecimento): Promise<Fuel
       responsavel: input.responsible,
       observacoes: input.notes ?? null,
     })
-    .select('id')
+    .select(SELECT)
     .single()
   if (error) throw error
-  return buscarAbastecimento((data as { id: string }).id)
+  return toFuelEntry(data as AbastecimentoRow)
 }
 
 export type AtualizarAbastecimento = Partial<NovoAbastecimento>
@@ -113,9 +113,14 @@ export async function atualizarAbastecimento(id: string, input: AtualizarAbastec
   if (input.responsible !== undefined) update.responsavel = input.responsible
   if (input.notes !== undefined)       update.observacoes = input.notes || null
 
-  const { error } = await supabase.from('comb_abastecimentos').update(update as TablesUpdate<'comb_abastecimentos'>).eq('id', id)
+  const { data, error } = await supabase
+    .from('comb_abastecimentos')
+    .update(update as TablesUpdate<'comb_abastecimentos'>)
+    .eq('id', id)
+    .select(SELECT)
+    .single()
   if (error) throw error
-  return buscarAbastecimento(id)
+  return toFuelEntry(data as AbastecimentoRow)
 }
 
 export async function eliminarAbastecimento(id: string): Promise<void> {

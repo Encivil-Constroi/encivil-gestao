@@ -1,4 +1,6 @@
 import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight, Building2, Wallet, TrendingDown, TrendingUp, ShieldAlert, Fuel } from 'lucide-react';
+
+const MOVEMENT_TABLE_HEADERS = ['Data/Hora', 'Produto', 'Tipo', 'Quantidade', 'Responsável'] as const;
 import { Link } from 'react-router';
 import { StatCard } from '../components/StatCard';
 import { StockBadge } from '../components/StockBadge';
@@ -212,7 +214,7 @@ export function DashboardPage() {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      {['Data/Hora', 'Produto', 'Tipo', 'Quantidade', 'Responsável'].map((h) => (
+                      {MOVEMENT_TABLE_HEADERS.map((h) => (
                         <th key={h} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{h}</th>
                       ))}
                     </tr>

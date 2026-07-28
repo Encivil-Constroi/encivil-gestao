@@ -36,7 +36,8 @@ export function ProductsPage() {
   const [restoreId,    setRestoreId]    = useState<string | null>(null);
 
   const { products,  loading,         reload  } = useProdutos();
-  const { products: archived, loading: loadingArchived, reload: reloadArchived } = useProdutosArquivados();
+  // Arquivados só carregam quando o utilizador abre a tab correspondente
+  const { products: archived, loading: loadingArchived, reload: reloadArchived } = useProdutosArquivados(tab === 'arquivados');
   const { podeArmazem } = useRole();
   const { restaurar, loading: restoring } = useRestaurarProduto();
 

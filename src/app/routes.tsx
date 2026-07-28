@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, Navigate, useRouteError } from 'react-router';
 
 function RouteErrorPage() {
@@ -75,39 +75,62 @@ function RouteErrorPage() {
   );
 }
 
-import { MainLayout } from './layouts/MainLayout';
-import { AuthGuard } from '@/features/auth/AuthGuard';
-import { RoleGuard } from '@/features/auth/RoleGuard';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ProductsPage } from './pages/ProductsPage';
-import { ProductDetailPage } from './pages/ProductDetailPage';
-import { ToolsPage } from './pages/ToolsPage';
-import { ToolDetailPage } from './pages/ToolDetailPage';
-import { ToolFormPage } from './pages/ToolFormPage';
-import { ToolLoanPage } from './pages/ToolLoanPage';
-import { ToolReturnPage } from './pages/ToolReturnPage';
-import { ObrasPage } from './pages/ObrasPage';
-import { ObraFormPage } from './pages/ObraFormPage';
-import { ObraDetailPage } from './pages/ObraDetailPage';
-import { SubempreiteirosPage } from './pages/SubempreiteirosPage';
-import { SubempreiteiroFormPage } from './pages/SubempreiteiroFormPage';
-import { SubempreiteiroDetailPage } from './pages/SubempreiteiroDetailPage';
-import { AutoFormPage } from './pages/AutoFormPage';
-import { AutoDetailPage } from './pages/AutoDetailPage';
-import { CombustivelPage } from './pages/CombustivelPage';
-import { AbastecimentoFormPage } from './pages/AbastecimentoFormPage';
-import { VeiculoFormPage } from './pages/VeiculoFormPage';
-import { NewMovementPage } from './pages/NewMovementPage';
-import { HistoryPage } from './pages/HistoryPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { RelatorioSemanalPage } from './pages/RelatorioSemanalPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { DocsPage } from './pages/DocsPage';
-import { HelpPage } from './pages/HelpPage';
+// Skeleton de loading — exibido durante o carregamento lazy de cada página
+function PageSkeleton() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+// Wrapper que adiciona Suspense a cada elemento lazy
+function L({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>;
+}
+
+// ── Imports estáticos (críticos — necessários no carregamento inicial) ──────
+import { MainLayout }   from './layouts/MainLayout';
+import { AuthGuard }    from '@/features/auth/AuthGuard';
+import { RoleGuard }    from '@/features/auth/RoleGuard';
+import { LoginPage }    from './pages/LoginPage';
+// Páginas públicas (acedidas via QR code sem autenticação)
 import { AbastecimentoPublicPage } from './pages/pub/AbastecimentoPublicPage';
-import { ImprimirQrPage } from './pages/pub/ImprimirQrPage';
+import { ImprimirQrPage }          from './pages/pub/ImprimirQrPage';
+
+// ── Imports lazy (carregados só quando a rota é visitada) ────────────────────
+const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ProductsPage     = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })));
+
+const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
+const ToolDetailPage   = lazy(() => import('./pages/ToolDetailPage').then(m => ({ default: m.ToolDetailPage })));
+const ToolFormPage     = lazy(() => import('./pages/ToolFormPage').then(m => ({ default: m.ToolFormPage })));
+const ToolLoanPage     = lazy(() => import('./pages/ToolLoanPage').then(m => ({ default: m.ToolLoanPage })));
+const ToolReturnPage   = lazy(() => import('./pages/ToolReturnPage').then(m => ({ default: m.ToolReturnPage })));
+
+const ObrasPage        = lazy(() => import('./pages/ObrasPage').then(m => ({ default: m.ObrasPage })));
+const ObraFormPage     = lazy(() => import('./pages/ObraFormPage').then(m => ({ default: m.ObraFormPage })));
+const ObraDetailPage   = lazy(() => import('./pages/ObraDetailPage').then(m => ({ default: m.ObraDetailPage })));
+
+const SubempreiteirosPage    = lazy(() => import('./pages/SubempreiteirosPage').then(m => ({ default: m.SubempreiteirosPage })));
+const SubempreiteiroFormPage = lazy(() => import('./pages/SubempreiteiroFormPage').then(m => ({ default: m.SubempreiteiroFormPage })));
+const SubempreiteiroDetailPage = lazy(() => import('./pages/SubempreiteiroDetailPage').then(m => ({ default: m.SubempreiteiroDetailPage })));
+const AutoFormPage     = lazy(() => import('./pages/AutoFormPage').then(m => ({ default: m.AutoFormPage })));
+const AutoDetailPage   = lazy(() => import('./pages/AutoDetailPage').then(m => ({ default: m.AutoDetailPage })));
+
+const CombustivelPage          = lazy(() => import('./pages/CombustivelPage').then(m => ({ default: m.CombustivelPage })));
+const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPage').then(m => ({ default: m.AbastecimentoFormPage })));
+const VeiculoFormPage          = lazy(() => import('./pages/VeiculoFormPage').then(m => ({ default: m.VeiculoFormPage })));
+
+const NewMovementPage    = lazy(() => import('./pages/NewMovementPage').then(m => ({ default: m.NewMovementPage })));
+const HistoryPage        = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const ReportsPage        = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const RelatorioSemanalPage = lazy(() => import('./pages/RelatorioSemanalPage').then(m => ({ default: m.RelatorioSemanalPage })));
+const SettingsPage       = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
+const DocsPage           = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
+const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 export const router = createBrowserRouter([
   {
@@ -133,39 +156,39 @@ export const router = createBrowserRouter([
         Component: MainLayout,
         errorElement: <RouteErrorPage />,
         children: [
-          { index: true,           element: <DashboardPage /> },
-          { path: 'produtos',      element: <ProductsPage /> },
-          { path: 'produtos/:id',  element: <ProductDetailPage /> },
-          { path: 'ferramentas',             element: <ToolsPage /> },
-          { path: 'ferramentas/nova',         element: <RoleGuard require="gestor"><ToolFormPage /></RoleGuard> },
-          { path: 'ferramentas/emprestimo',   element: <RoleGuard require="gestor"><ToolLoanPage /></RoleGuard> },
-          { path: 'ferramentas/:id',          element: <ToolDetailPage /> },
-          { path: 'ferramentas/:id/editar',    element: <RoleGuard require="gestor"><ToolFormPage /></RoleGuard> },
-          { path: 'ferramentas/:id/devolucao', element: <RoleGuard require="gestor"><ToolReturnPage /></RoleGuard> },
-          { path: 'obras',                    element: <ObrasPage /> },
-          { path: 'obras/nova',               element: <ObraFormPage /> },
-          { path: 'obras/:id',                element: <ObraDetailPage /> },
-          { path: 'obras/:id/editar',         element: <ObraFormPage /> },
-          { path: 'subempreiteiros',          element: <SubempreiteirosPage /> },
-          { path: 'subempreiteiros/novo',     element: <SubempreiteiroFormPage /> },
-          { path: 'subempreiteiros/:id',      element: <SubempreiteiroDetailPage /> },
-          { path: 'subempreiteiros/:id/editar', element: <SubempreiteiroFormPage /> },
-          { path: 'subempreiteiros/:subId/autos/novo', element: <AutoFormPage /> },
-          { path: 'autos/:autoId',            element: <AutoDetailPage /> },
-          { path: 'autos/:autoId/editar',     element: <AutoFormPage /> },
-          { path: 'combustivel',                       element: <CombustivelPage /> },
-          { path: 'combustivel/abastecimento',         element: <AbastecimentoFormPage /> },
-          { path: 'combustivel/abastecimento/:id/editar', element: <AbastecimentoFormPage /> },
-          { path: 'combustivel/veiculo',               element: <VeiculoFormPage /> },
-          { path: 'combustivel/veiculo/:id/editar',    element: <VeiculoFormPage /> },
-          { path: 'novo-movimento', element: <NewMovementPage /> },
-          { path: 'historico',     element: <HistoryPage /> },
-          { path: 'relatorios',          element: <ReportsPage /> },
-          { path: 'relatorio-semanal',  element: <RelatorioSemanalPage /> },
-          { path: 'configuracoes', element: <RoleGuard require="admin"><SettingsPage /></RoleGuard> },
-          { path: 'ajuda',         element: <HelpPage /> },
-          { path: 'documentacao',  element: <DocsPage /> },
-          { path: '*',             element: <NotFoundPage /> },
+          { index: true,           element: <L><DashboardPage /></L> },
+          { path: 'produtos',      element: <L><ProductsPage /></L> },
+          { path: 'produtos/:id',  element: <L><ProductDetailPage /></L> },
+          { path: 'ferramentas',             element: <L><ToolsPage /></L> },
+          { path: 'ferramentas/nova',         element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
+          { path: 'ferramentas/emprestimo',   element: <L><RoleGuard require="gestor"><ToolLoanPage /></RoleGuard></L> },
+          { path: 'ferramentas/:id',          element: <L><ToolDetailPage /></L> },
+          { path: 'ferramentas/:id/editar',   element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
+          { path: 'ferramentas/:id/devolucao', element: <L><RoleGuard require="gestor"><ToolReturnPage /></RoleGuard></L> },
+          { path: 'obras',                    element: <L><ObrasPage /></L> },
+          { path: 'obras/nova',               element: <L><ObraFormPage /></L> },
+          { path: 'obras/:id',                element: <L><ObraDetailPage /></L> },
+          { path: 'obras/:id/editar',         element: <L><ObraFormPage /></L> },
+          { path: 'subempreiteiros',          element: <L><SubempreiteirosPage /></L> },
+          { path: 'subempreiteiros/novo',     element: <L><SubempreiteiroFormPage /></L> },
+          { path: 'subempreiteiros/:id',      element: <L><SubempreiteiroDetailPage /></L> },
+          { path: 'subempreiteiros/:id/editar', element: <L><SubempreiteiroFormPage /></L> },
+          { path: 'subempreiteiros/:subId/autos/novo', element: <L><AutoFormPage /></L> },
+          { path: 'autos/:autoId',            element: <L><AutoDetailPage /></L> },
+          { path: 'autos/:autoId/editar',     element: <L><AutoFormPage /></L> },
+          { path: 'combustivel',                       element: <L><CombustivelPage /></L> },
+          { path: 'combustivel/abastecimento',         element: <L><AbastecimentoFormPage /></L> },
+          { path: 'combustivel/abastecimento/:id/editar', element: <L><AbastecimentoFormPage /></L> },
+          { path: 'combustivel/veiculo',               element: <L><VeiculoFormPage /></L> },
+          { path: 'combustivel/veiculo/:id/editar',    element: <L><VeiculoFormPage /></L> },
+          { path: 'novo-movimento', element: <L><NewMovementPage /></L> },
+          { path: 'historico',     element: <L><HistoryPage /></L> },
+          { path: 'relatorios',        element: <L><ReportsPage /></L> },
+          { path: 'relatorio-semanal', element: <L><RelatorioSemanalPage /></L> },
+          { path: 'configuracoes', element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
+          { path: 'ajuda',         element: <L><HelpPage /></L> },
+          { path: 'documentacao',  element: <L><DocsPage /></L> },
+          { path: '*',             element: <L><NotFoundPage /></L> },
         ],
       },
     ],
