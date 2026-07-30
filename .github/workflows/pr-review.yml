@@ -1,0 +1,66 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  review:
+    name: Claude Review
+    # Só corre em PRs vindas do mesmo repo (não de forks — sem acesso a secrets)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropic/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Ferramentas seguras para code review (sem escrita no repo)
+          allowed_tools: "Bash,Read,Grep,Glob"
+          prompt: |
+            Faz um code review deste Pull Request para o projeto ENCIVIL Gestão.
+
+            Contexto do projeto:
+            - ERP de construção civil (React 18 + Vite + TypeScript + Supabase)
+            - Em produção, multiutilizador
+            - RBAC: admin / gestor / operador
+            - RLS ativo em todas as tabelas Supabase
+
+            Analisa o diff com `git diff origin/main...HEAD` e revê cada mudança por:
+
+            **1. Segurança (crítico)**
+            - Alguma chave `sb_secret_` exposta no frontend ou em VITE_ vars?
+            - Novas tabelas têm RLS ativado?
+            - Novas migrations têm GRANTs explícitos para `authenticated`?
+            - Input do utilizador é validado antes de chegar à BD?
+
+            **2. Padrões obrigatórios (ver CLAUDE.md)**
+            - Há `as any` no código novo? (Proibido)
+            - Hooks de dados usam `useAsync` em vez de `useEffect`+`useState` manual?
+            - Mutations usam `useMutation` em vez de try/catch manual?
+            - Services têm constante `SELECT` e encadeiam `.select()` em INSERT/UPDATE?
+
+            **3. Performance**
+            - Há queries N+1? (INSERT seguido de SELECT separado)
+            - Agregações que deviam ser RPCs estão a ser feitas em JS no cliente?
+
+            **4. Testes**
+            - Funções puras novas têm testes em `src/__tests__/`?
+            - `npm test` continua a passar?
+
+            Responde com uma lista de problemas encontrados, agrupados por severidade:
+            - 🔴 **Crítico** — bloqueia merge (segurança, perda de dados)
+            - 🟡 **Aviso** — deve ser corrigido antes de merge
+            - 🔵 **Sugestão** — melhoria opcional
+
+            Se não encontrares problemas, diz "✅ Nenhum problema encontrado".
+            Mantém a resposta concisa — máximo 20 linhas.

@@ -35,5 +35,27 @@
       "Bash(gh pr *)",
       "Bash(gh repo *)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash(supabase db push*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'LEMBRETE ENCIVIL: Regenerar tipos — npx supabase gen types typescript --local > src/integrations/supabase/types.ts && npm run typecheck'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(supabase migration new*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'LEMBRETE ENCIVIL: Adicionar GRANTs explícitos à migration (Automatically expose new tables está OFF)'"
+          }
+        ]
+      }
+    ]
   }
 }
