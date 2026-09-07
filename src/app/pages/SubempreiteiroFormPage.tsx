@@ -33,6 +33,7 @@ export function SubempreiteiroFormPage() {
     contact: '',
     type: 'global' as ContractType,
     globalValue: '',
+    retencaoPercentagem: '5',
     conditions: '',
   });
   const [linhas, setLinhas] = useState<LinhaArtigo[]>([novaLinha()]);
@@ -51,6 +52,7 @@ export function SubempreiteiroFormPage() {
       contact: sub.contact ?? '',
       type: sub.type,
       globalValue: sub.globalValue != null ? String(sub.globalValue) : '',
+      retencaoPercentagem: String(sub.retencaoPercentagem ?? 5),
       conditions: sub.conditions ?? '',
     });
     if (sub.type === 'unitario' && sub.items?.length) {
@@ -104,6 +106,7 @@ export function SubempreiteiroFormPage() {
       contact: form.contact || undefined,
       type: form.type,
       globalValue: form.type === 'global' ? (parseFloat(form.globalValue || '0') || 0) : undefined,
+      retencaoPercentagem: Math.min(100, Math.max(0, parseFloat(form.retencaoPercentagem || '0') || 0)),
       conditions: form.conditions || undefined,
       items,
     };
@@ -153,6 +156,27 @@ export function SubempreiteiroFormPage() {
             <div>
               <label className="block text-sm font-medium mb-2">Contacto do Responsável</label>
               <input type="tel" value={form.contact} onChange={e => set({ contact: e.target.value })} className={inputCls} placeholder="Telemóvel" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Retenção de Garantia <span className="text-muted-foreground font-normal">(% retida de cada auto)</span>
+            </label>
+            <p className="text-xs text-muted-foreground mb-2">Percentagem standard em construção civil: 5–10%. Libertada no final da obra e período de defeitos.</p>
+            <div className="flex items-center gap-3">
+              <input
+                type="number" inputMode="decimal" min="0" max="100" step="0.5"
+                value={form.retencaoPercentagem}
+                onChange={e => set({ retencaoPercentagem: e.target.value })}
+                className={`${inputCls} w-32`}
+                placeholder="5"
+              />
+              <span className="text-sm font-semibold text-muted-foreground">%</span>
+              {parseFloat(form.retencaoPercentagem) > 0 && valorAcordado > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  ≈ {fmtEuro(valorAcordado * parseFloat(form.retencaoPercentagem) / 100)} sobre o total acordado
+                </span>
+              )}
             </div>
           </div>
         </div>

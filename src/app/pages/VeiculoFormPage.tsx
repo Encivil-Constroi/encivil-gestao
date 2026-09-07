@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ChevronLeft, Archive } from 'lucide-react';
+import { ChevronLeft, Archive, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { VEHICLE_TYPES, FUEL_TYPES, COUNTER_UNITS } from '@/features/combustivel/labels';
 import { useVeiculo, useGuardarVeiculo } from '@/features/combustivel/hooks/useCombustivel';
@@ -25,6 +25,13 @@ export function VeiculoFormPage() {
     fuelType: 'gasoleo' as FuelType,
     counterUnit: 'km' as CounterUnit,
     notes: '',
+    // manutenção preventiva
+    proximaRevisaoKm: '',
+    proximaRevisaoData: '',
+    intervaloRevisaoKm: '',
+    intervaloRevisaoMeses: '',
+    dataFimSeguro: '',
+    dataProximaIpo: '',
   });
 
   useEffect(() => {
@@ -34,6 +41,7 @@ export function VeiculoFormPage() {
 
   useEffect(() => {
     if (!isEdit || !vehicle) return;
+    const toDateStr = (d?: Date) => d ? d.toISOString().split('T')[0] : '';
     setForm({
       name: vehicle.name,
       type: vehicle.type,
@@ -41,6 +49,12 @@ export function VeiculoFormPage() {
       fuelType: vehicle.fuelType,
       counterUnit: vehicle.counterUnit,
       notes: vehicle.notes ?? '',
+      proximaRevisaoKm: vehicle.proximaRevisaoKm?.toString() ?? '',
+      proximaRevisaoData: toDateStr(vehicle.proximaRevisaoData),
+      intervaloRevisaoKm: vehicle.intervaloRevisaoKm?.toString() ?? '',
+      intervaloRevisaoMeses: vehicle.intervaloRevisaoMeses?.toString() ?? '',
+      dataFimSeguro: toDateStr(vehicle.dataFimSeguro),
+      dataProximaIpo: toDateStr(vehicle.dataProximaIpo),
     });
   }, [isEdit, vehicle]);
 
@@ -56,6 +70,12 @@ export function VeiculoFormPage() {
       fuelType: form.fuelType,
       counterUnit: form.counterUnit,
       notes: form.notes || undefined,
+      proximaRevisaoKm: form.proximaRevisaoKm ? Number(form.proximaRevisaoKm) : undefined,
+      proximaRevisaoData: form.proximaRevisaoData || undefined,
+      intervaloRevisaoKm: form.intervaloRevisaoKm ? Number(form.intervaloRevisaoKm) : undefined,
+      intervaloRevisaoMeses: form.intervaloRevisaoMeses ? Number(form.intervaloRevisaoMeses) : undefined,
+      dataFimSeguro: form.dataFimSeguro || undefined,
+      dataProximaIpo: form.dataProximaIpo || undefined,
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) { toast.success(isEdit ? 'Viatura atualizada.' : 'Viatura criada.'); navigate('/combustivel'); }
@@ -116,6 +136,78 @@ export function VeiculoFormPage() {
           <div>
             <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
             <textarea value={form.notes} onChange={e => set({ notes: e.target.value })} className={`${inputCls} resize-none`} rows={2} />
+          </div>
+        </div>
+
+        {/* ── Manutenção Preventiva ─────────────────────────────── */}
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Wrench className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold">Manutenção Preventiva</h2>
+            <span className="text-xs text-muted-foreground">(opcional — alimenta o motor de alertas)</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Próxima revisão — km alvo</label>
+              <input
+                type="number" min="0" step="100"
+                value={form.proximaRevisaoKm}
+                onChange={e => set({ proximaRevisaoKm: e.target.value })}
+                className={inputCls} placeholder="Ex: 250000"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Próxima revisão — data</label>
+              <input
+                type="date"
+                value={form.proximaRevisaoData}
+                onChange={e => set({ proximaRevisaoData: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Intervalo revisão (km)</label>
+              <input
+                type="number" min="0" step="100"
+                value={form.intervaloRevisaoKm}
+                onChange={e => set({ intervaloRevisaoKm: e.target.value })}
+                className={inputCls} placeholder="Ex: 15000"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Intervalo revisão (meses)</label>
+              <input
+                type="number" min="0" max="60"
+                value={form.intervaloRevisaoMeses}
+                onChange={e => set({ intervaloRevisaoMeses: e.target.value })}
+                className={inputCls} placeholder="Ex: 12"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Validade do Seguro</label>
+              <input
+                type="date"
+                value={form.dataFimSeguro}
+                onChange={e => set({ dataFimSeguro: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Próxima IPO</label>
+              <input
+                type="date"
+                value={form.dataProximaIpo}
+                onChange={e => set({ dataProximaIpo: e.target.value })}
+                className={inputCls}
+              />
+            </div>
           </div>
         </div>
 

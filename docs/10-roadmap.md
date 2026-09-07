@@ -49,7 +49,27 @@ Não estava no plano original — surgiu de auditorias dedicadas. Ver `TASKS/SEG
 
 ---
 
-## Fase 3 — Integração e Mobilidade
+## Fase 3 (v3.0) — ERP Completo — ver `docs/12-plano-v3.md`
+
+Plano faseado de expansão aprovado em 2026-07-30. Decisão arquitectural: manter React PWA + Supabase (ver `docs/adrs/ADR-009.md`).
+
+| Fase | Módulo | Semanas | Estado |
+|---|---|---|---|
+| F0 | Módulo de Colaboradores | 1–2 | `[CONCLUÍDA]` |
+| F1 | Motor de Alertas e Manutenção Preventiva | 3–4 | `[ ]` |
+| F2 | Horário de Trabalho, Faltas, Conformidade Laboral | 5–8 | `[ ]` |
+| F3 | Picagem de Presenças MVP | 9–10 | `[ ]` |
+| F4 | EPIs e Formações | 11–12 | `[ ]` |
+| F5 | Picagem com Geofence (PostGIS) | 13–14 | `[ ]` |
+| F6 | Ingestão e Classificação de Faturas | 15–18 | `[ ]` |
+| F7 | Custeio Consolidado por Obra | 19–20 | `[ ]` |
+| F8 | Livro de Obra Digital e Guias de Transporte | 21–22 | `[ ]` |
+
+Para implementar: ler `docs/12-plano-v3.md` — contém schema SQL, ficheiros a criar e critérios de conclusão para cada fase.
+
+---
+
+## Fase 4 — Integração e Mobilidade (anterior Fase 3)
 
 | # | Funcionalidade | Notas |
 |---|---------------|-------|

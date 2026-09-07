@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { captureError } from './sentry'
+import { parseSupabaseError } from './parseSupabaseError'
 
 /**
  * Generic mutation hook. Wraps a single async operation with loading/error
@@ -16,7 +18,7 @@ export function useMutation<TArgs extends unknown[], TResult>(
     setLoading(true)
     setError(null)
     try   { return await mutateFn(...args) }
-    catch (e) { setError(e instanceof Error ? e.message : errorMsg); return null }
+    catch (e) { setError(parseSupabaseError(e, errorMsg)); captureError(e); return null }
     finally   { setLoading(false) }
   }
 

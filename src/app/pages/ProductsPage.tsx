@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Package as PackageIcon, ChevronRight, RotateCcw, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { SkeletonList } from '../components/Skeletons';
 import { toast } from 'sonner';
 import { StockBadge } from '../components/StockBadge';
 import { EmptyState } from '../components/EmptyState';
@@ -173,7 +174,7 @@ export function ProductsPage() {
         {/* Tab: Ativos */}
         {tab === 'ativos' && (
           loading ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">A carregar produtos…</div>
+            <SkeletonList rows={6} cols={4} />
           ) : filteredActive.length === 0 ? (
             <EmptyState
               icon={PackageIcon}
@@ -238,7 +239,7 @@ export function ProductsPage() {
         {/* Tab: Arquivados */}
         {tab === 'arquivados' && (
           loadingArchived ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">A carregar produtos arquivados…</div>
+            <SkeletonList rows={4} cols={4} />
           ) : filteredArchived.length === 0 ? (
             <EmptyState icon={Archive} title="Nenhum produto arquivado" description="Produtos arquivados aparecem aqui." />
           ) : (

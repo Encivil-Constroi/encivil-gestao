@@ -4,6 +4,7 @@ import {
   Plus, Search, Wrench, ChevronRight, RotateCcw, Archive,
   History, FileText, Undo2,
 } from 'lucide-react';
+import { SkeletonList } from '../components/Skeletons';
 import { toast } from 'sonner';
 import { ToolStatusBadge } from '../components/ToolStatusBadge';
 import { EmptyState } from '../components/EmptyState';
@@ -218,7 +219,7 @@ export function ToolsPage() {
             </div>
 
             {loading ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">A carregar ferramentas…</div>
+              <SkeletonList rows={6} cols={4} />
             ) : filteredActive.length === 0 ? (
               <EmptyState
                 icon={Wrench}
@@ -326,7 +327,7 @@ export function ToolsPage() {
             </div>
 
             {loadingLoans ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+              <SkeletonList rows={5} cols={3} />
             ) : filteredLoans.length === 0 ? (
               <EmptyState icon={History} title="Nenhum empréstimo encontrado" description="Tente alterar os filtros." />
             ) : (
@@ -404,7 +405,7 @@ export function ToolsPage() {
         {/* ── Tab: Arquivadas ────────────────────── */}
         {tab === 'arquivadas' && (
           loadingArchived ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+            <SkeletonList rows={4} cols={3} />
           ) : archivedError ? (
             <div className="p-8 text-center">
               <p className="text-sm text-destructive font-medium mb-3">Erro ao carregar ferramentas arquivadas.</p>

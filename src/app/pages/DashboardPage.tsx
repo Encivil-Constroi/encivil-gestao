@@ -10,6 +10,7 @@ import { fmtEuro } from '../lib/format';
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
 import { useResumoObras } from '@/features/dashboard/hooks/useResumoObras';
 import { useRole } from '@/features/auth/useRole';
+import { AlertasWidget } from '@/features/alertas';
 
 function ObraKpi({ label, value, icon: Icon, color }: { label: string; value: string; icon: typeof Building2; color: string }) {
   return (
@@ -248,6 +249,9 @@ export function DashboardPage() {
           </div>
         </div>
 
+        <div className="space-y-5">
+        <AlertasWidget />
+
         <div className="bg-card rounded-xl border border-border enc-fade-up delay-200">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-base">Alertas de Stock</h2>
@@ -295,6 +299,7 @@ export function DashboardPage() {
               </Link>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ Este ficheiro orienta Claude Agents, Codex e outros agents de IA a contribuir co
 2. **Ler a SPEC do módulo** que vai alterar (em `docs/specs/SPEC-*.md`).
 3. **Ler `docs/02-regras-de-negocio.md`** se a tarefa envolve stock ou movimentos.
 4. Verificar se a tarefa está no backlog (`TASKS.md`) e qual a prioridade.
+5. **Se a tarefa é de expansão ERP (RH, picagens, alertas, faturas, custeio):** ler `docs/12-plano-v3.md` — contém schema SQL completo, ficheiros a criar e critérios de conclusão para cada fase.
 
 ---
 
@@ -29,8 +30,8 @@ Este ficheiro orienta Claude Agents, Codex e outros agents de IA a contribuir co
 ### O que NÃO FAZER
 
 - ❌ Não inventar funcionalidades fora do escopo definido
-- ❌ Não transformar o sistema em ERP completo
-- ❌ Não criar sistema de ecommerce, pagamentos ou faturação
+- ❌ Não transformar o sistema em ERP completo **sem seguir o plano faseado em `docs/12-plano-v3.md`** — implementar apenas a fase indicada, pela ordem definida
+- ❌ Não criar sistema de ecommerce, pagamentos ou faturação (Secção 1 da spec v3.0 está excluída)
 - ❌ Não apagar registos de `movimentos_stock` — nem mesmo para "corrigir"
 - ❌ Não editar `stock_atual` diretamente — apenas via movimentos
 - ❌ Não colocar `service-role` key no frontend (Vite)

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { HardHat, Plus, CheckCircle2, FileEdit, Phone } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
+import { SkeletonList } from '../components/Skeletons';
 import { fmtEuro } from '../lib/format';
 import { useSubempreiteiros } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
 import { useObras } from '@/features/obras/hooks/useObras';
@@ -47,7 +48,7 @@ export function SubempreiteirosPage() {
       </div>
 
       {loading ? (
-        <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+        <SkeletonList rows={5} cols={4} />
       ) : subs.length === 0 ? (
         <EmptyState
           icon={HardHat}

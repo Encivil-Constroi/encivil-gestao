@@ -14,6 +14,13 @@ type VeiculoRow = {
   observacoes: string | null
   created_at: string
   updated_at: string
+  // manutenção preventiva (F1)
+  proxima_revisao_km: number | null
+  proxima_revisao_data: string | null
+  intervalo_revisao_km: number | null
+  intervalo_revisao_meses: number | null
+  data_fim_seguro: string | null
+  data_proxima_ipo: string | null
 }
 
 function toVehicle(row: VeiculoRow): Vehicle {
@@ -29,6 +36,12 @@ function toVehicle(row: VeiculoRow): Vehicle {
     notes: row.observacoes ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+    proximaRevisaoKm: row.proxima_revisao_km ?? undefined,
+    proximaRevisaoData: row.proxima_revisao_data ? new Date(row.proxima_revisao_data) : undefined,
+    intervaloRevisaoKm: row.intervalo_revisao_km ?? undefined,
+    intervaloRevisaoMeses: row.intervalo_revisao_meses ?? undefined,
+    dataFimSeguro: row.data_fim_seguro ? new Date(row.data_fim_seguro) : undefined,
+    dataProximaIpo: row.data_proxima_ipo ? new Date(row.data_proxima_ipo) : undefined,
   }
 }
 
@@ -46,6 +59,15 @@ export async function buscarVeiculo(id: string): Promise<Vehicle> {
   return toVehicle(data as VeiculoRow)
 }
 
+export type ManutencaoVeiculo = {
+  proximaRevisaoKm?: number
+  proximaRevisaoData?: string   // ISO date string
+  intervaloRevisaoKm?: number
+  intervaloRevisaoMeses?: number
+  dataFimSeguro?: string        // ISO date string
+  dataProximaIpo?: string       // ISO date string
+}
+
 export type NovoVeiculo = {
   name: string
   type: VehicleType
@@ -53,7 +75,7 @@ export type NovoVeiculo = {
   fuelType: FuelType
   counterUnit: CounterUnit
   notes?: string
-}
+} & ManutencaoVeiculo
 
 export async function criarVeiculo(input: NovoVeiculo): Promise<Vehicle> {
   const { data, error } = await supabase
@@ -65,6 +87,12 @@ export async function criarVeiculo(input: NovoVeiculo): Promise<Vehicle> {
       tipo_combustivel: input.fuelType,
       unidade_contador: input.counterUnit,
       observacoes: input.notes ?? null,
+      proxima_revisao_km: input.proximaRevisaoKm ?? null,
+      proxima_revisao_data: input.proximaRevisaoData ?? null,
+      intervalo_revisao_km: input.intervaloRevisaoKm ?? null,
+      intervalo_revisao_meses: input.intervaloRevisaoMeses ?? null,
+      data_fim_seguro: input.dataFimSeguro ?? null,
+      data_proxima_ipo: input.dataProximaIpo ?? null,
     })
     .select()
     .single()
@@ -83,6 +111,13 @@ export async function atualizarVeiculo(id: string, input: AtualizarVeiculo): Pro
   if (input.counterUnit !== undefined)    update.unidade_contador = input.counterUnit
   if (input.notes !== undefined)          update.observacoes = input.notes || null
   if (input.active !== undefined)         update.ativo = input.active
+  // manutenção
+  if ('proximaRevisaoKm'     in input)    update.proxima_revisao_km      = input.proximaRevisaoKm ?? null
+  if ('proximaRevisaoData'   in input)    update.proxima_revisao_data    = input.proximaRevisaoData ?? null
+  if ('intervaloRevisaoKm'   in input)    update.intervalo_revisao_km    = input.intervaloRevisaoKm ?? null
+  if ('intervaloRevisaoMeses' in input)   update.intervalo_revisao_meses = input.intervaloRevisaoMeses ?? null
+  if ('dataFimSeguro'        in input)    update.data_fim_seguro         = input.dataFimSeguro ?? null
+  if ('dataProximaIpo'       in input)    update.data_proxima_ipo        = input.dataProximaIpo ?? null
 
   const { data, error } = await supabase.from('comb_veiculos').update(update as TablesUpdate<'comb_veiculos'>).eq('id', id).select().single()
   if (error) throw error

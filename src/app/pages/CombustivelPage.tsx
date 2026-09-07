@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { EmptyState } from '../components/EmptyState';
+import { SkeletonList } from '../components/Skeletons';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { exportarCsv } from '../lib/exportCsv';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
@@ -306,7 +307,7 @@ export function CombustivelPage() {
 
           {/* Lista agrupada por dia */}
           {loading ? (
-            <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+            <SkeletonList rows={5} cols={4} />
           ) : entries.length === 0 ? (
             <EmptyState
               icon={Fuel}
@@ -364,7 +365,7 @@ export function CombustivelPage() {
       {/* ── Viaturas & Máquinas ────────────────────────── */}
       {tab === 'veiculos' && (
         vLoading ? (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          <SkeletonList rows={4} cols={3} />
         ) : vehicles.length === 0 ? (
           <EmptyState icon={Truck} title="Sem viaturas registadas" description="Adicione as viaturas e máquinas da empresa para poder registar abastecimentos." />
         ) : (
@@ -408,7 +409,7 @@ export function CombustivelPage() {
       {/* ── Análise por Viatura ────────────────────────── */}
       {tab === 'analise' && (
         aLoading ? (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          <SkeletonList rows={3} cols={4} />
         ) : porViatura.length === 0 ? (
           <EmptyState icon={BarChart2} title="Sem dados para análise" description="Registe abastecimentos para ver estatísticas por viatura." />
         ) : (
@@ -485,7 +486,7 @@ export function CombustivelPage() {
       {/* ── Pendentes ──────────────────────────────────── */}
       {tab === 'pendentes' && (
         pLoading ? (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          <SkeletonList rows={3} cols={3} />
         ) : pError ? (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
             <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />

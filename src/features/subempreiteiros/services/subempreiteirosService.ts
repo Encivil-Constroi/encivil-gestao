@@ -19,6 +19,7 @@ type SubRow = {
   contacto_responsavel: string | null
   tipo: ContractType
   valor_global: number | null
+  percentagem_retencao: number
   condicoes: string | null
   estado: 'rascunho' | 'validado'
   created_at: string
@@ -61,6 +62,7 @@ function toSubcontractor(row: SubRow): Subcontractor {
     validatedAt: row.validado_em ? new Date(row.validado_em) : undefined,
     items: items.sort((a, b) => Number(a.isExtra) - Number(b.isExtra)),
     agreedValue,
+    retencaoPercentagem: Number(row.percentagem_retencao ?? 0),
   }
 }
 
@@ -71,13 +73,13 @@ export async function listarSubempreiteiros(obraId?: string): Promise<Subcontrac
   if (obraId) query = query.eq('obra_id', obraId)
   const { data, error } = await query
   if (error) throw error
-  return (data as SubRow[]).map(toSubcontractor)
+  return (data as unknown as SubRow[]).map(toSubcontractor)
 }
 
 export async function buscarSubempreiteiro(id: string): Promise<Subcontractor> {
   const { data, error } = await supabase.from('subempreiteiros').select(SELECT).eq('id', id).single()
   if (error) throw error
-  return toSubcontractor(data as SubRow)
+  return toSubcontractor(data as unknown as SubRow)
 }
 
 export type SubcontractorComExecutado = Subcontractor & { executed: number }
@@ -120,11 +122,14 @@ export type NovoSubempreiteiro = {
   type: ContractType
   globalValue?: number
   conditions?: string
+  retencaoPercentagem?: number
   items?: ItemInput[]
 }
 
 export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<Subcontractor> {
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data, error } = await db
     .from('subempreiteiros')
     .insert({
       obra_id: input.obraId,
@@ -133,6 +138,7 @@ export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<Su
       tipo: input.type,
       valor_global: input.type === 'global' ? (input.globalValue ?? null) : null,
       condicoes: input.conditions ?? null,
+      percentagem_retencao: input.retencaoPercentagem ?? 0,
     })
     .select('id')
     .single()
@@ -156,6 +162,9 @@ export async function atualizarSubempreiteiro(id: string, input: AtualizarSubemp
   if (input.conditions !== undefined) update.condicoes = input.conditions || null
   if (input.type !== undefined || input.globalValue !== undefined) {
     update.valor_global = input.type === 'global' ? (input.globalValue ?? null) : null
+  }
+  if (input.retencaoPercentagem !== undefined) {
+    update.percentagem_retencao = input.retencaoPercentagem
   }
 
   const { error } = await supabase.from('subempreiteiros').update(update as TablesUpdate<'subempreiteiros'>).eq('id', id)

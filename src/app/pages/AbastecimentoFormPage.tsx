@@ -65,8 +65,10 @@ export function AbastecimentoFormPage() {
     if (!form.vehicleId) { toast.error('Selecione a viatura/máquina.'); return; }
     const liters = parseFloat(form.liters || '0');
     const cost = parseFloat(form.totalCost || '0');
-    if (!(liters > 0)) { toast.error('Indique os litros abastecidos.'); return; }
+    if (!(liters > 0))  { toast.error('Indique os litros abastecidos.'); return; }
+    if (liters > 9999)  { toast.error('Quantidade de litros demasiado elevada (máx 9 999 L).'); return; }
     if (!(cost >= 0) || form.totalCost === '') { toast.error('Indique o custo total.'); return; }
+    if (cost > 99999)   { toast.error('Custo total demasiado elevado (máx 99 999 €).'); return; }
 
     const payload = {
       vehicleId: form.vehicleId,
@@ -133,11 +135,11 @@ export function AbastecimentoFormPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Litros <span className="text-destructive">*</span></label>
-              <input type="number" inputMode="decimal" min="0" step="0.001" value={form.liters} onChange={e => set({ liters: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0" required />
+              <input type="number" inputMode="decimal" min="0" max="9999" step="0.001" value={form.liters} onChange={e => set({ liters: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0" required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Custo Total (€) <span className="text-destructive">*</span></label>
-              <input type="number" inputMode="decimal" min="0" step="0.01" value={form.totalCost} onChange={e => set({ totalCost: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0.00" required />
+              <input type="number" inputMode="decimal" min="0" max="99999" step="0.01" value={form.totalCost} onChange={e => set({ totalCost: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0.00" required />
             </div>
           </div>
 

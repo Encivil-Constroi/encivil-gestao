@@ -2,7 +2,10 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
-import type { RoleUtilizador } from '@/integrations/supabase/types'
+import type { Enums } from '@/integrations/supabase/types'
+import { setSentryUser, clearSentryUser } from '@/app/lib/sentry'
+
+export type RoleUtilizador = Enums<'role_utilizador'>
 
 // Sem MFA disponível no plano atual, a sessão expira após inatividade —
 // reduz o risco de um telemóvel/laptop desbloqueado ficar logado indefinidamente.
@@ -56,8 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const p = await fetchProfile(session.user.id)
         setProfile(p)
+        setSentryUser(session.user.id, session.user.email)
       } else if (event === 'SIGNED_OUT') {
         setProfile(null)
+        clearSentryUser()
       }
     })
 

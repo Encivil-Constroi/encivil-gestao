@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useSearchParams } from 'react-router'
 import { Fuel, CheckCircle2, AlertTriangle, Camera, X } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
+import { useFormGuard } from '@/app/lib/useFormGuard'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura
@@ -59,7 +60,7 @@ export function AbastecimentoPublicPage() {
     )
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useFormGuard(async (e: React.FormEvent) => {
     e.preventDefault()
     setErr('')
 
@@ -109,7 +110,7 @@ export function AbastecimentoPublicPage() {
     } else {
       setDone(true)
     }
-  }
+  })
 
   if (done) {
     return (

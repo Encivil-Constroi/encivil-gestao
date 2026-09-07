@@ -123,6 +123,12 @@ const CombustivelPage          = lazy(() => import('./pages/CombustivelPage').th
 const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPage').then(m => ({ default: m.AbastecimentoFormPage })));
 const VeiculoFormPage          = lazy(() => import('./pages/VeiculoFormPage').then(m => ({ default: m.VeiculoFormPage })));
 
+const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/components/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
+const AlertasPage        = lazy(() => import('@/features/alertas').then(m => ({ default: m.AlertasPage })));
+const HorariosPage       = lazy(() => import('@/features/horarios').then(m => ({ default: m.HorariosPage })));
+const FaltasPage         = lazy(() => import('@/features/horarios').then(m => ({ default: m.FaltasPage })));
+const AuditoriaPage      = lazy(() => import('./pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
+
 const NewMovementPage    = lazy(() => import('./pages/NewMovementPage').then(m => ({ default: m.NewMovementPage })));
 const HistoryPage        = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const ReportsPage        = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
@@ -165,17 +171,21 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id',          element: <L><ToolDetailPage /></L> },
           { path: 'ferramentas/:id/editar',   element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
           { path: 'ferramentas/:id/devolucao', element: <L><RoleGuard require="gestor"><ToolReturnPage /></RoleGuard></L> },
+          { path: 'colaboradores', element: <L><RoleGuard require="gestor"><ColaboradoresPage /></RoleGuard></L> },
+          { path: 'horarios',     element: <L><RoleGuard require="gestor"><HorariosPage /></RoleGuard></L> },
+          { path: 'faltas',       element: <L><RoleGuard require="gestor"><FaltasPage /></RoleGuard></L> },
+          { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },
           { path: 'obras',                    element: <L><ObrasPage /></L> },
-          { path: 'obras/nova',               element: <L><ObraFormPage /></L> },
+          { path: 'obras/nova',               element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
           { path: 'obras/:id',                element: <L><ObraDetailPage /></L> },
-          { path: 'obras/:id/editar',         element: <L><ObraFormPage /></L> },
+          { path: 'obras/:id/editar',         element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
           { path: 'subempreiteiros',          element: <L><SubempreiteirosPage /></L> },
-          { path: 'subempreiteiros/novo',     element: <L><SubempreiteiroFormPage /></L> },
+          { path: 'subempreiteiros/novo',     element: <L><RoleGuard require="gestor"><SubempreiteiroFormPage /></RoleGuard></L> },
           { path: 'subempreiteiros/:id',      element: <L><SubempreiteiroDetailPage /></L> },
-          { path: 'subempreiteiros/:id/editar', element: <L><SubempreiteiroFormPage /></L> },
-          { path: 'subempreiteiros/:subId/autos/novo', element: <L><AutoFormPage /></L> },
+          { path: 'subempreiteiros/:id/editar', element: <L><RoleGuard require="gestor"><SubempreiteiroFormPage /></RoleGuard></L> },
+          { path: 'subempreiteiros/:subId/autos/novo', element: <L><RoleGuard require="gestor"><AutoFormPage /></RoleGuard></L> },
           { path: 'autos/:autoId',            element: <L><AutoDetailPage /></L> },
-          { path: 'autos/:autoId/editar',     element: <L><AutoFormPage /></L> },
+          { path: 'autos/:autoId/editar',     element: <L><RoleGuard require="gestor"><AutoFormPage /></RoleGuard></L> },
           { path: 'combustivel',                       element: <L><CombustivelPage /></L> },
           { path: 'combustivel/abastecimento',         element: <L><AbastecimentoFormPage /></L> },
           { path: 'combustivel/abastecimento/:id/editar', element: <L><AbastecimentoFormPage /></L> },
@@ -185,6 +195,7 @@ export const router = createBrowserRouter([
           { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
           { path: 'relatorio-semanal', element: <L><RelatorioSemanalPage /></L> },
+          { path: 'auditoria',     element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
           { path: 'configuracoes', element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
           { path: 'ajuda',         element: <L><HelpPage /></L> },
           { path: 'documentacao',  element: <L><DocsPage /></L> },

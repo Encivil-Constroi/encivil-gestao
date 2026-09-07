@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useFormGuard } from '../lib/useFormGuard';
 import { useNavigate, useLocation } from 'react-router';
 import {
   ArrowDownCircle, ArrowUpCircle, AlertTriangle,
@@ -77,7 +78,7 @@ export function NewMovementPage() {
   const adicionarLinha = () => setLinhas(prev => [...prev, novaLinha()]);
   const removerLinha = (id: string) => setLinhas(prev => prev.length > 1 ? prev.filter(l => l.id !== id) : prev);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useFormGuard(async (e: React.FormEvent) => {
     e.preventDefault();
 
     /* ── Submissão: correção de inventário (sempre 1 produto) ── */
@@ -165,7 +166,7 @@ export function NewMovementPage() {
       // Mantém apenas as linhas que falharam, para o utilizador corrigir e tentar de novo
       setLinhas(falhas);
     }
-  };
+  })
 
   const inputCls = 'w-full px-4 py-3.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
 

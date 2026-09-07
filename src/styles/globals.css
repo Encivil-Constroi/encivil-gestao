@@ -50,12 +50,28 @@
 .delay-250 { animation-delay: 250ms; }
 .delay-300 { animation-delay: 300ms; }
 
-/* Skeleton shimmer — replaces "A carregar…" text */
+/* Skeleton shimmer — replaces "A carregar…" text.
+ * Usa variáveis CSS para funcionar em light e dark mode. */
 .skeleton {
-  background: linear-gradient(90deg, #e2e8f0 0px, #f8fafc 200px, #e2e8f0 400px);
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base, #e2e8f0) 0px,
+    var(--skeleton-shine, #f8fafc) 200px,
+    var(--skeleton-base, #e2e8f0) 400px
+  );
   background-size: 600px 100%;
   animation: enc-shimmer 1.4s ease-in-out infinite;
   border-radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --skeleton-base:  #1e293b;
+    --skeleton-shine: #334155;
+  }
+}
+:root[data-theme="dark"] {
+  --skeleton-base:  #1e293b;
+  --skeleton-shine: #334155;
 }
 
 /* Card hover lift — Stripe/Vercel style */
@@ -83,4 +99,34 @@
   .card-lift:hover {
     transform: none !important;
   }
+
+}
+
+/* ── Print styles — PDF via browser print dialog ─────────────────────
+ * Oculta elementos de navegação e UI; mostra só o conteúdo principal.
+ * Classe .no-print aplicada a botões/filtros que não devem aparecer.
+ * ──────────────────────────────────────────────────────────────────── */
+@media print {
+  /* Ocultar sidebar, cabeçalho de app, botões de ação */
+  nav, aside, header,
+  .no-print { display: none !important; }
+
+  /* Forçar fundo branco e texto preto */
+  body, main { background: #fff !important; color: #000 !important; }
+
+  /* Garantir que as bordas da tabela aparecem */
+  table { border-collapse: collapse !important; width: 100% !important; }
+  th, td { border: 1px solid #ccc !important; padding: 6px 8px !important; font-size: 11px !important; }
+  th { background: #f0f0f0 !important; font-weight: 700 !important; }
+
+  /* Quebrar páginas correctamente */
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+
+  /* Títulos e KPIs */
+  h1 { font-size: 16px !important; margin-bottom: 8px !important; }
+  h2 { font-size: 13px !important; margin: 12px 0 6px !important; }
+
+  /* Remover sombras e bordas arredondadas */
+  * { box-shadow: none !important; border-radius: 0 !important; }
 }

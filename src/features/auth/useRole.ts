@@ -1,8 +1,8 @@
 import { useAuth } from './AuthContext'
-import type { RoleUtilizador } from '@/integrations/supabase/types'
+import type { RoleUtilizador } from './AuthContext'
 
 // Módulos com escrita controlada por papel.
-export type Modulo = 'armazem' | 'ferramentas' | 'combustivel' | 'obras' | 'subempreitadas'
+export type Modulo = 'armazem' | 'ferramentas' | 'combustivel' | 'obras' | 'subempreitadas' | 'colaboradores'
 
 // Fonte única da verdade no frontend — TEM de espelhar public.pode_escrever()
 // no backend (migration 20260702000004_rbac_permissoes.sql). A segurança real
@@ -13,6 +13,7 @@ const MATRIZ_ESCRITA: Record<Modulo, RoleUtilizador[]> = {
   combustivel:    ['admin', 'gestor', 'armazem'],
   obras:          ['admin', 'gestor'],
   subempreitadas: ['admin', 'gestor', 'medicoes'],
+  colaboradores:  ['admin', 'gestor'],
 }
 
 export function useRole() {
@@ -35,6 +36,7 @@ export function useRole() {
     podeCombustivel:    podeEscrever('combustivel'),
     podeObras:          podeEscrever('obras'),
     podeSubempreitadas: podeEscrever('subempreitadas'),
+    podeColaboradores:  podeEscrever('colaboradores'),
     // Só admin valida (rascunho -> validado)
     podeValidar: role === 'admin',
   }

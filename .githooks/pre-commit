@@ -31,6 +31,10 @@ if [ -n "$STAGED_FILES" ]; then
         # Os próprios hooks contêm os padrões de deteção (definição), não secrets.
         continue
         ;;
+      supabase/functions/*)
+        # Edge Functions lêem secrets via Deno.env.get() — nenhum valor real presente.
+        continue
+        ;;
     esac
     MATCHES=$(git show ":$FILE" 2>/dev/null | grep -nE "$SECRET_PATTERNS" | grep -v "$ALLOWLIST_PATTERNS")
     if [ -n "$MATCHES" ]; then

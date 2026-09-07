@@ -1,9 +1,13 @@
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
 import App from "./app/App.tsx";
+import { ErrorBoundary } from "./app/components/ErrorBoundary.tsx";
 import { PWAInstallHint } from "./app/components/PWAInstallHint.tsx";
 import { UpdatePrompt } from "./app/components/UpdatePrompt.tsx";
+import { initSentry } from "./app/lib/sentry.ts";
 import "./styles/index.css";
+
+initSentry();
 
 // O registo do Service Worker e a verificação periódica de novas versões são
 // tratados pelo <UpdatePrompt /> (virtual:pwa-register/react), que mostra o
@@ -33,10 +37,10 @@ window.addEventListener('vite:preloadError', async () => {
 });
 
 createRoot(document.getElementById("root")!).render(
-  <>
+  <ErrorBoundary>
     <App />
     <Toaster richColors position="top-right" />
     <PWAInstallHint />
     <UpdatePrompt />
-  </>
+  </ErrorBoundary>
 );

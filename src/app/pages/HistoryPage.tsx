@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
+import { SkeletonTable } from '../components/Skeletons';
 
 const HISTORY_TABLE_HEADERS = ['Data','Produto','Tipo','Quantidade','Novo Stock','Responsável','Destino/Obra'] as const;
 import { useSearchParams } from 'react-router';
-import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
+import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight, Search, Download, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
 import { EmptyState } from '../components/EmptyState';
@@ -56,6 +57,10 @@ export function HistoryPage() {
   const hasFilter = filterType !== 'todos' || filterPeriod !== 'todos' || filterDestino.trim() !== '';
   const [exporting, setExporting] = useState(false);
 
+  function handlePrint() {
+    window.print()
+  }
+
   async function handleExport() {
     setExporting(true)
     try {
@@ -98,18 +103,29 @@ export function HistoryPage() {
             }
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting || loading || count === 0}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-        >
-          <Download className="w-4 h-4" />
-          {exporting ? 'A exportar…' : 'Excel'}
-        </button>
+        <div className="flex items-center gap-2 no-print">
+          <button
+            onClick={handlePrint}
+            disabled={loading || count === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            title="Imprimir / Guardar como PDF"
+          >
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">PDF</span>
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting || loading || count === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            {exporting ? 'A exportar…' : 'Excel'}
+          </button>
+        </div>
       </div>
 
       {/* Filtros — sempre visíveis */}
-      <div className="bg-card rounded-2xl border border-border p-4">
+      <div className="bg-card rounded-2xl border border-border p-4 no-print">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Período</label>
@@ -188,7 +204,7 @@ export function HistoryPage() {
       {/* Lista de movimentos */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          <SkeletonTable rows={8} cells={7} />
         ) : movements.length === 0 ? (
           <EmptyState icon={History} title="Nenhum movimento encontrado" description="Tente alterar os filtros." />
         ) : (
@@ -260,7 +276,7 @@ export function HistoryPage() {
 
         {/* Paginação — só aparece quando há mais de uma página */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-border flex items-center justify-between gap-3">
+          <div className="p-4 border-t border-border flex items-center justify-between gap-3 no-print">
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0 || loading}

@@ -12,12 +12,17 @@ import {
   Fuel,
   Building2,
   HardHat,
+  Users,
+  Bell,
   X,
+  Shield,
+  Clock,
+  CalendarX,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
-type MenuItem = { path: string; label: string; icon: typeof Package; adminOnly?: boolean };
+type MenuItem = { path: string; label: string; icon: typeof Package; adminOnly?: boolean; gestorOnly?: boolean };
 type MenuSection = { title?: string; items: MenuItem[] };
 
 const menuSections: MenuSection[] = [
@@ -44,11 +49,26 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
+    title: 'Recursos Humanos',
+    items: [
+      { path: '/colaboradores', label: 'Colaboradores', icon: Users,      gestorOnly: true },
+      { path: '/horarios',      label: 'Horários',      icon: Clock,      gestorOnly: true },
+      { path: '/faltas',        label: 'Faltas',        icon: CalendarX,  gestorOnly: true },
+    ],
+  },
+  {
+    title: 'Manutenção',
+    items: [
+      { path: '/alertas', label: 'Alertas', icon: Bell, gestorOnly: true },
+    ],
+  },
+  {
     title: 'Gestão',
     items: [
       { path: '/relatorios',         label: 'Relatórios',        icon: FileBarChart },
       { path: '/relatorio-semanal',  label: 'Rel. Semanal',      icon: CalendarDays },
-      { path: '/configuracoes',      label: 'Configurações',     icon: Settings, adminOnly: true },
+      { path: '/auditoria',          label: 'Auditoria',         icon: Shield,       adminOnly: true },
+      { path: '/configuracoes',      label: 'Configurações',     icon: Settings,     adminOnly: true },
       { path: '/ajuda',              label: 'Ajuda',             icon: CircleHelp },
     ],
   },
@@ -62,10 +82,17 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   useLockBodyScroll(mobileOpen);
   const location = useLocation();
-  const { isAdmin } = useRole();
+  const { isAdmin, isGestor } = useRole();
 
   const visibleSections = menuSections
-    .map(section => ({ ...section, items: section.items.filter(item => !item.adminOnly || isAdmin) }))
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => {
+        if (item.adminOnly  && !isAdmin)              return false;
+        if (item.gestorOnly && !isAdmin && !isGestor) return false;
+        return true;
+      }),
+    }))
     .filter(section => section.items.length > 0);
 
   const sidebarContent = (

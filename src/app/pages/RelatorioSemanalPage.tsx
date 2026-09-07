@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileBarChart, Share2, Printer, TrendingDown, TrendingUp, Fuel, Wrench, AlertTriangle, RefreshCw } from 'lucide-react'
+import { FileBarChart, Share2, Printer, TrendingDown, TrendingUp, Fuel, Wrench, AlertTriangle, RefreshCw, Download } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { fmtEuro, fmtNumber } from '../lib/format'
+import { exportarCsv } from '../lib/exportCsv'
 
 type Dados = {
   semanaLabel:   string
@@ -121,6 +122,21 @@ export function RelatorioSemanalPage() {
 
   useEffect(() => { void carregar(semana) }, [semana, carregar])
 
+  const exportarCSV = () => {
+    if (!dados) return
+    exportarCsv([{
+      'Semana':                  dados.semanaLabel,
+      'Entradas armazém':        dados.entradas,
+      'Saídas armazém':          dados.saidas,
+      'Abastecimentos':          dados.abastecimentos,
+      'Total litros':            dados.totalLitros,
+      'Custo combustível (€)':   dados.totalCombust,
+      'Ferramentas em atraso':   dados.ferramAtrasadas,
+      'Produtos sem stock':      dados.stockCritico,
+      'Produtos stock baixo':    dados.stockBaixo,
+    }], 'relatorio_semanal')
+  }
+
   const partilharWhatsApp = () => {
     if (!dados) return
     const txt = [
@@ -160,6 +176,14 @@ export function RelatorioSemanalPage() {
           </button>
           {dados && (
             <>
+              <button
+                onClick={exportarCSV}
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent text-foreground rounded-xl font-medium hover:bg-accent/80 active:scale-[0.98] transition-all text-sm"
+                title="Exportar CSV"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
               <button
                 onClick={partilharWhatsApp}
                 className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-xl font-medium hover:bg-[#20BD5C] active:scale-[0.98] transition-all text-sm"

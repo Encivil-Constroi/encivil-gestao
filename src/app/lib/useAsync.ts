@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, type DependencyList } from 'react'
+import { captureError } from './sentry'
+import { parseSupabaseError } from './parseSupabaseError'
 
 /**
  * Generic async data-fetching hook. Runs `asyncFn` whenever `deps` change or
@@ -21,7 +23,7 @@ export function useAsync<T>(
     setLoading(true)
     setError(null)
     try   { setData(await asyncFn()) }
-    catch (e) { setError(e instanceof Error ? e.message : errorMsg) }
+    catch (e) { setError(parseSupabaseError(e, errorMsg)); captureError(e) }
     finally   { setLoading(false) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, ...deps])

@@ -29,7 +29,21 @@ export function ObrasPage() {
       </div>
 
       {loading ? (
-        <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-card rounded-2xl border border-border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="skeleton h-8 w-8 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="skeleton h-3.5 w-36" />
+                  <div className="skeleton h-3 w-24" />
+                </div>
+                <div className="skeleton h-5 w-14 rounded-full" />
+              </div>
+              <div className="skeleton h-3 w-28" />
+            </div>
+          ))}
+        </div>
       ) : obras.length === 0 ? (
         <EmptyState icon={Building2} title="Ainda não há obras" description="Crie a primeira obra para organizar subempreiteiros, medições, stock e ferramentas." />
       ) : (

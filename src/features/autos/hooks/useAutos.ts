@@ -2,6 +2,7 @@ import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import {
   listarAutos, buscarAuto, criarAuto, atualizarAuto, eliminarAuto, validarAuto,
+  marcarAutoPago, marcarAutoEmAtraso,
   type AtualizarAuto,
 } from '../services/autosService'
 
@@ -46,4 +47,24 @@ export function useEliminarAuto() {
   )
   const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }
+}
+
+export function useMarcarAutoPago() {
+  const { mutate, loading, error } = useMutation(
+    async (id: string, referencia?: string): Promise<true> => {
+      await marcarAutoPago(id, referencia)
+      return true
+    },
+    'Erro ao marcar auto como pago'
+  )
+  const marcar = async (id: string, referencia?: string) => (await mutate(id, referencia)) === true
+  return { marcar, loading, error }
+}
+
+export function useMarcarAutoEmAtraso() {
+  const { mutate, loading } = useMutation(
+    async (id: string): Promise<true> => { await marcarAutoEmAtraso(id); return true }
+  )
+  const marcar = async (id: string) => (await mutate(id)) === true
+  return { marcar, loading }
 }

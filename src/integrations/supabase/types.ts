@@ -143,6 +143,151 @@ export type Database = {
           },
         ]
       }
+      colaboradores: {
+        Row: {
+          ativo: boolean
+          cargo: string
+          created_at: string
+          id: string
+          nif: string | null
+          nome: string
+          notas: string | null
+          numero_mecan: string
+          obra_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          cargo: string
+          created_at?: string
+          id?: string
+          nif?: string | null
+          nome: string
+          notas?: string | null
+          numero_mecan: string
+          obra_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          cargo?: string
+          created_at?: string
+          id?: string
+          nif?: string | null
+          nome?: string
+          notas?: string | null
+          numero_mecan?: string
+          obra_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alertas: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          entidade_id: string
+          estado: string
+          id: string
+          reconhecido_em: string | null
+          reconhecido_por: string | null
+          regra_id: string
+          resolvido_em: string | null
+          resolvido_por: string | null
+          severidade: string
+          valor_atual: number | null
+          valor_limiar: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          entidade_id: string
+          estado?: string
+          id?: string
+          reconhecido_em?: string | null
+          reconhecido_por?: string | null
+          regra_id: string
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          severidade: string
+          valor_atual?: number | null
+          valor_limiar?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          entidade_id?: string
+          estado?: string
+          id?: string
+          reconhecido_em?: string | null
+          reconhecido_por?: string | null
+          regra_id?: string
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          severidade?: string
+          valor_atual?: number | null
+          valor_limiar?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertas_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "regras_alerta"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      regras_alerta: {
+        Row: {
+          ativa: boolean
+          campo_ref: string
+          canais: string[]
+          criada_em: string
+          destinatarios: string[]
+          entidade_alvo: string
+          entidade_id: string | null
+          id: string
+          limiar_atencao: number | null
+          limiar_urgente: number | null
+          tipo: string
+        }
+        Insert: {
+          ativa?: boolean
+          campo_ref: string
+          canais?: string[]
+          criada_em?: string
+          destinatarios?: string[]
+          entidade_alvo: string
+          entidade_id?: string | null
+          id?: string
+          limiar_atencao?: number | null
+          limiar_urgente?: number | null
+          tipo: string
+        }
+        Update: {
+          ativa?: boolean
+          campo_ref?: string
+          canais?: string[]
+          criada_em?: string
+          destinatarios?: string[]
+          entidade_alvo?: string
+          entidade_id?: string | null
+          id?: string
+          limiar_atencao?: number | null
+          limiar_urgente?: number | null
+          tipo?: string
+        }
+        Relationships: []
+      }
       comb_abastecimentos: {
         Row: {
           contador: number | null
@@ -273,6 +418,12 @@ export type Database = {
           tipo_combustivel: string
           unidade_contador: string
           updated_at: string
+          data_fim_seguro: string | null
+          data_proxima_ipo: string | null
+          intervalo_revisao_km: number | null
+          intervalo_revisao_meses: number | null
+          proxima_revisao_data: string | null
+          proxima_revisao_km: number | null
         }
         Insert: {
           ativo?: boolean
@@ -287,6 +438,12 @@ export type Database = {
           tipo_combustivel?: string
           unidade_contador?: string
           updated_at?: string
+          data_fim_seguro?: string | null
+          data_proxima_ipo?: string | null
+          intervalo_revisao_km?: number | null
+          intervalo_revisao_meses?: number | null
+          proxima_revisao_data?: string | null
+          proxima_revisao_km?: number | null
         }
         Update: {
           ativo?: boolean
@@ -301,6 +458,12 @@ export type Database = {
           tipo_combustivel?: string
           unidade_contador?: string
           updated_at?: string
+          data_fim_seguro?: string | null
+          data_proxima_ipo?: string | null
+          intervalo_revisao_km?: number | null
+          intervalo_revisao_meses?: number | null
+          proxima_revisao_data?: string | null
+          proxima_revisao_km?: number | null
         }
         Relationships: []
       }
@@ -751,10 +914,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      alertas_detalhados: {
+        Row: {
+          atualizado_em: string | null
+          campo_ref: string | null
+          criado_em: string | null
+          entidade_alvo: string | null
+          entidade_detalhe: string | null
+          entidade_id: string | null
+          entidade_nome: string | null
+          estado: string | null
+          id: string | null
+          limiar_atencao: number | null
+          limiar_urgente: number | null
+          reconhecido_em: string | null
+          reconhecido_por: string | null
+          regra_id: string | null
+          regra_tipo: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          severidade: string | null
+          valor_atual: number | null
+          valor_limiar: number | null
+        }
+        Insert: {
+          [_ in never]: never
+        }
+        Update: {
+          [_ in never]: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       aprovar_abastecimento_pendente: { Args: { p_id: string }; Returns: void }
+      avaliar_regras_alerta: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       criar_auto_rpc: {
         Args: {
           p_sub_id: string

@@ -127,6 +127,19 @@ export interface Obra {
 
 export type ContractType = 'global' | 'unitario';
 export type ContractStatus = 'rascunho' | 'validado';
+export type EstadoPagamento = 'por_pagar' | 'pago' | 'em_atraso';
+
+export interface LiberacaoRetencao {
+  id: string;
+  subcontractorId: string;
+  obraId?: string;
+  valor: number;
+  dataLiberacao: string;
+  motivo: 'conclusao_obra' | 'periodo_garantia' | 'acordo_parcial' | 'outro';
+  observacoes?: string;
+  registadoPor?: string;
+  createdAt: Date;
+}
 
 export interface SubcontractItem {
   id: string;
@@ -154,6 +167,8 @@ export interface Subcontractor {
   items?: SubcontractItem[];
   /** Valor total acordado: globalValue (global) ou soma dos artigos (unitário). */
   agreedValue: number;
+  /** Percentagem retida de cada auto validado (0–100). */
+  retencaoPercentagem: number;
 }
 
 /* ─── Combustível ──────────────────────────────────────────────── */
@@ -174,6 +189,13 @@ export interface Vehicle {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Manutenção preventiva (F1)
+  proximaRevisaoKm?: number;
+  proximaRevisaoData?: Date;
+  intervaloRevisaoKm?: number;
+  intervaloRevisaoMeses?: number;
+  dataFimSeguro?: Date;
+  dataProximaIpo?: Date;
 }
 
 export interface FuelEntry {
@@ -196,6 +218,73 @@ export interface FuelEntry {
   pricePerLiter: number;
 }
 
+/* ─── Colaboradores (Fase 0) ────────────────────────────────────── */
+
+export interface Colaborador {
+  id: string;
+  nome: string;
+  numeroMecan: string;
+  nif?: string;
+  cargo: string;
+  obraId?: string;
+  obraNome?: string;
+  userId?: string;
+  ativo: boolean;
+  notas?: string;
+  createdAt: Date;
+}
+
+/* ─── Alertas de Manutenção (Fase 1) ───────────────────────────── */
+
+export type AlertaSeveridade = 'ATENCAO' | 'URGENTE';
+export type AlertaEstado = 'ATIVO' | 'RECONHECIDO' | 'RESOLVIDO';
+export type AlertaTipo =
+  | 'REVISAO_KM'
+  | 'REVISAO_DATA'
+  | 'SEGURO'
+  | 'IPO'
+  | 'SUPLEMENTAR'
+  | 'VALIDADE_DOC'
+  | 'EPI_VALIDADE'
+  | 'FORMACAO_VALIDADE';
+
+export interface RegraAlerta {
+  id: string;
+  tipo: AlertaTipo;
+  entidadeAlvo: string;
+  entidadeId?: string;
+  campoRef: string;
+  limiarAtencao?: number;
+  limiarUrgente?: number;
+  destinatarios: string[];
+  canais: string[];
+  ativa: boolean;
+  criadaEm: Date;
+}
+
+export interface Alerta {
+  id: string;
+  regraId: string;
+  entidadeId: string;
+  estado: AlertaEstado;
+  severidade: AlertaSeveridade;
+  valorAtual?: number;
+  valorLimiar?: number;
+  criadoEm: Date;
+  atualizadoEm: Date;
+  reconhecidoPor?: string;
+  reconhecidoEm?: Date;
+  resolvidoPor?: string;
+  resolvidoEm?: Date;
+  // campos da view alertas_detalhados
+  regraTipo?: AlertaTipo;
+  entidadeAlvo?: string;
+  entidadeNome?: string;
+  entidadeDetalhe?: string;
+}
+
+/* ─── Autos de medição ──────────────────────────────────────────── */
+
 export type MeasurementStatus = 'rascunho' | 'validado';
 
 export interface MeasurementLine {
@@ -215,10 +304,83 @@ export interface Measurement {
   number: number;
   date: Date;
   periodPercentage?: number;   // usado no tipo global
-  periodValue: number;         // valor executado neste auto
+  periodValue: number;         // valor bruto executado neste auto
   notes?: string;
   status: MeasurementStatus;
   createdAt: Date;
   validatedAt?: Date;
   lines?: MeasurementLine[];
+  // Campos de retenção e pagamento (preenchidos após validação)
+  retencaoPercentagem: number;
+  valorRetido: number;         // periodValue × retencaoPercentagem / 100
+  valorLiquido: number;        // periodValue − valorRetido
+  estadoPagamento: EstadoPagamento;
+  dataPagamento?: Date;
+  referenciaPagamento?: string;
+}
+
+/* ─── Horários e Faltas (Fase 2) ────────────────────────────────── */
+
+export interface Horario {
+  id: string;
+  designacao: string;
+  periodoDiarioH: number;
+  periodoSemanalH: number;
+  intervaloMin?: number;
+  intervaloInicio?: string;
+  intervaloFim?: string;
+  diasSemana: number[];
+  horaEntrada: string;
+  horaSaida: string;
+  toleranciaEntradaMin: number;
+  ativo: boolean;
+  validoDe?: string;
+  validoAte?: string;
+  createdAt: Date;
+}
+
+export interface HorarioColaborador {
+  colaboradorId: string;
+  colaboradorNome?: string;
+  horarioId: string;
+  horarioDesignacao?: string;
+  validoDe: string;
+  validoAte?: string;
+}
+
+export interface Feriado {
+  data: string;
+  tipo: 'FERIADO' | 'PONTE' | 'EXCECAO_EMPRESA';
+  designacao: string;
+  ambito: 'nacional' | 'municipal' | 'empresa';
+}
+
+export interface TipoFalta {
+  id: string;
+  designacao: string;
+  justificada: boolean | null;
+  descontavel: boolean;
+  ativo: boolean;
+}
+
+export type FaltaEstado = 'COMUNICADA' | 'COM_COMPROVATIVO' | 'JUSTIFICADA' | 'INJUSTIFICADA';
+export type FaltaPeriodo = 'DIA' | 'MANHA' | 'TARDE' | 'HORAS';
+
+export interface Falta {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome?: string;
+  dataInicio: string;
+  dataFim: string;
+  periodo?: FaltaPeriodo;
+  tipoFaltaId?: string;
+  tipoFaltaDesignacao?: string;
+  estado: FaltaEstado;
+  justificacaoTexto?: string;
+  dadoSaude: boolean;
+  previsivel: boolean;
+  comunicadaEm: Date;
+  prazoProvaAte?: string;
+  decididaPor?: string;
+  decididaEm?: Date;
 }
