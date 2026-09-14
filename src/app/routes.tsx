@@ -137,11 +137,17 @@ const SettingsPage       = lazy(() => import('./pages/SettingsPage').then(m => (
 const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const DocsPage           = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
 const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+const ResetPasswordPage  = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     Component: LoginPage,
+  },
+  {
+    path: '/reset-password',
+    element: <L><ResetPasswordPage /></L>,
+    errorElement: <RouteErrorPage />,
   },
   {
     path: '/pub/combustivel',
