@@ -125,17 +125,13 @@ const VeiculoFormPage          = lazy(() => import('./pages/VeiculoFormPage').th
 
 const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/components/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
 const AlertasPage        = lazy(() => import('@/features/alertas').then(m => ({ default: m.AlertasPage })));
-const HorariosPage       = lazy(() => import('@/features/horarios').then(m => ({ default: m.HorariosPage })));
-const FaltasPage         = lazy(() => import('@/features/horarios').then(m => ({ default: m.FaltasPage })));
 const AuditoriaPage      = lazy(() => import('./pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
 const NewMovementPage    = lazy(() => import('./pages/NewMovementPage').then(m => ({ default: m.NewMovementPage })));
 const HistoryPage        = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const ReportsPage        = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
-const RelatorioSemanalPage = lazy(() => import('./pages/RelatorioSemanalPage').then(m => ({ default: m.RelatorioSemanalPage })));
 const SettingsPage       = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
-const DocsPage           = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
 const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
@@ -194,8 +190,8 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id/editar',   element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
           { path: 'ferramentas/:id/devolucao', element: <L><RoleGuard require="gestor"><ToolReturnPage /></RoleGuard></L> },
           { path: 'colaboradores', element: <L><RoleGuard require="gestor"><ColaboradoresPage /></RoleGuard></L> },
-          { path: 'horarios',     element: <L><RoleGuard require="gestor"><HorariosPage /></RoleGuard></L> },
-          { path: 'faltas',       element: <L><RoleGuard require="gestor"><FaltasPage /></RoleGuard></L> },
+          { path: 'horarios',     element: <Navigate to="/colaboradores" replace /> },
+          { path: 'faltas',       element: <Navigate to="/colaboradores" replace /> },
           { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },
           { path: 'obras',                    element: <L><ObrasPage /></L> },
           { path: 'obras/nova',               element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
@@ -216,14 +212,14 @@ export const router = createBrowserRouter([
           { path: 'novo-movimento', element: <L><NewMovementPage /></L> },
           { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
-          { path: 'relatorio-semanal', element: <L><RelatorioSemanalPage /></L> },
+          { path: 'relatorio-semanal', element: <Navigate to="/relatorios" replace /> },
           { path: 'exportacao-contabilidade', element: <L><RoleGuard require="gestor"><ExportacaoContabilidadePage /></RoleGuard></L> },
           { path: 'backup',                element: <L><RoleGuard require="admin"><BackupPage /></RoleGuard></L> },
           { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
           { path: 'configuracoes',         element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
           { path: 'gestao-utilizadores',   element: <L><RoleGuard require="admin"><GestaoUtilizadoresPage /></RoleGuard></L> },
           { path: 'ajuda',         element: <L><HelpPage /></L> },
-          { path: 'documentacao',  element: <L><DocsPage /></L> },
+          { path: 'documentacao',  element: <Navigate to="/ajuda" replace /> },
           { path: '*',             element: <L><NotFoundPage /></L> },
         ],
       },

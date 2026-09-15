@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Building2, Package, Save, User, Mail, Shield, AlertTriangle, Sun, Moon, Monitor } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Building2, Package, Save, User, Mail, Shield, AlertTriangle, Sun, Moon, Monitor, HardDriveDownload, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useRole } from '@/features/auth/useRole';
 import { useTheme, type ThemeChoice } from '@/features/theme/ThemeProvider';
+
+const LAST_BACKUP_KEY = 'encivil-last-backup'
+
+function formatarDataBackup(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const days = Math.floor(diff / 86_400_000)
+  const data = new Date(iso).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  if (days === 0) return `Hoje · ${data}`
+  if (days === 1) return `Ontem · ${data}`
+  if (days <= 7)  return `Há ${days} dias · ${data}`
+  return data
+}
 
 const THEME_OPTIONS: { value: ThemeChoice; label: string; Icon: typeof Sun; desc: string }[] = [
   { value: 'light',  label: 'Claro',   Icon: Sun,     desc: 'Fundo branco'     },
@@ -17,6 +30,11 @@ export function SettingsPage() {
   const { user } = useAuth();
   const { role, isAdmin } = useRole();
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
+
+  const [ultimoBackup] = useState<string | null>(() => {
+    try { return localStorage.getItem(LAST_BACKUP_KEY) } catch { return null }
+  });
 
   const [formData, setFormData] = useState({
     nomeEmpresa:        '',
@@ -231,6 +249,42 @@ export function SettingsPage() {
         </button>
         </fieldset>
       </form>
+
+      {/* Backup & Exportação — admin only */}
+      {isAdmin && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+            <HardDriveDownload className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">Backup & Exportação</h3>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Exportação completa de todos os dados operacionais em formato JSON.
+                  Recomendada mensalmente.
+                </p>
+                {ultimoBackup ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Último backup: <span className="font-medium text-foreground">{formatarDataBackup(ultimoBackup)}</span></span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-warning font-medium">Nenhum backup registado neste dispositivo.</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/backup')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm shrink-0"
+              >
+                <HardDriveDownload className="w-4 h-4" />
+                Fazer Backup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

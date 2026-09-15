@@ -7,8 +7,10 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
   AlertTriangle, Printer, ChevronUp, ChevronDown, Minus, X, FileText,
-  Wrench, Boxes, Building2, Wallet, Fuel, Droplet, HardHat,
+  Wrench, Boxes, Building2, Wallet, Fuel, Droplet, HardHat, Share2,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { supabase } from '@/integrations/supabase/client'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
 import { listarFerramentas } from '@/features/ferramentas/services/ferramentasService'
@@ -1599,6 +1601,77 @@ export function ReportsPage() {
   const [combLinhas, setCombLinhas] = useState<VeiculoConsumo[]>([])
   const [showCombPrint, setShowCombPrint] = useState(false)
 
+  const [sharingWA, setSharingWA] = useState(false)
+
+  const partilharSemanalWhatsApp = async () => {
+    setSharingWA(true)
+    try {
+      const hoje = new Date()
+      const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1
+      const inicio = new Date(hoje)
+      inicio.setDate(hoje.getDate() - diaSemana)
+      inicio.setHours(0, 0, 0, 0)
+      const fim = new Date(inicio)
+      fim.setDate(inicio.getDate() + 6)
+      fim.setHours(23, 59, 59, 999)
+      const isoInicio = inicio.toISOString().split('T')[0]
+      const isoFim    = fim.toISOString().split('T')[0]
+      const today     = new Date().toISOString().split('T')[0]
+      const semanaLabel = `${inicio.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })} – ${fim.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}`
+
+      const [movRes, combRes, atrasoRes, stockRes] = await Promise.all([
+        supabase.from('movimentos_stock').select('tipo').gte('created_at', inicio.toISOString()).lte('created_at', fim.toISOString()),
+        supabase.from('comb_abastecimentos').select('litros, custo_total').gte('data', isoInicio).lte('data', isoFim),
+        supabase.from('emprestimos_ferramentas').select('id').eq('estado', 'ativo').not('data_prevista_devolucao', 'is', null).lt('data_prevista_devolucao', today),
+        supabase.from('produtos').select('stock_atual, stock_minimo').eq('ativo', true),
+      ])
+
+      if (movRes.error || combRes.error || atrasoRes.error || stockRes.error) {
+        toast.error('Erro ao preparar dados para partilha.')
+        return
+      }
+
+      type MovRow   = { tipo: string }
+      type CombRow  = { litros: number; custo_total: number }
+      type StockRow = { stock_atual: number; stock_minimo: number }
+
+      const movs   = (movRes.data  ?? []) as unknown as MovRow[]
+      const combs  = (combRes.data ?? []) as unknown as CombRow[]
+      const stocks = (stockRes.data ?? []) as unknown as StockRow[]
+
+      const entradas  = movs.filter(m => m.tipo === 'entrada').length
+      const saidas    = movs.filter(m => m.tipo === 'saida').length
+      const litros    = combs.reduce((s, c) => s + Number(c.litros),     0)
+      const custo     = combs.reduce((s, c) => s + Number(c.custo_total), 0)
+      const critico   = stocks.filter(p => p.stock_atual <= 0).length
+      const baixo     = stocks.filter(p => p.stock_atual > 0 && p.stock_atual <= p.stock_minimo).length
+      const atrasadas = (atrasoRes.data ?? []).length
+
+      const txt = [
+        `🏗️ *ENCIVIL — Relatório Semanal*`,
+        `📅 Semana: ${semanaLabel}`,
+        ``,
+        `📦 *Armazém*`,
+        `• ${entradas} entrada${entradas !== 1 ? 's' : ''} · ${saidas} saída${saidas !== 1 ? 's' : ''}`,
+        ``,
+        `⛽ *Combustível*`,
+        `• ${combs.length} abastecimento${combs.length !== 1 ? 's' : ''} · ${fmtNumber(litros)} L · ${fmtEuro(custo)}`,
+        ``,
+        `🔧 *Ferramentas em atraso*`,
+        `• ${atrasadas} ferramenta${atrasadas !== 1 ? 's' : ''} por devolver`,
+        ``,
+        `⚠️ *Stock*`,
+        `• ${critico} sem stock · ${baixo} stock baixo`,
+      ].join('\n')
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank')
+    } catch {
+      toast.error('Erro inesperado ao preparar partilha.')
+    } finally {
+      setSharingWA(false)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -1797,6 +1870,15 @@ export function ReportsPage() {
                 <option value="ano"    className="text-foreground bg-card">Este Ano</option>
               </select>
             )}
+            <button
+              onClick={() => void partilharSemanalWhatsApp()}
+              disabled={sharingWA}
+              className="flex items-center gap-2 px-3 py-2 bg-[#25D366] hover:bg-[#20BD5C] text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
+              title="Partilhar resumo semanal no WhatsApp"
+            >
+              <Share2 className={`w-4 h-4 ${sharingWA ? 'animate-pulse' : ''}`} />
+              <span className="hidden sm:inline">{sharingWA ? 'A preparar…' : 'WhatsApp'}</span>
+            </button>
             <button
               onClick={() => reportType === 'stock' ? setShowPrint(true) : reportType === 'ferramentas' ? setShowToolsPrint(true) : reportType === 'obras' ? setShowObrasPrint(true) : setShowCombPrint(true)}
               className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"

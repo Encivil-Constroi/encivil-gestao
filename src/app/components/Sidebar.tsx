@@ -5,7 +5,6 @@ import {
   Plus,
   History,
   FileBarChart,
-  CalendarDays,
   Settings,
   CircleHelp,
   Wrench,
@@ -16,11 +15,8 @@ import {
   Bell,
   X,
   Shield,
-  Clock,
-  CalendarX,
   UserCog,
   BookOpen,
-  HardDriveDownload,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -42,6 +38,7 @@ const menuSections: MenuSection[] = [
       { path: '/historico',      label: 'Histórico',      icon: History },
       { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench },
       { path: '/combustivel',    label: 'Combustível',    icon: Fuel },
+      { path: '/alertas',        label: 'Alertas',        icon: Bell, gestorOnly: true },
     ],
   },
   {
@@ -54,28 +51,23 @@ const menuSections: MenuSection[] = [
   {
     title: 'Recursos Humanos',
     items: [
-      { path: '/colaboradores', label: 'Colaboradores', icon: Users,      gestorOnly: true },
-      { path: '/horarios',      label: 'Horários',      icon: Clock,      gestorOnly: true },
-      { path: '/faltas',        label: 'Faltas',        icon: CalendarX,  gestorOnly: true },
+      { path: '/colaboradores', label: 'Colaboradores', icon: Users, gestorOnly: true },
     ],
   },
   {
-    title: 'Manutenção',
+    title: 'Análise',
     items: [
-      { path: '/alertas', label: 'Alertas', icon: Bell, gestorOnly: true },
+      { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart },
+      { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true },
     ],
   },
   {
-    title: 'Gestão',
+    title: 'Administração',
     items: [
-      { path: '/relatorios',                  label: 'Relatórios',        icon: FileBarChart },
-      { path: '/relatorio-semanal',           label: 'Rel. Semanal',      icon: CalendarDays },
-      { path: '/exportacao-contabilidade',    label: 'Contabilidade',     icon: BookOpen,           gestorOnly: true },
-      { path: '/backup',                      label: 'Backup',            icon: HardDriveDownload,  adminOnly: true  },
-      { path: '/gestao-utilizadores', label: 'Utilizadores',      icon: UserCog,      adminOnly: true },
-      { path: '/auditoria',          label: 'Auditoria',         icon: Shield,       adminOnly: true },
-      { path: '/configuracoes',      label: 'Configurações',     icon: Settings,     adminOnly: true },
-      { path: '/ajuda',              label: 'Ajuda',             icon: CircleHelp },
+      { path: '/gestao-utilizadores', label: 'Utilizadores',  icon: UserCog,   adminOnly: true },
+      { path: '/auditoria',           label: 'Auditoria',     icon: Shield,    adminOnly: true },
+      { path: '/configuracoes',       label: 'Configurações', icon: Settings,  adminOnly: true },
+      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp },
     ],
   },
 ];
