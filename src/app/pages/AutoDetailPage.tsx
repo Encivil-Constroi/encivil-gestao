@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ChevronLeft, Pencil, Trash2, CheckCircle2, FileEdit, ShieldCheck, Lock, Calendar,
-  Banknote, TrendingDown, TriangleAlert, Clock, CreditCard,
+  Banknote, TrendingDown, TriangleAlert, Clock, CreditCard, FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtEuro, fmtNumber } from '../lib/format';
@@ -126,6 +126,15 @@ export function AutoDetailPage() {
             </span>
           )}
           {isValidado && <BadgePagamento estado={auto.estadoPagamento} />}
+          {isValidado && (
+            <button
+              onClick={() => window.open(`/autos/${auto.id}/pdf`, '_blank')}
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              title="Exportar PDF"
+            >
+              <FileDown className="w-3.5 h-3.5" /> PDF
+            </button>
+          )}
         </div>
       </div>
 

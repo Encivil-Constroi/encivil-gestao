@@ -139,6 +139,7 @@ const DocsPage           = lazy(() => import('./pages/DocsPage').then(m => ({ de
 const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
+const AutoPdfPage            = lazy(() => import('./pages/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
 
 export const router = createBrowserRouter([
   {
@@ -164,6 +165,12 @@ export const router = createBrowserRouter([
     element: <AuthGuard />,
     errorElement: <RouteErrorPage />,
     children: [
+      // Rota de PDF — autenticada mas sem MainLayout (full-page para impressão)
+      {
+        path: '/autos/:autoId/pdf',
+        element: <L><AutoPdfPage /></L>,
+        errorElement: <RouteErrorPage />,
+      },
       {
         path: '/',
         Component: MainLayout,
