@@ -142,6 +142,7 @@ const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage
 const AutoPdfPage            = lazy(() => import('./pages/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
 const ObraRelatorioPage         = lazy(() => import('./pages/ObraRelatorioPage').then(m => ({ default: m.ObraRelatorioPage })));
 const ExportacaoContabilidadePage = lazy(() => import('./pages/ExportacaoContabilidadePage').then(m => ({ default: m.ExportacaoContabilidadePage })));
+const BackupPage                = lazy(() => import('./pages/BackupPage').then(m => ({ default: m.BackupPage })));
 
 export const router = createBrowserRouter([
   {
@@ -217,6 +218,7 @@ export const router = createBrowserRouter([
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
           { path: 'relatorio-semanal', element: <L><RelatorioSemanalPage /></L> },
           { path: 'exportacao-contabilidade', element: <L><RoleGuard require="gestor"><ExportacaoContabilidadePage /></RoleGuard></L> },
+          { path: 'backup',                element: <L><RoleGuard require="admin"><BackupPage /></RoleGuard></L> },
           { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
           { path: 'configuracoes',         element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
           { path: 'gestao-utilizadores',   element: <L><RoleGuard require="admin"><GestaoUtilizadoresPage /></RoleGuard></L> },

@@ -20,6 +20,7 @@ import {
   CalendarX,
   UserCog,
   BookOpen,
+  HardDriveDownload,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -69,7 +70,8 @@ const menuSections: MenuSection[] = [
     items: [
       { path: '/relatorios',                  label: 'Relatórios',        icon: FileBarChart },
       { path: '/relatorio-semanal',           label: 'Rel. Semanal',      icon: CalendarDays },
-      { path: '/exportacao-contabilidade',    label: 'Contabilidade',     icon: BookOpen,    gestorOnly: true },
+      { path: '/exportacao-contabilidade',    label: 'Contabilidade',     icon: BookOpen,           gestorOnly: true },
+      { path: '/backup',                      label: 'Backup',            icon: HardDriveDownload,  adminOnly: true  },
       { path: '/gestao-utilizadores', label: 'Utilizadores',      icon: UserCog,      adminOnly: true },
       { path: '/auditoria',          label: 'Auditoria',         icon: Shield,       adminOnly: true },
       { path: '/configuracoes',      label: 'Configurações',     icon: Settings,     adminOnly: true },
