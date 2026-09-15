@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Bell, User, LogOut, Menu } from 'lucide-react'
+import { Bell, User, LogOut, Menu, Search } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
 import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
 import { NotificationPanel } from './NotificationPanel'
+import { GlobalSearch } from './GlobalSearch'
 
 const ROLE_LABELS: Record<string, string> = {
   admin:   'Administrador',
@@ -20,7 +21,8 @@ export function Header({ onMenuOpen }: HeaderProps) {
   const { signOut } = useAuth()
   const { nome, role } = useRole()
   const { notifications, count: notifCount, loading: notifLoading, error: notifError } = useNotifications()
-  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifOpen,  setNotifOpen]  = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,6 +36,18 @@ export function Header({ onMenuOpen }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handler)
   }, [notifOpen])
 
+  // Ctrl+K / Cmd+K opens global search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   const handleLogout = async () => {
     if (window.confirm('Terminar sessão?')) {
       await signOut()
@@ -45,6 +59,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
   const roleLabel = role ? (ROLE_LABELS[role] ?? role) : ''
 
   return (
+    <>
     <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-40">
       <div className="flex items-center justify-between gap-3">
 
@@ -82,6 +97,19 @@ export function Header({ onMenuOpen }: HeaderProps) {
 
         {/* Ações direita */}
         <div className="flex items-center gap-2 ml-auto">
+
+          {/* Pesquisa global */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-sm text-muted-foreground"
+            aria-label="Pesquisar"
+          >
+            <Search className="w-4 h-4 shrink-0" />
+            <span className="hidden md:inline text-xs">Pesquisar…</span>
+            <kbd className="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium border border-border rounded bg-background ml-1">
+              Ctrl K
+            </kbd>
+          </button>
 
           {/* Sino + painel de notificações */}
           <div ref={notifRef} className="relative">
@@ -127,5 +155,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
         </div>
       </div>
     </header>
+    {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
+    </>
   )
 }
