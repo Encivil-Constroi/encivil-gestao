@@ -140,6 +140,7 @@ const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => (
 const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
 const AutoPdfPage            = lazy(() => import('./pages/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
+const ObraRelatorioPage      = lazy(() => import('./pages/ObraRelatorioPage').then(m => ({ default: m.ObraRelatorioPage })));
 
 export const router = createBrowserRouter([
   {
@@ -165,10 +166,15 @@ export const router = createBrowserRouter([
     element: <AuthGuard />,
     errorElement: <RouteErrorPage />,
     children: [
-      // Rota de PDF — autenticada mas sem MainLayout (full-page para impressão)
+      // Rotas full-page — autenticadas mas sem MainLayout (sem barra lateral, para impressão/PDF)
       {
         path: '/autos/:autoId/pdf',
         element: <L><AutoPdfPage /></L>,
+        errorElement: <RouteErrorPage />,
+      },
+      {
+        path: '/obras/:id/relatorio',
+        element: <L><ObraRelatorioPage /></L>,
         errorElement: <RouteErrorPage />,
       },
       {

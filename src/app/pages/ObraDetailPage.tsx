@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
-  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench,
+  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench, BarChart2,
 } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getUnitLabel } from '../data/mockData';
@@ -49,6 +49,14 @@ export function ObraDetailPage() {
             }`}>{obra.status === 'concluida' ? 'Concluída' : 'Ativa'}</span>
           </div>
         </div>
+        <button
+          onClick={() => window.open(`/obras/${obra.id}/relatorio`, '_blank')}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
+          title="Relatório Financeiro"
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span className="hidden sm:inline">Relatório</span>
+        </button>
         {podeObras && (
           <button onClick={() => navigate(`/obras/${obra.id}/editar`)} className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold shrink-0">
             <Pencil className="w-4 h-4" /> <span className="hidden sm:inline">Editar</span>
@@ -91,6 +99,40 @@ export function ObraDetailPage() {
           </p>
         </div>
       </div>
+
+      {/* Gauge de consumo do orçamento */}
+      {obra.budget != null && custo && (
+        <div className="bg-card rounded-2xl border border-border p-4">
+          {(() => {
+            const pct = Math.min(Math.round((custo.total / obra.budget!) * 100), 100);
+            const color = pct >= 100 ? 'bg-destructive' : pct >= 90 ? 'bg-orange-500' : pct >= 70 ? 'bg-amber-400' : 'bg-success';
+            const textColor = pct >= 90 ? 'text-destructive' : pct >= 70 ? 'text-amber-600' : 'text-success';
+            const margemPct = custo.margem != null ? ((custo.margem / obra.budget!) * 100).toFixed(1) : null;
+            return (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground">Consumo do orçamento</p>
+                  <div className="flex items-center gap-2">
+                    {margemPct != null && (
+                      <span className={`text-xs font-semibold ${Number(margemPct) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        Margem {margemPct}%
+                      </span>
+                    )}
+                    <span className={`text-xs font-bold tabular-nums ${textColor}`}>{pct}%</span>
+                  </div>
+                </div>
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                  <span>€0</span>
+                  <span>{fmtEuro(obra.budget)}</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Repartição do custo real */}
       <div className="bg-card rounded-2xl border border-border p-4">
