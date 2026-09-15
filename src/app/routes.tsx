@@ -140,7 +140,8 @@ const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => (
 const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
 const AutoPdfPage            = lazy(() => import('./pages/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
-const ObraRelatorioPage      = lazy(() => import('./pages/ObraRelatorioPage').then(m => ({ default: m.ObraRelatorioPage })));
+const ObraRelatorioPage         = lazy(() => import('./pages/ObraRelatorioPage').then(m => ({ default: m.ObraRelatorioPage })));
+const ExportacaoContabilidadePage = lazy(() => import('./pages/ExportacaoContabilidadePage').then(m => ({ default: m.ExportacaoContabilidadePage })));
 
 export const router = createBrowserRouter([
   {
@@ -215,6 +216,7 @@ export const router = createBrowserRouter([
           { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
           { path: 'relatorio-semanal', element: <L><RelatorioSemanalPage /></L> },
+          { path: 'exportacao-contabilidade', element: <L><RoleGuard require="gestor"><ExportacaoContabilidadePage /></RoleGuard></L> },
           { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
           { path: 'configuracoes',         element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
           { path: 'gestao-utilizadores',   element: <L><RoleGuard require="admin"><GestaoUtilizadoresPage /></RoleGuard></L> },
