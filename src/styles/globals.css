@@ -63,15 +63,18 @@
   animation: enc-shimmer 1.4s ease-in-out infinite;
   border-radius: 8px;
 }
+/* Dark skeleton — activado pelo nosso sistema de tema (.dark no <html>) */
+.dark {
+  --skeleton-base:  #1e293b;
+  --skeleton-shine: #334155;
+}
+/* Fallback pré-hidratação: quando o script anti-FOUC ainda não correu
+   e o utilizador não escolheu explicitamente o modo claro */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not(.dark):not(.light) {
     --skeleton-base:  #1e293b;
     --skeleton-shine: #334155;
   }
-}
-:root[data-theme="dark"] {
-  --skeleton-base:  #1e293b;
-  --skeleton-shine: #334155;
 }
 
 /* Card hover lift — Stripe/Vercel style */

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Bell, User, LogOut, Menu, Search } from 'lucide-react'
+import { Bell, User, LogOut, Menu, Search, Sun, Moon } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
 import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
+import { useTheme } from '@/features/theme/ThemeProvider'
 import { NotificationPanel } from './NotificationPanel'
 import { GlobalSearch } from './GlobalSearch'
 
@@ -24,6 +25,8 @@ export function Header({ onMenuOpen }: HeaderProps) {
   const [notifOpen,  setNotifOpen]  = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const { resolvedTheme, setTheme } = useTheme()
+  const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
 
   useEffect(() => {
     if (!notifOpen) return
@@ -109,6 +112,19 @@ export function Header({ onMenuOpen }: HeaderProps) {
             <kbd className="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium border border-border rounded bg-background ml-1">
               Ctrl K
             </kbd>
+          </button>
+
+          {/* Tema claro/escuro */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 hover:bg-accent rounded-lg transition-colors"
+            title={resolvedTheme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+            aria-label={resolvedTheme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+          >
+            {resolvedTheme === 'dark'
+              ? <Sun  className="w-5 h-5 text-foreground" />
+              : <Moon className="w-5 h-5 text-foreground" />
+            }
           </button>
 
           {/* Sino + painel de notificações */}

@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Building2, Package, Save, User, Mail, Shield, AlertTriangle } from 'lucide-react';
+import { Building2, Package, Save, User, Mail, Shield, AlertTriangle, Sun, Moon, Monitor } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useRole } from '@/features/auth/useRole';
+import { useTheme, type ThemeChoice } from '@/features/theme/ThemeProvider';
+
+const THEME_OPTIONS: { value: ThemeChoice; label: string; Icon: typeof Sun; desc: string }[] = [
+  { value: 'light',  label: 'Claro',   Icon: Sun,     desc: 'Fundo branco'     },
+  { value: 'dark',   label: 'Escuro',  Icon: Moon,    desc: 'Fundo escuro'     },
+  { value: 'system', label: 'Sistema', Icon: Monitor, desc: 'Segue o sistema'  },
+]
 
 export function SettingsPage() {
   const { config, loading, saving, atualizar } = useConfiguracoes();
   const { user } = useAuth();
   const { role, isAdmin } = useRole();
+  const { theme, setTheme } = useTheme();
 
   const [formData, setFormData] = useState({
     nomeEmpresa:        '',
@@ -75,6 +83,39 @@ export function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Aparência — preferência pessoal, disponível a todos os utilizadores */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Sun className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">Aparência</h3>
+        </div>
+        <div className="p-5">
+          <p className="text-xs text-muted-foreground mb-3">Escolha o tema da interface. A preferência é guardada neste dispositivo.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {THEME_OPTIONS.map(({ value, label, Icon, desc }) => {
+              const active = theme === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTheme(value)}
+                  className={`
+                    flex flex-col items-center gap-2 px-3 py-4 rounded-xl border-2 transition-all
+                    ${active
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border hover:border-border/80 hover:bg-accent/50 text-muted-foreground'}
+                  `}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-xs font-semibold">{label}</span>
+                  <span className="text-[10px] text-center leading-tight opacity-70">{desc}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* Conta do utilizador */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">

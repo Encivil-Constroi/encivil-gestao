@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./app/components/ErrorBoundary.tsx";
 import { PWAInstallHint } from "./app/components/PWAInstallHint.tsx";
 import { UpdatePrompt } from "./app/components/UpdatePrompt.tsx";
 import { initSentry } from "./app/lib/sentry.ts";
+import { ThemeProvider } from "./features/theme/ThemeProvider.tsx";
 import "./styles/index.css";
 
 initSentry();
@@ -37,10 +38,12 @@ window.addEventListener('vite:preloadError', async () => {
 });
 
 createRoot(document.getElementById("root")!).render(
-  <ErrorBoundary>
-    <App />
-    <Toaster richColors position="top-right" />
-    <PWAInstallHint />
-    <UpdatePrompt />
-  </ErrorBoundary>
+  <ThemeProvider>
+    <ErrorBoundary>
+      <App />
+      <Toaster richColors position="top-right" />
+      <PWAInstallHint />
+      <UpdatePrompt />
+    </ErrorBoundary>
+  </ThemeProvider>
 );
