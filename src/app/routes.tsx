@@ -137,7 +137,8 @@ const SettingsPage       = lazy(() => import('./pages/SettingsPage').then(m => (
 const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const DocsPage           = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
 const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
-const ResetPasswordPage  = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
 
 export const router = createBrowserRouter([
   {
@@ -201,8 +202,9 @@ export const router = createBrowserRouter([
           { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
           { path: 'relatorio-semanal', element: <L><RelatorioSemanalPage /></L> },
-          { path: 'auditoria',     element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
-          { path: 'configuracoes', element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
+          { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
+          { path: 'configuracoes',         element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
+          { path: 'gestao-utilizadores',   element: <L><RoleGuard require="admin"><GestaoUtilizadoresPage /></RoleGuard></L> },
           { path: 'ajuda',         element: <L><HelpPage /></L> },
           { path: 'documentacao',  element: <L><DocsPage /></L> },
           { path: '*',             element: <L><NotFoundPage /></L> },

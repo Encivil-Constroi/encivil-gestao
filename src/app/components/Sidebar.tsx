@@ -18,6 +18,7 @@ import {
   Shield,
   Clock,
   CalendarX,
+  UserCog,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -67,6 +68,7 @@ const menuSections: MenuSection[] = [
     items: [
       { path: '/relatorios',         label: 'Relatórios',        icon: FileBarChart },
       { path: '/relatorio-semanal',  label: 'Rel. Semanal',      icon: CalendarDays },
+      { path: '/gestao-utilizadores', label: 'Utilizadores',      icon: UserCog,      adminOnly: true },
       { path: '/auditoria',          label: 'Auditoria',         icon: Shield,       adminOnly: true },
       { path: '/configuracoes',      label: 'Configurações',     icon: Settings,     adminOnly: true },
       { path: '/ajuda',              label: 'Ajuda',             icon: CircleHelp },
