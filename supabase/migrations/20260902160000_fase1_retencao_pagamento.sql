@@ -19,9 +19,12 @@ ALTER TABLE public.autos_medicao
 
 -- Só autos validados podem ter estado de pagamento != por_pagar.
 -- Autos em rascunho ficam sempre 'por_pagar' (irrelevante até validar).
-ALTER TABLE public.autos_medicao
-  ADD CONSTRAINT autos_pagamento_validado
-    CHECK (estado_pagamento = 'por_pagar' OR estado = 'validado');
+DO $$ BEGIN
+  ALTER TABLE public.autos_medicao
+    ADD CONSTRAINT autos_pagamento_validado
+      CHECK (estado_pagamento = 'por_pagar' OR estado = 'validado');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ─── 3. Tabela de liberações de retenção ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.liberacoes_retencao (
@@ -43,20 +46,32 @@ COMMENT ON TABLE public.liberacoes_retencao IS
 -- ─── 4. RLS — liberações de retenção ─────────────────────────────────────
 ALTER TABLE public.liberacoes_retencao ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "liberacoes_retencao_select"
-  ON public.liberacoes_retencao FOR SELECT TO authenticated USING (true);
+DO $$ BEGIN
+  CREATE POLICY "liberacoes_retencao_select"
+    ON public.liberacoes_retencao FOR SELECT TO authenticated USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "liberacoes_retencao_insert"
-  ON public.liberacoes_retencao FOR INSERT TO authenticated
-  WITH CHECK (public.auth_role() IN ('admin', 'gestor'));
+DO $$ BEGIN
+  CREATE POLICY "liberacoes_retencao_insert"
+    ON public.liberacoes_retencao FOR INSERT TO authenticated
+    WITH CHECK (public.auth_role() IN ('admin', 'gestor'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "liberacoes_retencao_update"
-  ON public.liberacoes_retencao FOR UPDATE TO authenticated
-  USING (public.auth_role() IN ('admin', 'gestor'));
+DO $$ BEGIN
+  CREATE POLICY "liberacoes_retencao_update"
+    ON public.liberacoes_retencao FOR UPDATE TO authenticated
+    USING (public.auth_role() IN ('admin', 'gestor'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "liberacoes_retencao_delete"
-  ON public.liberacoes_retencao FOR DELETE TO authenticated
-  USING (public.auth_role() = 'admin');
+DO $$ BEGIN
+  CREATE POLICY "liberacoes_retencao_delete"
+    ON public.liberacoes_retencao FOR DELETE TO authenticated
+    USING (public.auth_role() = 'admin');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ─── 5. GRANTs ───────────────────────────────────────────────────────────
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.liberacoes_retencao TO authenticated;

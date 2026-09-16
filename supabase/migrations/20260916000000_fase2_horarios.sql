@@ -6,7 +6,7 @@
 -- Tabelas
 -- ─────────────────────────────────────────────────────────────────────────────
 
-CREATE TABLE public.horarios (
+CREATE TABLE IF NOT EXISTS public.horarios (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   designacao            text    NOT NULL,
   periodo_diario_h      numeric NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE public.horarios (
   valido_ate            date
 );
 
-CREATE TABLE public.horario_colaborador (
+CREATE TABLE IF NOT EXISTS public.horario_colaborador (
   colaborador_id  uuid NOT NULL REFERENCES colaboradores(id),
   horario_id      uuid NOT NULL REFERENCES horarios(id),
   valido_de       date NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE public.horario_colaborador (
   PRIMARY KEY (colaborador_id, valido_de)
 );
 
-CREATE TABLE public.feriados_excecoes (
+CREATE TABLE IF NOT EXISTS public.feriados_excecoes (
   data       date PRIMARY KEY,
   tipo       text NOT NULL CHECK (tipo IN ('FERIADO','PONTE','EXCECAO_EMPRESA')),
   designacao text NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE public.feriados_excecoes (
 );
 
 -- Custo/hora por colaborador — dado salarial, só admin lê/escreve
-CREATE TABLE public.custo_hora_colaborador (
+CREATE TABLE IF NOT EXISTS public.custo_hora_colaborador (
   colaborador_id  uuid NOT NULL REFERENCES colaboradores(id),
   custo_normal    numeric NOT NULL,
   custo_supl      numeric NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE public.custo_hora_colaborador (
   PRIMARY KEY (colaborador_id, valido_de)
 );
 
-CREATE TABLE public.resumo_assiduidade_dia (
+CREATE TABLE IF NOT EXISTS public.resumo_assiduidade_dia (
   colaborador_id          uuid NOT NULL REFERENCES colaboradores(id),
   data                    date NOT NULL,
   obra_id                 uuid REFERENCES obras(id),
@@ -62,14 +62,14 @@ CREATE TABLE public.resumo_assiduidade_dia (
   PRIMARY KEY (colaborador_id, data)
 );
 
-CREATE TABLE public.tipos_falta (
+CREATE TABLE IF NOT EXISTS public.tipos_falta (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   designacao   text NOT NULL,
   justificada  boolean,      -- null = depende de prova
   descontavel  boolean DEFAULT true
 );
 
-CREATE TABLE public.faltas (
+CREATE TABLE IF NOT EXISTS public.faltas (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   colaborador_id    uuid NOT NULL REFERENCES colaboradores(id),
   data_inicio       date NOT NULL,
@@ -99,6 +99,7 @@ BEGIN
   RETURN NEW;
 END; $$;
 
+DROP TRIGGER IF EXISTS trg_prazo_prova ON public.faltas;
 CREATE TRIGGER trg_prazo_prova
   BEFORE INSERT ON public.faltas
   FOR EACH ROW EXECUTE FUNCTION public.fn_calcular_prazo_prova();
@@ -163,11 +164,15 @@ END; $$;
 GRANT EXECUTE ON FUNCTION public.calcular_resumo_dia(date) TO authenticated;
 
 -- Agendamento diário às 22:30 UTC (após fim de dia de trabalho)
-SELECT cron.schedule(
-  'calcular-resumo-assiduidade',
-  '30 22 * * *',
-  $$SELECT public.calcular_resumo_dia(CURRENT_DATE)$$
-);
+DO $$ BEGIN
+  PERFORM cron.schedule(
+    'calcular-resumo-assiduidade',
+    '30 22 * * *',
+    $$SELECT public.calcular_resumo_dia(CURRENT_DATE)$$
+  );
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'pg_cron não disponível — agendar manualmente.';
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- RLS
@@ -182,33 +187,46 @@ ALTER TABLE public.tipos_falta             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.faltas                  ENABLE ROW LEVEL SECURITY;
 
 -- Horários: leitura para todos; escrita para admin/gestor
+DROP POLICY IF EXISTS "horarios_sel"   ON public.horarios;
+DROP POLICY IF EXISTS "horarios_write" ON public.horarios;
 CREATE POLICY "horarios_sel"   ON public.horarios FOR SELECT TO authenticated USING (true);
 CREATE POLICY "horarios_write" ON public.horarios FOR ALL    TO authenticated
-  USING ((auth.jwt() ->> 'role') IN ('admin', 'gestor'));
+  USING (public.auth_role() IN ('admin', 'gestor'));
 
+DROP POLICY IF EXISTS "hcolab_sel"   ON public.horario_colaborador;
+DROP POLICY IF EXISTS "hcolab_write" ON public.horario_colaborador;
 CREATE POLICY "hcolab_sel"     ON public.horario_colaborador FOR SELECT TO authenticated USING (true);
 CREATE POLICY "hcolab_write"   ON public.horario_colaborador FOR ALL    TO authenticated
-  USING ((auth.jwt() ->> 'role') IN ('admin', 'gestor'));
+  USING (public.auth_role() IN ('admin', 'gestor'));
 
+DROP POLICY IF EXISTS "feriados_sel"   ON public.feriados_excecoes;
+DROP POLICY IF EXISTS "feriados_write" ON public.feriados_excecoes;
 CREATE POLICY "feriados_sel"   ON public.feriados_excecoes FOR SELECT TO authenticated USING (true);
 CREATE POLICY "feriados_write" ON public.feriados_excecoes FOR ALL    TO authenticated
-  USING ((auth.jwt() ->> 'role') IN ('admin', 'gestor'));
+  USING (public.auth_role() IN ('admin', 'gestor'));
 
 -- custo/hora: apenas admin (dado salarial)
+DROP POLICY IF EXISTS "custo_hora_admin" ON public.custo_hora_colaborador;
 CREATE POLICY "custo_hora_admin" ON public.custo_hora_colaborador FOR ALL TO authenticated
-  USING ((auth.jwt() ->> 'role') = 'admin');
+  USING (public.auth_role() = 'admin');
 
+DROP POLICY IF EXISTS "resumo_sel"   ON public.resumo_assiduidade_dia;
+DROP POLICY IF EXISTS "resumo_write" ON public.resumo_assiduidade_dia;
 CREATE POLICY "resumo_sel"   ON public.resumo_assiduidade_dia FOR SELECT TO authenticated USING (true);
 CREATE POLICY "resumo_write" ON public.resumo_assiduidade_dia FOR ALL    TO authenticated
-  USING ((auth.jwt() ->> 'role') IN ('admin', 'gestor'));
+  USING (public.auth_role() IN ('admin', 'gestor'));
 
+DROP POLICY IF EXISTS "tfalta_sel"   ON public.tipos_falta;
+DROP POLICY IF EXISTS "tfalta_write" ON public.tipos_falta;
 CREATE POLICY "tfalta_sel"   ON public.tipos_falta FOR SELECT TO authenticated USING (true);
 CREATE POLICY "tfalta_write" ON public.tipos_falta FOR ALL    TO authenticated
-  USING ((auth.jwt() ->> 'role') IN ('admin', 'gestor'));
+  USING (public.auth_role() IN ('admin', 'gestor'));
 
+DROP POLICY IF EXISTS "faltas_sel"   ON public.faltas;
+DROP POLICY IF EXISTS "faltas_write" ON public.faltas;
 CREATE POLICY "faltas_sel"   ON public.faltas FOR SELECT TO authenticated USING (true);
 CREATE POLICY "faltas_write" ON public.faltas FOR ALL    TO authenticated
-  USING ((auth.jwt() ->> 'role') IN ('admin', 'gestor'));
+  USING (public.auth_role() IN ('admin', 'gestor'));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- GRANTs (Automatically expose new tables está OFF — obrigatório)
@@ -228,19 +246,23 @@ GRANT EXECUTE ON FUNCTION public.fn_calcular_prazo_prova()           TO authenti
 -- Seed: tipos de falta base (Código do Trabalho PT)
 -- ─────────────────────────────────────────────────────────────────────────────
 
-INSERT INTO public.tipos_falta (designacao, justificada, descontavel) VALUES
-  ('Doença com baixa médica',                  true,  false),
-  ('Doença sem baixa médica',                  null,  true),
-  ('Assistência a filho menor',                true,  false),
-  ('Casamento',                                true,  false),
-  ('Falecimento de familiar',                  true,  false),
-  ('Consulta médica',                          true,  false),
-  ('Acidente de trabalho',                     true,  false),
-  ('Greve',                                    true,  true),
-  ('Falta injustificada',                      false, true),
-  ('Licença sem retribuição',                  true,  true),
-  ('Formação profissional obrigatória',        true,  false),
-  ('Outro motivo justificado',                 null,  null);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.tipos_falta LIMIT 1) THEN
+    INSERT INTO public.tipos_falta (designacao, justificada, descontavel) VALUES
+      ('Doença com baixa médica',                  true,  false),
+      ('Doença sem baixa médica',                  null,  true),
+      ('Assistência a filho menor',                true,  false),
+      ('Casamento',                                true,  false),
+      ('Falecimento de familiar',                  true,  false),
+      ('Consulta médica',                          true,  false),
+      ('Acidente de trabalho',                     true,  false),
+      ('Greve',                                    true,  true),
+      ('Falta injustificada',                      false, true),
+      ('Licença sem retribuição',                  true,  true),
+      ('Formação profissional obrigatória',        true,  false),
+      ('Outro motivo justificado',                 null,  null);
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Seed: feriados nacionais 2026 (Portugal)
@@ -260,4 +282,5 @@ INSERT INTO public.feriados_excecoes (data, tipo, designacao, ambito) VALUES
   ('2026-11-01', 'FERIADO', 'Todos os Santos',                  'nacional'),
   ('2026-12-01', 'FERIADO', 'Restauração da Independência',     'nacional'),
   ('2026-12-08', 'FERIADO', 'Imaculada Conceição',              'nacional'),
-  ('2026-12-25', 'FERIADO', 'Natal',                            'nacional');
+  ('2026-12-25', 'FERIADO', 'Natal',                            'nacional')
+ON CONFLICT (data) DO NOTHING;
