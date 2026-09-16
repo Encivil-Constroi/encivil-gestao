@@ -127,6 +127,9 @@ const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/component
 const RHPage             = lazy(() => import('@/features/horarios').then(m => ({ default: m.RHPage })));
 const PicagemPage        = lazy(() => import('@/features/picagens').then(m => ({ default: m.PicagemPage })));
 const ValidacaoPicagensPage = lazy(() => import('@/features/picagens').then(m => ({ default: m.ValidacaoPicagensPage })));
+const EpisPage           = lazy(() => import('@/features/epis').then(m => ({ default: m.EpisPage })));
+const FormacoesPage      = lazy(() => import('@/features/epis').then(m => ({ default: m.FormacoesPage })));
+const FichaSegurancaPage = lazy(() => import('@/features/epis').then(m => ({ default: m.FichaSegurancaPage })));
 const AlertasPage        = lazy(() => import('@/features/alertas').then(m => ({ default: m.AlertasPage })));
 const AuditoriaPage      = lazy(() => import('./pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
@@ -196,6 +199,9 @@ export const router = createBrowserRouter([
           { path: 'rh',           element: <L><RoleGuard require="gestor"><RHPage /></RoleGuard></L> },
           { path: 'picagens',     element: <L><PicagemPage /></L> },
           { path: 'picagens/validacao', element: <L><RoleGuard require="gestor"><ValidacaoPicagensPage /></RoleGuard></L> },
+          { path: 'epis',            element: <L><RoleGuard require="gestor"><EpisPage /></RoleGuard></L> },
+          { path: 'formacoes',       element: <L><RoleGuard require="gestor"><FormacoesPage /></RoleGuard></L> },
+          { path: 'seguranca',       element: <L><RoleGuard require="gestor"><FichaSegurancaPage /></RoleGuard></L> },
           { path: 'horarios',     element: <Navigate to="/rh" replace /> },
           { path: 'faltas',       element: <Navigate to="/rh" replace /> },
           { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },

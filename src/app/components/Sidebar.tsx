@@ -19,6 +19,8 @@ import {
   UserCog,
   BookOpen,
   Fingerprint,
+  GraduationCap,
+  UserCheck,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -77,6 +79,12 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/features/colaboradores/components/ColaboradoresPage') } },
       { path: '/rh',            label: 'RH',            icon: CalendarDays, gestorOnly: true,
         prefetch: () => { void import('@/features/horarios') } },
+      { path: '/epis',          label: 'EPIs',          icon: Shield,       gestorOnly: true,
+        prefetch: () => { void import('@/features/epis') } },
+      { path: '/formacoes',     label: 'Formações',     icon: GraduationCap, gestorOnly: true,
+        prefetch: () => { void import('@/features/epis') } },
+      { path: '/seguranca',     label: 'Ficha Seg.',    icon: UserCheck,    gestorOnly: true,
+        prefetch: () => { void import('@/features/epis') } },
     ],
   },
   {

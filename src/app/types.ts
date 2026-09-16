@@ -436,3 +436,45 @@ export interface Picagem {
   validadaPor?: string;
   validadaEm?: Date;
 }
+
+// ── Fase 4 — EPIs e Formações ─────────────────────────────────────────────────
+
+export interface TipoEpi {
+  id: string;
+  designacao: string;
+  validadeDias?: number;
+  obrigatorio: boolean;
+}
+
+export interface AtribuicaoEpi {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome?: string;
+  tipoEpiId: string;
+  tipoEpiDesignacao?: string;
+  dataEntrega: string;
+  dataValidade?: string;
+  devolvido: boolean;
+  dataDevolucao?: string;
+  regraAlertaId?: string;
+}
+
+export interface TipoFormacao {
+  id: string;
+  designacao: string;
+  validadeAnos?: number;
+  obrigatoria: boolean;
+}
+
+export interface FormacaoColaborador {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome?: string;
+  tipoId: string;
+  tipoDesignacao?: string;
+  dataConclusao: string;
+  dataValidade?: string;
+  certificadoKey?: string;
+  entidade?: string;
+  regraAlertaId?: string;
+}

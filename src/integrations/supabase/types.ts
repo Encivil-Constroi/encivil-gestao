@@ -1262,6 +1262,144 @@ export type Database = {
           },
         ]
       }
+      tipos_epi: {
+        Row: {
+          id: string
+          designacao: string
+          validade_dias: number | null
+          obrigatorio: boolean
+        }
+        Insert: {
+          id?: string
+          designacao: string
+          validade_dias?: number | null
+          obrigatorio?: boolean
+        }
+        Update: {
+          id?: string
+          designacao?: string
+          validade_dias?: number | null
+          obrigatorio?: boolean
+        }
+        Relationships: []
+      }
+      atribuicoes_epi: {
+        Row: {
+          id: string
+          colaborador_id: string
+          tipo_epi_id: string
+          data_entrega: string
+          data_validade: string | null
+          devolvido: boolean
+          data_devolucao: string | null
+          regra_alerta_id: string | null
+        }
+        Insert: {
+          id?: string
+          colaborador_id: string
+          tipo_epi_id: string
+          data_entrega: string
+          data_validade?: string | null
+          devolvido?: boolean
+          data_devolucao?: string | null
+          regra_alerta_id?: string | null
+        }
+        Update: {
+          id?: string
+          colaborador_id?: string
+          tipo_epi_id?: string
+          data_entrega?: string
+          data_validade?: string | null
+          devolvido?: boolean
+          data_devolucao?: string | null
+          regra_alerta_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atribuicoes_epi_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atribuicoes_epi_tipo_epi_id_fkey"
+            columns: ["tipo_epi_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_epi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tipos_formacao: {
+        Row: {
+          id: string
+          designacao: string
+          validade_anos: number | null
+          obrigatoria: boolean
+        }
+        Insert: {
+          id?: string
+          designacao: string
+          validade_anos?: number | null
+          obrigatoria?: boolean
+        }
+        Update: {
+          id?: string
+          designacao?: string
+          validade_anos?: number | null
+          obrigatoria?: boolean
+        }
+        Relationships: []
+      }
+      formacoes_colaborador: {
+        Row: {
+          id: string
+          colaborador_id: string
+          tipo_id: string
+          data_conclusao: string
+          data_validade: string | null
+          certificado_key: string | null
+          entidade: string | null
+          regra_alerta_id: string | null
+        }
+        Insert: {
+          id?: string
+          colaborador_id: string
+          tipo_id: string
+          data_conclusao: string
+          data_validade?: string | null
+          certificado_key?: string | null
+          entidade?: string | null
+          regra_alerta_id?: string | null
+        }
+        Update: {
+          id?: string
+          colaborador_id?: string
+          tipo_id?: string
+          data_conclusao?: string
+          data_validade?: string | null
+          certificado_key?: string | null
+          entidade?: string | null
+          regra_alerta_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacoes_colaborador_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacoes_colaborador_tipo_id_fkey"
+            columns: ["tipo_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_formacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       alertas_detalhados: {
