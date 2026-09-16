@@ -1196,6 +1196,72 @@ export type Database = {
           },
         ]
       }
+      picagens: {
+        Row: {
+          colaborador_id: string
+          desvio_relogio_s: number | null
+          hora_final_validada: string | null
+          hora_original_proposta: string | null
+          id: string
+          justificacao: string | null
+          obra_id: string
+          origem: string
+          resultado: string
+          timestamp_dispositivo: string
+          timestamp_servidor: string
+          tipo: string
+          validada_em: string | null
+          validada_por: string | null
+        }
+        Insert: {
+          colaborador_id: string
+          desvio_relogio_s?: number | null
+          hora_final_validada?: string | null
+          hora_original_proposta?: string | null
+          id?: string
+          justificacao?: string | null
+          obra_id: string
+          origem?: string
+          resultado?: string
+          timestamp_dispositivo: string
+          timestamp_servidor?: string
+          tipo: string
+          validada_em?: string | null
+          validada_por?: string | null
+        }
+        Update: {
+          colaborador_id?: string
+          desvio_relogio_s?: number | null
+          hora_final_validada?: string | null
+          hora_original_proposta?: string | null
+          id?: string
+          justificacao?: string | null
+          obra_id?: string
+          origem?: string
+          resultado?: string
+          timestamp_dispositivo?: string
+          timestamp_servidor?: string
+          tipo?: string
+          validada_em?: string | null
+          validada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picagens_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picagens_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       alertas_detalhados: {

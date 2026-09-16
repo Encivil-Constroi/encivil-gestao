@@ -125,6 +125,8 @@ const VeiculoFormPage          = lazy(() => import('./pages/VeiculoFormPage').th
 
 const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/components/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
 const RHPage             = lazy(() => import('@/features/horarios').then(m => ({ default: m.RHPage })));
+const PicagemPage        = lazy(() => import('@/features/picagens').then(m => ({ default: m.PicagemPage })));
+const ValidacaoPicagensPage = lazy(() => import('@/features/picagens').then(m => ({ default: m.ValidacaoPicagensPage })));
 const AlertasPage        = lazy(() => import('@/features/alertas').then(m => ({ default: m.AlertasPage })));
 const AuditoriaPage      = lazy(() => import('./pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
@@ -192,6 +194,8 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id/devolucao', element: <L><RoleGuard require="gestor"><ToolReturnPage /></RoleGuard></L> },
           { path: 'colaboradores', element: <L><RoleGuard require="gestor"><ColaboradoresPage /></RoleGuard></L> },
           { path: 'rh',           element: <L><RoleGuard require="gestor"><RHPage /></RoleGuard></L> },
+          { path: 'picagens',     element: <L><PicagemPage /></L> },
+          { path: 'picagens/validacao', element: <L><RoleGuard require="gestor"><ValidacaoPicagensPage /></RoleGuard></L> },
           { path: 'horarios',     element: <Navigate to="/rh" replace /> },
           { path: 'faltas',       element: <Navigate to="/rh" replace /> },
           { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },

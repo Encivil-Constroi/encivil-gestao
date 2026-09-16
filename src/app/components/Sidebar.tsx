@@ -18,6 +18,7 @@ import {
   Shield,
   UserCog,
   BookOpen,
+  Fingerprint,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -48,6 +49,8 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/app/pages/ProductsPage') } },
       { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus,
         prefetch: () => { void import('@/app/pages/NewMovementPage') } },
+      { path: '/picagens',       label: 'Picagens',       icon: Fingerprint,
+        prefetch: () => { void import('@/features/picagens') } },
       { path: '/historico',      label: 'Histórico',      icon: History,
         prefetch: () => { void import('@/app/pages/HistoryPage') } },
       { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench,

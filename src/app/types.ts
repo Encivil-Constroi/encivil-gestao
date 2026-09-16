@@ -411,3 +411,28 @@ export interface Falta {
   decididaPor?: string;
   decididaEm?: Date;
 }
+
+// ── Fase 3 — Picagens ──────────────────────────────────────────────────────
+
+export type TipoPicagem = 'ENTRADA' | 'SAIDA' | 'PAUSA_INI' | 'PAUSA_FIM';
+export type ResultadoPicagem = 'PENDENTE_VALIDACAO' | 'AUTORIZADA' | 'RECUSADA';
+export type OrigemPicagem = 'ONLINE' | 'OFFLINE' | 'RETROATIVA';
+
+export interface Picagem {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome?: string;
+  obraId: string;
+  obraNome?: string;
+  tipo: TipoPicagem;
+  timestampDispositivo: Date;
+  timestampServidor: Date;
+  desvioRelogioS?: number;
+  resultado: ResultadoPicagem;
+  origem: OrigemPicagem;
+  horaOriginalProposta?: Date;
+  horaFinalValidada?: Date;
+  justificacao?: string;
+  validadaPor?: string;
+  validadaEm?: Date;
+}

@@ -222,7 +222,7 @@ src/features/alertas/
 
 ---
 
-## Fase 2 — Horário de Trabalho, Faltas e Conformidade Laboral `[ ]`
+## Fase 2 — Horário de Trabalho, Faltas e Conformidade Laboral `[CONCLUÍDA]`
 
 **Semanas:** 5–8  
 **Depende de:** F0  
