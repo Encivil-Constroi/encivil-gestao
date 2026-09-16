@@ -1,9 +1,6 @@
-# Cloudflare Pages — cache headers
-# sw.js e index.html NUNCA devem ser cacheados pelo CDN ou pelo browser.
-# São eles que determinam se há uma versão nova — se o CDN servir versões
-# velhas destes ficheiros, o utilizador fica preso no bundle antigo mesmo
-# depois de um deploy.
+# Cloudflare Pages — cache + security headers
 
+# ── SW e HTML: nunca cacheados pelo CDN/browser ──────────────────────────────
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
 
@@ -16,6 +13,17 @@
 /manifest.webmanifest
   Cache-Control: no-cache
 
-# Assets com hash no nome podem ser cacheados agressivamente (imutáveis)
+# ── Assets com hash: imutáveis, cacheados 1 ano ───────────────────────────────
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# ── Security headers: aplicados a todas as rotas ─────────────────────────────
+# X-Frame-Options evita que o sistema seja embutido em iframes (clickjacking).
+# frame-ancestors no CSP faz o mesmo para browsers modernos — ambos por
+# compatibilidade máxima.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io; font-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'

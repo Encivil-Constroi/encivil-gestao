@@ -21,53 +21,78 @@ import {
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
-type MenuItem = { path: string; label: string; icon: typeof Package; adminOnly?: boolean; gestorOnly?: boolean };
+type MenuItem = {
+  path: string;
+  label: string;
+  icon: typeof Package;
+  adminOnly?: boolean;
+  gestorOnly?: boolean;
+  // Pré-carrega o chunk da página ao passar o rato — a navegação fica
+  // instantânea mesmo na primeira visita.
+  prefetch?: () => void;
+};
 type MenuSection = { title?: string; items: MenuItem[] };
 
 const menuSections: MenuSection[] = [
   {
     items: [
-      { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/', label: 'Dashboard', icon: LayoutDashboard,
+        prefetch: () => { void import('@/app/pages/DashboardPage') } },
     ],
   },
   {
     title: 'Operação',
     items: [
-      { path: '/produtos',       label: 'Produtos',       icon: Package },
-      { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus },
-      { path: '/historico',      label: 'Histórico',      icon: History },
-      { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench },
-      { path: '/combustivel',    label: 'Combustível',    icon: Fuel },
-      { path: '/alertas',        label: 'Alertas',        icon: Bell, gestorOnly: true },
+      { path: '/produtos',       label: 'Produtos',       icon: Package,
+        prefetch: () => { void import('@/app/pages/ProductsPage') } },
+      { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus,
+        prefetch: () => { void import('@/app/pages/NewMovementPage') } },
+      { path: '/historico',      label: 'Histórico',      icon: History,
+        prefetch: () => { void import('@/app/pages/HistoryPage') } },
+      { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench,
+        prefetch: () => { void import('@/app/pages/ToolsPage') } },
+      { path: '/combustivel',    label: 'Combustível',    icon: Fuel,
+        prefetch: () => { void import('@/app/pages/CombustivelPage') } },
+      { path: '/alertas',        label: 'Alertas',        icon: Bell, gestorOnly: true,
+        prefetch: () => { void import('@/features/alertas') } },
     ],
   },
   {
     title: 'Obras',
     items: [
-      { path: '/obras',           label: 'Obras',           icon: Building2 },
-      { path: '/subempreiteiros', label: 'Subempreiteiros', icon: HardHat },
+      { path: '/obras',           label: 'Obras',           icon: Building2,
+        prefetch: () => { void import('@/app/pages/ObrasPage') } },
+      { path: '/subempreiteiros', label: 'Subempreiteiros', icon: HardHat,
+        prefetch: () => { void import('@/app/pages/SubempreiteirosPage') } },
     ],
   },
   {
     title: 'Recursos Humanos',
     items: [
-      { path: '/colaboradores', label: 'Colaboradores', icon: Users, gestorOnly: true },
+      { path: '/colaboradores', label: 'Colaboradores', icon: Users, gestorOnly: true,
+        prefetch: () => { void import('@/features/colaboradores/components/ColaboradoresPage') } },
     ],
   },
   {
     title: 'Análise',
     items: [
-      { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart },
-      { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true },
+      { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart,
+        prefetch: () => { void import('@/app/pages/ReportsPage') } },
+      { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true,
+        prefetch: () => { void import('@/app/pages/ExportacaoContabilidadePage') } },
     ],
   },
   {
     title: 'Administração',
     items: [
-      { path: '/gestao-utilizadores', label: 'Utilizadores',  icon: UserCog,   adminOnly: true },
-      { path: '/auditoria',           label: 'Auditoria',     icon: Shield,    adminOnly: true },
-      { path: '/configuracoes',       label: 'Configurações', icon: Settings,  adminOnly: true },
-      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp },
+      { path: '/gestao-utilizadores', label: 'Utilizadores',  icon: UserCog,   adminOnly: true,
+        prefetch: () => { void import('@/app/pages/GestaoUtilizadoresPage') } },
+      { path: '/auditoria',           label: 'Auditoria',     icon: Shield,    adminOnly: true,
+        prefetch: () => { void import('@/app/pages/AuditoriaPage') } },
+      { path: '/configuracoes',       label: 'Configurações', icon: Settings,  adminOnly: true,
+        prefetch: () => { void import('@/app/pages/SettingsPage') } },
+      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp,
+        prefetch: () => { void import('@/app/pages/HelpPage') } },
     ],
   },
 ];
@@ -138,6 +163,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                     <Link
                       to={item.path}
                       onClick={onMobileClose}
+                      onMouseEnter={item.prefetch}
+                      onFocus={item.prefetch}
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150
                         ${isActive
