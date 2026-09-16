@@ -123,6 +123,11 @@ export interface Obra {
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // F5 — Geofence
+  geofenceTipo?: 'RAIO' | 'POLIGONO';
+  geofenceCentroLat?: number;
+  geofenceCentroLon?: number;
+  geofenceRaioM?: number;
 }
 
 export type ContractType = 'global' | 'unitario';
@@ -435,6 +440,10 @@ export interface Picagem {
   justificacao?: string;
   validadaPor?: string;
   validadaEm?: Date;
+  // F5 — Geolocalização
+  precisaoM?: number;
+  distanciaGeofenceM?: number;
+  mockLocationDetetada?: boolean;
 }
 
 // ── Fase 4 — EPIs e Formações ─────────────────────────────────────────────────

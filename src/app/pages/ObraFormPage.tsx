@@ -1,11 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ChevronLeft, Archive } from 'lucide-react';
+import { ChevronLeft, Archive, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useObra, useCriarObra, useAtualizarObra } from '@/features/obras/hooks/useObras';
 import type { ObraStatus } from '../types';
 
+// Carregamento lazy do mapa para não impactar o bundle principal
+const GeofenceConfig = lazy(() =>
+  import('@/features/obras/components/GeofenceConfig').then(m => ({ default: m.GeofenceConfig }))
+);
+
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
+
+// Centro de Lisboa como fallback quando não há localização definida
+const DEFAULT_LAT = 38.7223;
+const DEFAULT_LON = -9.1399;
+const DEFAULT_RAIO = 200;
 
 export function ObraFormPage() {
   const navigate = useNavigate();
@@ -26,6 +36,12 @@ export function ObraFormPage() {
     notes: '',
   });
 
+  // F5 — Geofence
+  const [geofenceAtiva, setGeofenceAtiva] = useState(false);
+  const [geofenceLat, setGeofenceLat] = useState(DEFAULT_LAT);
+  const [geofenceLon, setGeofenceLon] = useState(DEFAULT_LON);
+  const [geofenceRaio, setGeofenceRaio] = useState(DEFAULT_RAIO);
+
   useEffect(() => {
     if (!isEdit || !obra) return;
     setForm({
@@ -36,9 +52,26 @@ export function ObraFormPage() {
       budget: obra.budget != null ? String(obra.budget) : '',
       notes: obra.notes ?? '',
     });
+    if (obra.geofenceTipo) {
+      setGeofenceAtiva(true);
+      setGeofenceLat(obra.geofenceCentroLat ?? DEFAULT_LAT);
+      setGeofenceLon(obra.geofenceCentroLon ?? DEFAULT_LON);
+      setGeofenceRaio(obra.geofenceRaioM ?? DEFAULT_RAIO);
+    }
   }, [isEdit, obra]);
 
   const set = (patch: Partial<typeof form>) => setForm(prev => ({ ...prev, ...patch }));
+
+  // Tenta usar a localização do dispositivo como centro inicial do geofence
+  function handleActivateGeofence(on: boolean) {
+    setGeofenceAtiva(on);
+    if (on && !isEdit && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => { setGeofenceLat(pos.coords.latitude); setGeofenceLon(pos.coords.longitude); },
+        () => { /* fallback para Lisboa */ }
+      );
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +83,11 @@ export function ObraFormPage() {
       status: form.status,
       budget: form.budget ? parseFloat(form.budget) : undefined,
       notes: form.notes,
+      // Geofence
+      geofenceTipo: geofenceAtiva ? ('RAIO' as const) : null,
+      geofenceCentroLat: geofenceAtiva ? geofenceLat : undefined,
+      geofenceCentroLon: geofenceAtiva ? geofenceLon : undefined,
+      geofenceRaioM: geofenceAtiva ? geofenceRaio : undefined,
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) {
@@ -116,6 +154,49 @@ export function ObraFormPage() {
             <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
             <textarea value={form.notes} onChange={e => set({ notes: e.target.value })} className={`${inputCls} resize-none`} rows={3} />
           </div>
+        </div>
+
+        {/* Geofence */}
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span className="font-medium text-sm">Geofence (validação por localização)</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={geofenceAtiva}
+              onClick={() => handleActivateGeofence(!geofenceAtiva)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                geofenceAtiva ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${geofenceAtiva ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          {geofenceAtiva && (
+            <Suspense fallback={
+              <div className="h-[280px] rounded-xl bg-muted/50 flex items-center justify-center text-sm text-muted-foreground">
+                A carregar mapa…
+              </div>
+            }>
+              <GeofenceConfig
+                lat={geofenceLat}
+                lon={geofenceLon}
+                raioM={geofenceRaio}
+                onCentroChange={(lat, lon) => { setGeofenceLat(lat); setGeofenceLon(lon); }}
+                onRaioChange={setGeofenceRaio}
+              />
+            </Suspense>
+          )}
+
+          {!geofenceAtiva && (
+            <p className="text-xs text-muted-foreground">
+              Quando ativo, colaboradores dentro do raio configurado com GPS preciso são automaticamente autorizados ao picar.
+            </p>
+          )}
         </div>
 
         <div className="sticky bottom-20 md:bottom-0 py-3 bg-background/80 backdrop-blur-sm md:bg-transparent flex gap-3">

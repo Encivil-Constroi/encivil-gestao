@@ -2,6 +2,8 @@ import { supabase } from '@/integrations/supabase/client'
 import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Obra, ObraStatus } from '@/app/types'
 
+type GeoPoint = { type: 'Point'; coordinates: [number, number] }  // [lon, lat]
+
 type ObraRow = {
   id: string
   nome: string
@@ -13,6 +15,11 @@ type ObraRow = {
   ativo: boolean
   created_at: string
   updated_at: string
+  // F5 — Geofence
+  geofence_tipo: string | null
+  geofence_centro: GeoPoint | null
+  geofence_raio_m: number | null
+  geofence_poligono: unknown | null
 }
 
 function toObra(row: ObraRow): Obra {
@@ -27,6 +34,10 @@ function toObra(row: ObraRow): Obra {
     active: row.ativo,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+    geofenceTipo: (row.geofence_tipo as Obra['geofenceTipo']) ?? undefined,
+    geofenceCentroLat: row.geofence_centro?.coordinates[1] ?? undefined,
+    geofenceCentroLon: row.geofence_centro?.coordinates[0] ?? undefined,
+    geofenceRaioM: row.geofence_raio_m ?? undefined,
   }
 }
 
@@ -35,13 +46,13 @@ export async function listarObras(apenasAtivas = true): Promise<Obra[]> {
   if (apenasAtivas) query = query.eq('ativo', true)
   const { data, error } = await query
   if (error) throw error
-  return (data as ObraRow[]).map(toObra)
+  return (data as unknown as ObraRow[]).map(toObra)
 }
 
 export async function buscarObra(id: string): Promise<Obra> {
   const { data, error } = await supabase.from('obras').select('*').eq('id', id).single()
   if (error) throw error
-  return toObra(data as ObraRow)
+  return toObra(data as unknown as ObraRow)
 }
 
 export type NovaObra = {
@@ -51,6 +62,11 @@ export type NovaObra = {
   status?: ObraStatus
   budget?: number
   notes?: string
+  // F5 — Geofence
+  geofenceTipo?: 'RAIO' | 'POLIGONO' | null
+  geofenceCentroLat?: number
+  geofenceCentroLon?: number
+  geofenceRaioM?: number
 }
 
 export async function criarObra(input: NovaObra): Promise<Obra> {
@@ -63,11 +79,12 @@ export async function criarObra(input: NovaObra): Promise<Obra> {
       estado: input.status ?? 'ativa',
       orcamento: input.budget ?? null,
       observacoes: input.notes ?? null,
+      ...geofencePayload(input),
     })
     .select()
     .single()
   if (error) throw error
-  return toObra(data as ObraRow)
+  return toObra(data as unknown as ObraRow)
 }
 
 export type AtualizarObra = Partial<NovaObra> & { active?: boolean }
@@ -82,6 +99,11 @@ export async function atualizarObra(id: string, input: AtualizarObra): Promise<O
   if (input.notes !== undefined)    update.observacoes = input.notes || null
   if (input.active !== undefined)   update.ativo = input.active
 
+  // Geofence: atualizar se qualquer campo geofence foi passado
+  if (input.geofenceTipo !== undefined) {
+    Object.assign(update, geofencePayload(input))
+  }
+
   const { data, error } = await supabase
     .from('obras')
     .update(update as TablesUpdate<'obras'>)
@@ -89,5 +111,20 @@ export async function atualizarObra(id: string, input: AtualizarObra): Promise<O
     .select()
     .single()
   if (error) throw error
-  return toObra(data as ObraRow)
+  return toObra(data as unknown as ObraRow)
+}
+
+// Constrói os campos geofence para INSERT/UPDATE.
+// Usa EWKT (SRID=4326;POINT(lon lat)) que PostgREST/PostGIS aceita para colunas geography.
+function geofencePayload(input: Pick<NovaObra, 'geofenceTipo' | 'geofenceCentroLat' | 'geofenceCentroLon' | 'geofenceRaioM'>): Record<string, unknown> {
+  if (!input.geofenceTipo) return { geofence_tipo: null, geofence_centro: null, geofence_raio_m: null }
+
+  const hasCenter = input.geofenceCentroLat != null && input.geofenceCentroLon != null
+  return {
+    geofence_tipo: input.geofenceTipo,
+    geofence_centro: hasCenter
+      ? `SRID=4326;POINT(${input.geofenceCentroLon} ${input.geofenceCentroLat})`
+      : null,
+    geofence_raio_m: input.geofenceRaioM ?? null,
+  }
 }

@@ -21,9 +21,13 @@ export type ValidacaoPicagem = {
   validadaPor: string
 }
 
+// F5: colunas PostGIS não estão no tipo gerado — estendidas com interseção
 type RowWithJoins = PicagemRow & {
   colaboradores: { nome: string } | null
   obras: { nome: string } | null
+  precisao_m?: number | null
+  distancia_geofence_m?: number | null
+  mock_location_detetada?: boolean | null
 }
 
 function toPicagem(r: RowWithJoins): Picagem {
@@ -44,6 +48,9 @@ function toPicagem(r: RowWithJoins): Picagem {
     justificacao: r.justificacao ?? undefined,
     validadaPor: r.validada_por ?? undefined,
     validadaEm: r.validada_em ? new Date(r.validada_em) : undefined,
+    precisaoM: r.precisao_m ?? undefined,
+    distanciaGeofenceM: r.distancia_geofence_m ?? undefined,
+    mockLocationDetetada: r.mock_location_detetada ?? undefined,
   }
 }
 
@@ -141,6 +148,49 @@ export async function corrigirHoraPicagem(
     })
     .eq('id', id)
   if (error) throw error
+}
+
+// ── F5 — RPC com validação geofence ─────────────────────────────────────────
+
+export type GeofencePicagemInput = NovaPicagem & {
+  lat: number
+  lon: number
+  precisaoM: number
+}
+
+export type GeofenceRpcResult = {
+  id: string
+  resultado: ResultadoPicagem
+  distanciaM: number | null
+}
+
+type GeofenceRpcParams = {
+  p_colaborador_id: string; p_obra_id: string; p_tipo: string
+  p_lat: number; p_lon: number; p_precisao_m: number; p_timestamp_disp: string
+}
+type GeofenceRpcData = { id: string; resultado: string; distancia_m: number | null }
+
+// supabase.rpc é tipado com os RPCs do schema gerado — cast necessário até migration ser aplicada
+type RpcFn = (name: 'registar_picagem_geofence', params: GeofenceRpcParams) => Promise<{ data: GeofenceRpcData | null; error: { message: string } | null }>
+
+export async function registarPicagemGeofence(input: GeofencePicagemInput): Promise<GeofenceRpcResult> {
+  const rpc = supabase.rpc as unknown as RpcFn
+  const { data, error } = await rpc('registar_picagem_geofence', {
+    p_colaborador_id: input.colaboradorId,
+    p_obra_id:        input.obraId,
+    p_tipo:           input.tipo,
+    p_lat:            input.lat,
+    p_lon:            input.lon,
+    p_precisao_m:     input.precisaoM,
+    p_timestamp_disp: input.timestampDispositivo,
+  })
+  if (error) throw error
+  if (!data) throw new Error('Sem resposta da RPC registar_picagem_geofence')
+  return {
+    id:         data.id,
+    resultado:  data.resultado as ResultadoPicagem,
+    distanciaM: data.distancia_m,
+  }
 }
 
 export async function buscarColaboradorPorUserId(userId: string): Promise<{ id: string; nome: string } | null> {

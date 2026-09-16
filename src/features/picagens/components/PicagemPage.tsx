@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Fingerprint, WifiOff, ChevronDown, Clock, LogIn, LogOut, Coffee, Play, CheckCircle2, AlertCircle, Hourglass, ExternalLink } from 'lucide-react'
+import { Fingerprint, WifiOff, ChevronDown, Clock, LogIn, LogOut, Coffee, Play, CheckCircle2, AlertCircle, Hourglass, ExternalLink, Navigation, NavigationOff } from 'lucide-react'
 import { Link } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
@@ -71,7 +71,7 @@ export function PicagemPage() {
   const [colaboradorId, setColaboradorId] = useState<string>(() => lsGet('enc_pic_colab'))
   const [obraId, setObraId] = useState<string>(() => lsGet('enc_pic_obra'))
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
-  const [feedbackTipo, setFeedbackTipo] = useState<'ok' | 'queue'>('ok')
+  const [feedbackTipo, setFeedbackTipo] = useState<'ok' | 'autorizada' | 'queue'>('ok')
 
   // Auto-select current user's colaborador when loaded
   useEffect(() => {
@@ -84,6 +84,9 @@ export function PicagemPage() {
   const today = todayISO()
   const { picagens, pendentes, reload } = usePicagensDia(colaboradorId || undefined, today)
   const { picar, loading: picando } = usePicar()
+
+  const selectedObra = obras.find(o => o.id === obraId)
+  const obraTemGeofence = !!selectedObra?.geofenceTipo
 
   const allToday = [...picagens].sort((a, b) =>
     a.timestampDispositivo.getTime() - b.timestampDispositivo.getTime()
@@ -104,6 +107,7 @@ export function PicagemPage() {
       obraId,
       tipo,
       timestampDispositivo: new Date().toISOString(),
+      obraGeofenceTipo: selectedObra?.geofenceTipo,
     })
 
     if (!result) return
@@ -111,13 +115,18 @@ export function PicagemPage() {
     if (result.queued) {
       setFeedbackMsg(`${TIPO_LABELS[tipo]} guardada — será enviada quando tiver ligação.`)
       setFeedbackTipo('queue')
+    } else if (result.resultado === 'AUTORIZADA') {
+      const distStr = result.distanciaM != null ? ` (${result.distanciaM} m do centro)` : ''
+      setFeedbackMsg(`${TIPO_LABELS[tipo]} autorizada por geofence${distStr}.`)
+      setFeedbackTipo('autorizada')
+      reload()
     } else {
-      setFeedbackMsg(`${TIPO_LABELS[tipo]} registada com sucesso.`)
+      setFeedbackMsg(`${TIPO_LABELS[tipo]} registada — aguarda validação.`)
       setFeedbackTipo('ok')
       reload()
     }
 
-    setTimeout(() => setFeedbackMsg(null), 4000)
+    setTimeout(() => setFeedbackMsg(null), 5000)
   }
 
   const ready = !!colaboradorId && !!obraId
@@ -156,16 +165,33 @@ export function PicagemPage() {
         </div>
       )}
 
+      {/* Geofence indicator */}
+      {obraTemGeofence && isOnline && (
+        <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 text-sm">
+          <Navigation className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-foreground">Esta obra tem geofence — o GPS será pedido ao picar.</span>
+        </div>
+      )}
+
+      {obraTemGeofence && !isOnline && (
+        <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm">
+          <NavigationOff className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="text-muted-foreground">Geofence indisponível offline — picagem ficará pendente.</span>
+        </div>
+      )}
+
       {/* Feedback */}
       {feedbackMsg && (
         <div className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
-          feedbackTipo === 'ok'
+          feedbackTipo === 'autorizada'
             ? 'bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400'
+            : feedbackTipo === 'ok'
+            ? 'bg-primary/5 border border-primary/20 text-foreground'
             : 'bg-warning/10 border border-warning/20 text-foreground'
         }`}>
-          {feedbackTipo === 'ok'
-            ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-            : <WifiOff className="w-4 h-4 shrink-0" />}
+          {feedbackTipo === 'autorizada' && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+          {feedbackTipo === 'ok' && <Hourglass className="w-4 h-4 shrink-0" />}
+          {feedbackTipo === 'queue' && <WifiOff className="w-4 h-4 shrink-0" />}
           {feedbackMsg}
         </div>
       )}
@@ -211,7 +237,9 @@ export function PicagemPage() {
               >
                 <option value="">— Selecionar obra —</option>
                 {obras.map(o => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
+                  <option key={o.id} value={o.id}>
+                    {o.name}{o.geofenceTipo ? ' 📍' : ''}
+                  </option>
                 ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -238,7 +266,10 @@ export function PicagemPage() {
           `}
         >
           {picando ? (
-            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+              {obraTemGeofence && <span className="text-sm font-normal opacity-80">A obter localização…</span>}
+            </div>
           ) : (
             <>
               {primary === 'ENTRADA' && <LogIn className="w-10 h-10" />}
@@ -246,6 +277,7 @@ export function PicagemPage() {
               {primary === 'PAUSA_INI' && <Coffee className="w-10 h-10" />}
               {primary === 'PAUSA_FIM' && <Play className="w-10 h-10" />}
               <span>{TIPO_LABELS[primary]}</span>
+              {obraTemGeofence && <Navigation className="w-4 h-4 opacity-60" />}
             </>
           )}
         </button>
@@ -298,6 +330,8 @@ export function PicagemPage() {
                     <p className="text-xs text-muted-foreground">
                       {horaLocal(efetiva)}
                       {p.origem === 'OFFLINE' && ' · offline'}
+                      {p.distanciaGeofenceM != null && ` · ${p.distanciaGeofenceM} m`}
+                      {p.precisaoM != null && ` · GPS ±${p.precisaoM} m`}
                     </p>
                   </div>
                   <Icon className={`w-4 h-4 shrink-0 ${RESULTADO_COR[p.resultado]}`} />
