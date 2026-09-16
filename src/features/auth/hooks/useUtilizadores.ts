@@ -13,7 +13,7 @@ export function useUtilizadores() {
   const { data: utilizadores, loading, error, reload } = useAsync(
     listarUtilizadores,
     [],
-    { errorMsg: 'Não foi possível carregar os utilizadores' },
+    { cacheKey: 'utilizadores', errorMsg: 'Não foi possível carregar os utilizadores' },
   )
   return { utilizadores: utilizadores ?? [], loading, error, reload }
 }

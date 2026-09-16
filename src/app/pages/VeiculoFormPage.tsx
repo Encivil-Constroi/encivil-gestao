@@ -94,7 +94,7 @@ export function VeiculoFormPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"><ChevronLeft className="w-5 h-5" aria-hidden="true" /></button>
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar Viatura' : 'Nova Viatura / Máquina'}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{isEdit ? vehicle?.code : (codigoPreview ? `Código: ${codigoPreview}` : 'Registo de equipamento')}</p>

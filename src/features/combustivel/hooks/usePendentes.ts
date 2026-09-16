@@ -27,7 +27,9 @@ async function fetchPendentes(): Promise<AbastecimentoPendente[]> {
 }
 
 export function usePendentes() {
-  const { data, loading, error, reload } = useAsync(fetchPendentes, [])
+  const { data, loading, error, reload } = useAsync(fetchPendentes, [],
+    { cacheKey: 'abastecimentos-pendentes', cacheTtl: 30_000 }
+  )
   const items = data ?? []
 
   const aprovar = useCallback(async (id: string): Promise<boolean> => {

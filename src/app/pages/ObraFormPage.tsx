@@ -112,8 +112,8 @@ export function ObraFormPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
-          <ChevronLeft className="w-5 h-5" />
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar Obra' : 'Nova Obra'}</h1>
@@ -124,17 +124,17 @@ export function ObraFormPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Nome da Obra <span className="text-destructive">*</span></label>
-            <input type="text" value={form.name} onChange={e => set({ name: e.target.value })} className={inputCls} placeholder="Ex: Moradia em Cascais" required />
+            <label htmlFor="obra-nome" className="block text-sm font-medium mb-2">Nome da Obra <span className="text-destructive">*</span></label>
+            <input id="obra-nome" type="text" value={form.name} onChange={e => set({ name: e.target.value })} className={inputCls} placeholder="Ex: Moradia em Cascais" required />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Cliente <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-              <input type="text" value={form.client} onChange={e => set({ client: e.target.value })} className={inputCls} placeholder="Dono da obra" />
+              <label htmlFor="obra-cliente" className="block text-sm font-medium mb-2">Cliente <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+              <input id="obra-cliente" type="text" value={form.client} onChange={e => set({ client: e.target.value })} className={inputCls} placeholder="Dono da obra" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Estado</label>
-              <select value={form.status} onChange={e => set({ status: e.target.value as ObraStatus })} className={inputCls}>
+              <label htmlFor="obra-estado" className="block text-sm font-medium mb-2">Estado</label>
+              <select id="obra-estado" value={form.status} onChange={e => set({ status: e.target.value as ObraStatus })} className={inputCls}>
                 <option value="ativa">Ativa</option>
                 <option value="concluida">Concluída</option>
               </select>
@@ -142,17 +142,17 @@ export function ObraFormPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Localização <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-              <input type="text" value={form.location} onChange={e => set({ location: e.target.value })} className={inputCls} placeholder="Morada / zona" />
+              <label htmlFor="obra-localizacao" className="block text-sm font-medium mb-2">Localização <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+              <input id="obra-localizacao" type="text" value={form.location} onChange={e => set({ location: e.target.value })} className={inputCls} placeholder="Morada / zona" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Orçamento (€) <span className="text-muted-foreground font-normal text-xs">(valor com o cliente)</span></label>
-              <input type="number" inputMode="decimal" min="0" step="0.01" value={form.budget} onChange={e => set({ budget: e.target.value })} className={inputCls} placeholder="0.00" />
+              <label htmlFor="obra-orcamento" className="block text-sm font-medium mb-2">Orçamento (€) <span className="text-muted-foreground font-normal text-xs">(valor com o cliente)</span></label>
+              <input id="obra-orcamento" type="number" inputMode="decimal" min="0" step="0.01" value={form.budget} onChange={e => set({ budget: e.target.value })} className={inputCls} placeholder="0.00" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-            <textarea value={form.notes} onChange={e => set({ notes: e.target.value })} className={`${inputCls} resize-none`} rows={3} />
+            <label htmlFor="obra-observacoes" className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+            <textarea id="obra-observacoes" value={form.notes} onChange={e => set({ notes: e.target.value })} className={`${inputCls} resize-none`} rows={3} />
           </div>
         </div>
 

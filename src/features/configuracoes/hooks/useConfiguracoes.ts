@@ -8,7 +8,7 @@ import {
 export function useConfiguracoes() {
   const { data: config, loading, error, reload } = useAsync(
     buscarConfiguracoes, [],
-    { errorMsg: 'Erro ao carregar configurações' }
+    { cacheKey: 'configuracoes', errorMsg: 'Erro ao carregar configurações' }
   )
 
   const { mutate: _guardar, loading: saving, error: saveError } = useMutation(

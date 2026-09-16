@@ -14,7 +14,8 @@ import {
 
 export function useVeiculos(apenasAtivos = true) {
   const { data, loading, reload } = useAsync(
-    () => listarVeiculos(apenasAtivos), [apenasAtivos]
+    () => listarVeiculos(apenasAtivos), [apenasAtivos],
+    { cacheKey: `veiculos-${apenasAtivos}` }
   )
   return { vehicles: data ?? [], loading, reload }
 }
@@ -22,7 +23,7 @@ export function useVeiculos(apenasAtivos = true) {
 export function useVeiculo(id: string | undefined) {
   const { data: vehicle, loading, reload } = useAsync(
     () => buscarVeiculo(id!), [id],
-    { enabled: !!id }
+    { enabled: !!id, cacheKey: id ? `veiculo-${id}` : undefined }
   )
   return { vehicle, loading, reload }
 }
@@ -47,7 +48,8 @@ export function useAbastecimentos(filtros: FiltrosAbastecimentos = {}) {
   const { data, loading, reload } = useAsync(
     () => listarAbastecimentos(filtros),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key]
+    [key],
+    { cacheKey: `abastecimentos-${key}` }
   )
   return { entries: data ?? [], loading, reload }
 }
@@ -55,7 +57,7 @@ export function useAbastecimentos(filtros: FiltrosAbastecimentos = {}) {
 export function useAbastecimento(id: string | undefined) {
   const { data: entry, loading, reload } = useAsync(
     () => buscarAbastecimento(id!), [id],
-    { enabled: !!id }
+    { enabled: !!id, cacheKey: id ? `abastecimento-${id}` : undefined }
   )
   return { entry, loading, reload }
 }

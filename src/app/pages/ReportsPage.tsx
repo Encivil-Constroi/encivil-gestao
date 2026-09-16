@@ -1685,7 +1685,7 @@ export function ReportsPage() {
         if (cancelled) return
         setCurrent(curr); setPrevious(prev); setProducts(prods)
       })
-      .catch(() => {})
+      .catch(() => { toast.error('Erro ao carregar movimentos') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [period])
@@ -1704,7 +1704,7 @@ export function ReportsPage() {
         if (cancelled) return
         setTools(t); setLoansCurrent(curr); setLoansPrevious(prev); setLoansActive(active)
       })
-      .catch(() => {})
+      .catch(() => { toast.error('Erro ao carregar ferramentas') })
       .finally(() => { if (!cancelled) setToolsLoading(false) })
     return () => { cancelled = true }
   }, [toolsPeriod])
@@ -1743,7 +1743,7 @@ export function ReportsPage() {
           })
         setObrasLinhas(linhas)
       })
-      .catch(() => {})
+      .catch(() => { toast.error('Erro ao carregar dados de obras') })
       .finally(() => { if (!cancelled) setObrasLoading(false) })
     return () => { cancelled = true }
   }, [])
@@ -1768,7 +1768,7 @@ export function ReportsPage() {
           .sort((a, b) => b.custo - a.custo)
         setCombLinhas(linhas)
       })
-      .catch(() => {})
+      .catch(() => { toast.error('Erro ao carregar combustível') })
       .finally(() => { if (!cancelled) setCombLoading(false) })
     return () => { cancelled = true }
   }, [])

@@ -12,7 +12,7 @@ export function useAlertasAtivos() {
   const { data, loading, error, reload } = useAsync(
     () => listarAlertasAtivos(),
     [],
-    { errorMsg: 'Não foi possível carregar alertas' }
+    { cacheKey: 'alertas-ativos', errorMsg: 'Não foi possível carregar alertas' }
   )
   return { alertas: data ?? [], loading, error, reload }
 }
@@ -21,7 +21,7 @@ export function useTodosAlertas() {
   const { data, loading, error, reload } = useAsync(
     () => listarTodosAlertas(),
     [],
-    { errorMsg: 'Não foi possível carregar alertas' }
+    { cacheKey: 'alertas-todos', errorMsg: 'Não foi possível carregar alertas' }
   )
   return { alertas: data ?? [], loading, error, reload }
 }

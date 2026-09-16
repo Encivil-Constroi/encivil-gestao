@@ -113,8 +113,8 @@ export function SubempreiteiroDetailPage() {
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
-          <ChevronLeft className="w-5 h-5" />
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl md:text-2xl font-semibold truncate">{sub.name}</h1>

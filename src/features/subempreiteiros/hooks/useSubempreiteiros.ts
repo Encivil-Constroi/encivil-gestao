@@ -9,7 +9,7 @@ import {
 export function useSubempreiteiros(obraId?: string) {
   const { data, loading, error, reload } = useAsync(
     () => listarSubempreiteiros(obraId), [obraId],
-    { errorMsg: 'Erro ao carregar subempreiteiros' }
+    { cacheKey: obraId ? `subs-obra-${obraId}` : 'subs-todos', errorMsg: 'Erro ao carregar subempreiteiros' }
   )
   return { subs: data ?? [], loading, error, reload }
 }
@@ -17,7 +17,7 @@ export function useSubempreiteiros(obraId?: string) {
 export function useSubempreiteirosComExecutado(obraId: string | undefined) {
   const { data, loading, reload } = useAsync(
     () => listarSubempreiteirosComExecutado(obraId!), [obraId],
-    { enabled: !!obraId }
+    { enabled: !!obraId, cacheKey: obraId ? `subs-executado-${obraId}` : undefined }
   )
   return { subs: data ?? [], loading, reload }
 }
@@ -25,7 +25,7 @@ export function useSubempreiteirosComExecutado(obraId: string | undefined) {
 export function useSubempreiteiro(id: string | undefined) {
   const { data: sub, loading, error, reload } = useAsync(
     () => buscarSubempreiteiro(id!), [id],
-    { enabled: !!id, errorMsg: 'Contratação não encontrada' }
+    { enabled: !!id, cacheKey: id ? `sub-${id}` : undefined, errorMsg: 'Contratação não encontrada' }
   )
   return { sub, loading, error, reload }
 }

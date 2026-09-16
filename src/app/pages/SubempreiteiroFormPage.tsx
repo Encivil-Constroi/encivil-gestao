@@ -127,8 +127,8 @@ export function SubempreiteiroFormPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
-          <ChevronLeft className="w-5 h-5" />
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar Contratação' : 'Nova Contratação'}</h1>
@@ -139,8 +139,8 @@ export function SubempreiteiroFormPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Obra <span className="text-destructive">*</span></label>
-            <select value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls} required disabled={obrasLoading}>
+            <label htmlFor="sub-obra" className="block text-sm font-medium mb-2">Obra <span className="text-destructive">*</span></label>
+            <select id="sub-obra" value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls} required disabled={obrasLoading}>
               <option value="">{obrasLoading ? 'A carregar…' : 'Selecione a obra'}</option>
               {obras.filter(o => o.status === 'ativa' || o.id === form.obraId).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
@@ -150,22 +150,23 @@ export function SubempreiteiroFormPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Nome do Subempreiteiro <span className="text-destructive">*</span></label>
-              <input type="text" value={form.name} onChange={e => set({ name: e.target.value })} className={inputCls} placeholder="Empresa ou pessoa" required />
+              <label htmlFor="sub-nome" className="block text-sm font-medium mb-2">Nome do Subempreiteiro <span className="text-destructive">*</span></label>
+              <input id="sub-nome" type="text" value={form.name} onChange={e => set({ name: e.target.value })} className={inputCls} placeholder="Empresa ou pessoa" required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Contacto do Responsável</label>
-              <input type="tel" value={form.contact} onChange={e => set({ contact: e.target.value })} className={inputCls} placeholder="Telemóvel" />
+              <label htmlFor="sub-contacto" className="block text-sm font-medium mb-2">Contacto do Responsável</label>
+              <input id="sub-contacto" type="tel" value={form.contact} onChange={e => set({ contact: e.target.value })} className={inputCls} placeholder="Telemóvel" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="sub-retencao" className="block text-sm font-medium mb-1">
               Retenção de Garantia <span className="text-muted-foreground font-normal">(% retida de cada auto)</span>
             </label>
             <p className="text-xs text-muted-foreground mb-2">Percentagem standard em construção civil: 5–10%. Libertada no final da obra e período de defeitos.</p>
             <div className="flex items-center gap-3">
               <input
                 type="number" inputMode="decimal" min="0" max="100" step="0.5"
+                id="sub-retencao"
                 value={form.retencaoPercentagem}
                 onChange={e => set({ retencaoPercentagem: e.target.value })}
                 className={`${inputCls} w-32`}
@@ -207,8 +208,9 @@ export function SubempreiteiroFormPage() {
 
           {form.type === 'global' ? (
             <div>
-              <label className="block text-sm font-medium mb-2">Valor Acordado (€) <span className="text-destructive">*</span></label>
+              <label htmlFor="sub-valor-global" className="block text-sm font-medium mb-2">Valor Acordado (€) <span className="text-destructive">*</span></label>
               <input
+                id="sub-valor-global"
                 type="number" inputMode="decimal" min="0" step="0.01"
                 value={form.globalValue}
                 onChange={e => set({ globalValue: e.target.value })}
@@ -262,8 +264,8 @@ export function SubempreiteiroFormPage() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-4">
-          <label className="block text-sm font-medium mb-2">Condições Acordadas / Observações</label>
-          <textarea value={form.conditions} onChange={e => set({ conditions: e.target.value })} className={`${inputCls} resize-none`} rows={4}
+          <label htmlFor="sub-condicoes" className="block text-sm font-medium mb-2">Condições Acordadas / Observações</label>
+          <textarea id="sub-condicoes" value={form.conditions} onChange={e => set({ conditions: e.target.value })} className={`${inputCls} resize-none`} rows={4}
             placeholder="Prazo, forma de pagamento, o que está incluído, garantias…" />
         </div>
 

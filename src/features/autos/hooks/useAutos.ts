@@ -9,7 +9,7 @@ import {
 export function useAutos(subId: string | undefined) {
   const { data, loading, error, reload } = useAsync(
     () => listarAutos(subId!), [subId],
-    { enabled: !!subId, errorMsg: 'Erro ao carregar autos' }
+    { enabled: !!subId, cacheKey: subId ? `autos-${subId}` : undefined, errorMsg: 'Erro ao carregar autos' }
   )
   return { autos: data ?? [], loading, error, reload }
 }
@@ -17,7 +17,7 @@ export function useAutos(subId: string | undefined) {
 export function useAuto(id: string | undefined) {
   const { data: auto, loading, error, reload } = useAsync(
     () => buscarAuto(id!), [id],
-    { enabled: !!id, errorMsg: 'Auto não encontrado' }
+    { enabled: !!id, cacheKey: id ? `auto-${id}` : undefined, errorMsg: 'Auto não encontrado' }
   )
   return { auto, loading, error, reload }
 }

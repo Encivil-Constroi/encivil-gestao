@@ -10,7 +10,7 @@ import { useMemo } from 'react'
 export function useLiberacoes(subId: string | undefined) {
   const { data, loading, error, reload } = useAsync(
     () => listarLiberacoes(subId!), [subId],
-    { enabled: !!subId, errorMsg: 'Erro ao carregar libertações de retenção' }
+    { enabled: !!subId, cacheKey: subId ? `liberacoes-${subId}` : undefined, errorMsg: 'Erro ao carregar libertações de retenção' }
   )
   return { liberacoes: data ?? [], loading, error, reload }
 }

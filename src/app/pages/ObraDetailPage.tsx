@@ -37,8 +37,8 @@ export function ObraDetailPage() {
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
-          <ChevronLeft className="w-5 h-5" />
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="bg-primary/10 rounded-xl p-2.5 shrink-0"><Building2 className="w-5 h-5 text-primary" /></div>

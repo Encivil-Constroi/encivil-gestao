@@ -3,8 +3,9 @@ import { listarObras } from '@/features/obras/services/obrasService'
 import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
 
+// As queries usam aliases de FK (obras!obra_id) que os tipos gerados não suportam.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as any
+const db = supabase as unknown as any
 
 export type FiltrosExport = {
   dataInicio?: string  // YYYY-MM-DD

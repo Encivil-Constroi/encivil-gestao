@@ -98,7 +98,7 @@ export function AbastecimentoFormPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"><ChevronLeft className="w-5 h-5" aria-hidden="true" /></button>
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar Abastecimento' : 'Novo Abastecimento'}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Registo de combustível</p>
@@ -108,38 +108,38 @@ export function AbastecimentoFormPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Viatura / Máquina <span className="text-destructive">*</span></label>
-            <select value={form.vehicleId} onChange={e => set({ vehicleId: e.target.value })} className={inputCls} required disabled={vLoading}>
+            <label htmlFor="ab-viatura" className="block text-sm font-medium mb-2">Viatura / Máquina <span className="text-destructive">*</span></label>
+            <select id="ab-viatura" value={form.vehicleId} onChange={e => set({ vehicleId: e.target.value })} className={inputCls} required disabled={vLoading}>
               <option value="">{vLoading ? 'A carregar…' : 'Selecione'}</option>
               {vehicles.map(v => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
             </select>
             {!vLoading && vehicles.length === 0 && <p className="text-xs text-warning mt-1.5">Ainda não há viaturas. Crie uma viatura primeiro.</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Obra <span className="text-muted-foreground font-normal text-xs">(opcional — para imputar o custo)</span></label>
-            <select value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls}>
+            <label htmlFor="ab-obra" className="block text-sm font-medium mb-2">Obra <span className="text-muted-foreground font-normal text-xs">(opcional — para imputar o custo)</span></label>
+            <select id="ab-obra" value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls}>
               <option value="">Sem obra associada</option>
               {obras.filter(o => o.status === 'ativa' || o.id === form.obraId).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Data</label>
-              <input type="date" value={form.date} onChange={e => set({ date: e.target.value })} className={inputCls} required />
+              <label htmlFor="ab-data" className="block text-sm font-medium mb-2">Data</label>
+              <input id="ab-data" type="date" value={form.date} onChange={e => set({ date: e.target.value })} className={inputCls} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Contador {selectedVehicle ? `(${selectedVehicle.counterUnit})` : ''} <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-              <input type="number" inputMode="decimal" min="0" step="0.1" value={form.counter} onChange={e => set({ counter: e.target.value })} className={inputCls} placeholder="Leitura" />
+              <label htmlFor="ab-contador" className="block text-sm font-medium mb-2">Contador {selectedVehicle ? `(${selectedVehicle.counterUnit})` : ''} <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+              <input id="ab-contador" type="number" inputMode="decimal" min="0" step="0.1" value={form.counter} onChange={e => set({ counter: e.target.value })} className={inputCls} placeholder="Leitura" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Litros <span className="text-destructive">*</span></label>
-              <input type="number" inputMode="decimal" min="0" max="9999" step="0.001" value={form.liters} onChange={e => set({ liters: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0" required />
+              <label htmlFor="ab-litros" className="block text-sm font-medium mb-2">Litros <span className="text-destructive">*</span></label>
+              <input id="ab-litros" type="number" inputMode="decimal" min="0" max="9999" step="0.001" value={form.liters} onChange={e => set({ liters: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0" required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Custo Total (€) <span className="text-destructive">*</span></label>
-              <input type="number" inputMode="decimal" min="0" max="99999" step="0.01" value={form.totalCost} onChange={e => set({ totalCost: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0.00" required />
+              <label htmlFor="ab-custo" className="block text-sm font-medium mb-2">Custo Total (€) <span className="text-destructive">*</span></label>
+              <input id="ab-custo" type="number" inputMode="decimal" min="0" max="99999" step="0.01" value={form.totalCost} onChange={e => set({ totalCost: e.target.value })} className={`${inputCls} text-lg font-bold`} placeholder="0.00" required />
             </div>
           </div>
 
@@ -153,17 +153,17 @@ export function AbastecimentoFormPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Posto <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-              <input type="text" value={form.location} onChange={e => set({ location: e.target.value })} className={inputCls} placeholder="Ex: Galp / BP" />
+              <label htmlFor="ab-posto" className="block text-sm font-medium mb-2">Posto <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+              <input id="ab-posto" type="text" value={form.location} onChange={e => set({ location: e.target.value })} className={inputCls} placeholder="Ex: Galp / BP" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Responsável</label>
-              <input type="text" value={form.responsible} onChange={e => set({ responsible: e.target.value })} className={inputCls} required />
+              <label htmlFor="ab-responsavel" className="block text-sm font-medium mb-2">Responsável</label>
+              <input id="ab-responsavel" type="text" value={form.responsible} onChange={e => set({ responsible: e.target.value })} className={inputCls} required />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-            <textarea value={form.notes} onChange={e => set({ notes: e.target.value })} className={`${inputCls} resize-none`} rows={2} />
+            <label htmlFor="ab-observacoes" className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+            <textarea id="ab-observacoes" value={form.notes} onChange={e => set({ notes: e.target.value })} className={`${inputCls} resize-none`} rows={2} />
           </div>
         </div>
 
