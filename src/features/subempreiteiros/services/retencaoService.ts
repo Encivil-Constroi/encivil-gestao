@@ -1,8 +1,9 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { LiberacaoRetencao } from '@/app/types'
 
+// liberacoes_retencao ausente dos tipos gerados — regenerar após `npx supabase gen types --local`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as any
+const db = supabase as unknown as any
 
 type LiberacaoRow = {
   id: string

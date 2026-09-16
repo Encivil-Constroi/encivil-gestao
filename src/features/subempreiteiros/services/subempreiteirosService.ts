@@ -127,8 +127,9 @@ export type NovoSubempreiteiro = {
 }
 
 export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<Subcontractor> {
+  // subempreiteiros_itens ausente dos tipos gerados — regenerar após `npx supabase gen types --local`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase as unknown as any
   const { data, error } = await db
     .from('subempreiteiros')
     .insert({

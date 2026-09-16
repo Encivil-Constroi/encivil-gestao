@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Movement } from '@/app/types'
+import { useAsync } from '@/app/lib/useAsync'
 import {
   listarMovimentos,
   listarMovimentosPaginados,
@@ -11,33 +12,14 @@ import {
 import { enqueuePendingMovimento, isNetworkError, friendlyErrorMessage } from '../offlineQueue'
 
 export function useMovimentos(filtros: FiltrosMovimentos = {}) {
-  const [movements, setMovements] = useState<Movement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  // Stable string key for change detection
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const filtrosKey = JSON.stringify(filtros)
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await listarMovimentos(filtros)
-      setMovements(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar movimentos')
-    } finally {
-      setLoading(false)
-    }
-  // filtrosKey drives the effect; filtros is captured via closure at call time
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtrosKey])
-
-  useEffect(() => { load() }, [load])
-
-  return { movements, loading, error, reload: load }
+  const key = JSON.stringify(filtros)
+  const { data, loading, error, reload } = useAsync(
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => listarMovimentos(filtros), [key],
+    { errorMsg: 'Erro ao carregar movimentos' }
+  )
+  return { movements: data ?? [], loading, error, reload }
 }
 
 export function useMovimentosPaginados(filtros: FiltrosMovimentos = {}) {

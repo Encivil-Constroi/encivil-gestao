@@ -17,7 +17,7 @@ export function useEmprestimos(filtros: FiltrosEmprestimos = {}) {
   const { data, loading, error, reload } = useAsync(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     () => listarEmprestimos(filtros), [key],
-    { errorMsg: 'Erro ao carregar empréstimos' }
+    { cacheKey: `emprestimos-${key}`, errorMsg: 'Erro ao carregar empréstimos' }
   )
   return { loans: data ?? [], loading, error, reload }
 }

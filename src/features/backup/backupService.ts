@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client'
 
+// nomes de tabela dinâmicos — cast necessário pois o tipo gerado não aceita strings arbitrárias
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as any
+const db = supabase as unknown as any
 
 // ── Lista canónica das tabelas incluídas no backup ───────────────────────────
 // Excluídas intencionalmente:

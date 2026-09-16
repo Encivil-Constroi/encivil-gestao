@@ -13,19 +13,19 @@ import {
 /* ── Veículos ──────────────────────────────────────────────────── */
 
 export function useVeiculos(apenasAtivos = true) {
-  const { data, loading, reload } = useAsync(
+  const { data, loading, error, reload } = useAsync(
     () => listarVeiculos(apenasAtivos), [apenasAtivos],
     { cacheKey: `veiculos-${apenasAtivos}` }
   )
-  return { vehicles: data ?? [], loading, reload }
+  return { vehicles: data ?? [], loading, error, reload }
 }
 
 export function useVeiculo(id: string | undefined) {
-  const { data: vehicle, loading, reload } = useAsync(
+  const { data: vehicle, loading, error, reload } = useAsync(
     () => buscarVeiculo(id!), [id],
     { enabled: !!id, cacheKey: id ? `veiculo-${id}` : undefined }
   )
-  return { vehicle, loading, reload }
+  return { vehicle, loading, error, reload }
 }
 
 export function useGuardarVeiculo() {
@@ -55,11 +55,11 @@ export function useAbastecimentos(filtros: FiltrosAbastecimentos = {}) {
 }
 
 export function useAbastecimento(id: string | undefined) {
-  const { data: entry, loading, reload } = useAsync(
+  const { data: entry, loading, error, reload } = useAsync(
     () => buscarAbastecimento(id!), [id],
     { enabled: !!id, cacheKey: id ? `abastecimento-${id}` : undefined }
   )
-  return { entry, loading, reload }
+  return { entry, loading, error, reload }
 }
 
 export function useGuardarAbastecimento() {

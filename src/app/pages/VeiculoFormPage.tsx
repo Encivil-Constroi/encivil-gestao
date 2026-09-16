@@ -36,7 +36,7 @@ export function VeiculoFormPage() {
 
   useEffect(() => {
     if (isEdit) return;
-    gerarCodigoVeiculoPreview().then(setCodigoPreview).catch(() => {});
+    gerarCodigoVeiculoPreview().then(setCodigoPreview).catch(() => toast.error('Não foi possível gerar o código da viatura.'));
   }, [isEdit]);
 
   useEffect(() => {

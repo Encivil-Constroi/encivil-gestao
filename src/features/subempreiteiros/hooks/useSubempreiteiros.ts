@@ -15,11 +15,11 @@ export function useSubempreiteiros(obraId?: string) {
 }
 
 export function useSubempreiteirosComExecutado(obraId: string | undefined) {
-  const { data, loading, reload } = useAsync(
+  const { data, loading, error, reload } = useAsync(
     () => listarSubempreiteirosComExecutado(obraId!), [obraId],
     { enabled: !!obraId, cacheKey: obraId ? `subs-executado-${obraId}` : undefined }
   )
-  return { subs: data ?? [], loading, reload }
+  return { subs: data ?? [], loading, error, reload }
 }
 
 export function useSubempreiteiro(id: string | undefined) {
