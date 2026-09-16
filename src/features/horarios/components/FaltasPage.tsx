@@ -1,449 +1,257 @@
-import { useState, useMemo } from 'react'
-import { CalendarX, Plus, Check, X, ChevronDown, Download } from 'lucide-react'
-import { toast } from 'sonner'
-import { useFaltas, useRegistarFalta, useAtualizarEstadoFalta, useTiposFalta } from '../hooks/useHorarios'
+import { useState } from 'react'
+import { FileX, Plus, Filter, CheckCircle2, XCircle, Clock, Paperclip } from 'lucide-react'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
-import { exportarCsv } from '@/app/lib/exportCsv'
-import type { Falta, FaltaEstado, FaltaPeriodo } from '@/app/types'
-import type { NovaFalta } from '../services/horariosService'
+import { useFaltas, useTiposFalta, useRegistarFalta, useAtualizarEstadoFalta } from '../hooks/useFaltas'
+import type { EstadoFalta } from '../services/faltasService'
+import type { NovaFalta } from '../services/faltasService'
 
-const ESTADO_LABEL: Record<FaltaEstado, string> = {
-  COMUNICADA:       'Comunicada',
-  COM_COMPROVATIVO: 'Com comprovativo',
-  JUSTIFICADA:      'Justificada',
-  INJUSTIFICADA:    'Injustificada',
+const ESTADO_CONFIG: Record<EstadoFalta, { label: string; cls: string }> = {
+  COMUNICADA:       { label: 'Comunicada',       cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  COM_COMPROVATIVO: { label: 'Com comprovativo', cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  JUSTIFICADA:      { label: 'Justificada',      cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  INJUSTIFICADA:    { label: 'Injustificada',    cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 }
 
-const ESTADO_CLS: Record<FaltaEstado, string> = {
-  COMUNICADA:       'bg-muted text-muted-foreground',
-  COM_COMPROVATIVO: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  JUSTIFICADA:      'bg-success/10 text-success',
-  INJUSTIFICADA:    'bg-destructive/10 text-destructive',
+function EstadoBadge({ estado }: { estado: EstadoFalta }) {
+  const { label, cls } = ESTADO_CONFIG[estado]
+  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
 }
 
-const PERIODO_OPTS: { value: FaltaPeriodo; label: string }[] = [
-  { value: 'DIA',   label: 'Dia inteiro' },
-  { value: 'MANHA', label: 'Manhã' },
-  { value: 'TARDE', label: 'Tarde' },
-  { value: 'HORAS', label: 'Horas parciais' },
-]
-
-const inputCls = 'w-full px-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm'
-const labelCls = 'block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5'
-
-const FORM_VAZIO: NovaFalta = {
-  colaboradorId: '',
-  dataInicio: new Date().toISOString().split('T')[0],
-  dataFim: new Date().toISOString().split('T')[0],
-  periodo: 'DIA',
-  tipoFaltaId: '',
-  justificacaoTexto: '',
-  dadoSaude: false,
-  previsivel: false,
-}
-
-type FilterEstado = FaltaEstado | 'todos'
-
-export function FaltasPage() {
-  const [filterColabId, setFilterColabId] = useState('')
-  const [filterEstado,  setFilterEstado]  = useState<FilterEstado>('todos')
-  const [showNovo,      setShowNovo]      = useState(false)
-  const [form,          setForm]          = useState<NovaFalta>(FORM_VAZIO)
-
-  const filtros = useMemo(() => ({
-    colaboradorId: filterColabId || undefined,
-    estado:        filterEstado !== 'todos' ? filterEstado as FaltaEstado : undefined,
-  }), [filterColabId, filterEstado])
-
-  const { faltas, loading, reload }          = useFaltas(filtros)
-  const { tiposFalta }                       = useTiposFalta()
-  const { colaboradores }                    = useColaboradores()
-  const { registar, loading: registando }    = useRegistarFalta()
-  const { atualizar, loading: atualizando }  = useAtualizarEstadoFalta()
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.colaboradorId) { toast.error('Selecione um colaborador.'); return }
-    if (!form.dataInicio || !form.dataFim) { toast.error('Indique as datas.'); return }
-    if (form.dataFim < form.dataInicio) { toast.error('A data de fim não pode ser anterior ao início.'); return }
-
-    const result = await registar({ ...form, periodo: form.periodo || undefined, tipoFaltaId: form.tipoFaltaId || undefined })
-    if (result) {
-      toast.success('Falta registada.')
-      setForm(FORM_VAZIO)
-      setShowNovo(false)
-      reload()
-    }
-  }
-
-  async function handleEstado(falta: Falta, estado: FaltaEstado) {
-    const result = await atualizar(falta.id, estado)
-    if (result) {
-      toast.success(`Falta marcada como ${ESTADO_LABEL[estado].toLowerCase()}.`)
-      reload()
-    }
-  }
-
-  function handleExport() {
-    if (faltas.length === 0) return
-    exportarCsv(
-      faltas.map(f => ({
-        'Colaborador':  f.colaboradorNome ?? '',
-        'Data início':  f.dataInicio,
-        'Data fim':     f.dataFim,
-        'Período':      f.periodo ?? 'Dia inteiro',
-        'Tipo':         f.tipoFaltaDesignacao ?? '',
-        'Estado':       ESTADO_LABEL[f.estado],
-        'Justificação': f.justificacaoTexto ?? '',
-        'Dado saúde':   f.dadoSaude ? 'Sim' : 'Não',
-        'Previsível':   f.previsivel ? 'Sim' : 'Não',
-        'Prazo prova':  f.prazoProvaAte ?? '',
-        'Comunicada em': f.comunicadaEm.toLocaleDateString('pt-PT'),
-      })),
-      'faltas',
-    )
-  }
-
-  const selectCls = 'px-3 py-2 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm'
+function NovaFaltaForm({
+  colaboradores, tipos, onRegistar, onCancelar, loading,
+}: {
+  colaboradores: { id: string; nome: string }[]
+  tipos: { id: string; designacao: string }[]
+  onRegistar: (v: NovaFalta) => Promise<void>
+  onCancelar: () => void
+  loading: boolean
+}) {
+  const hoje = new Date().toISOString().slice(0, 10)
+  const [form, setForm] = useState<NovaFalta>({
+    colaboradorId: '',
+    dataInicio: hoje,
+    dataFim: hoje,
+    periodo: 'DIA',
+    tipoFaltaId: '',
+    dadoSaude: false,
+    previsivel: false,
+  })
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <label className="text-sm font-medium block mb-1">Colaborador *</label>
+        <select className="w-full border border-input rounded-lg px-3 py-2 bg-background text-sm"
+          value={form.colaboradorId}
+          onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value }))}>
+          <option value="">Selecionar…</option>
+          {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
-            <CalendarX className="w-6 h-6 text-primary" />
-            Faltas
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {loading ? 'A carregar…' : `${faltas.length} registo${faltas.length !== 1 ? 's' : ''}`}
-          </p>
+          <label className="text-sm font-medium block mb-1">Data início *</label>
+          <input type="date" className="w-full border border-input rounded-lg px-3 py-2 bg-background text-sm"
+            value={form.dataInicio}
+            onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value, dataFim: e.target.value }))} />
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={faltas.length === 0}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-xl hover:bg-accent transition-colors disabled:opacity-40"
-            title="Exportar CSV"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Excel</span>
-          </button>
-          <button
-            onClick={() => setShowNovo(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
-          >
-            {showNovo ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {showNovo ? 'Cancelar' : 'Registar falta'}
-          </button>
+        <div>
+          <label className="text-sm font-medium block mb-1">Data fim *</label>
+          <input type="date" className="w-full border border-input rounded-lg px-3 py-2 bg-background text-sm"
+            value={form.dataFim} min={form.dataInicio}
+            onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
         </div>
       </div>
-
-      {/* Formulário novo */}
-      {showNovo && (
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <h2 className="font-semibold mb-4">Registar nova falta</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className={labelCls}>Colaborador *</label>
-                <select
-                  className={inputCls}
-                  value={form.colaboradorId}
-                  onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value }))}
-                  required
-                >
-                  <option value="">Selecionar colaborador…</option>
-                  {colaboradores.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome} ({c.numeroMecan})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Data início *</label>
-                <input
-                  type="date"
-                  className={inputCls}
-                  value={form.dataInicio}
-                  onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value, dataFim: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Data fim *</label>
-                <input
-                  type="date"
-                  className={inputCls}
-                  value={form.dataFim}
-                  min={form.dataInicio}
-                  onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Período</label>
-                <select
-                  className={inputCls}
-                  value={form.periodo ?? ''}
-                  onChange={e => setForm(f => ({ ...f, periodo: e.target.value as FaltaPeriodo }))}
-                >
-                  {PERIODO_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Tipo de falta</label>
-                <select
-                  className={inputCls}
-                  value={form.tipoFaltaId ?? ''}
-                  onChange={e => setForm(f => ({ ...f, tipoFaltaId: e.target.value }))}
-                >
-                  <option value="">Não especificado</option>
-                  {tiposFalta.map(t => <option key={t.id} value={t.id}>{t.designacao}</option>)}
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className={labelCls}>Justificação / observações</label>
-                <textarea
-                  className={inputCls}
-                  rows={2}
-                  value={form.justificacaoTexto ?? ''}
-                  onChange={e => setForm(f => ({ ...f, justificacaoTexto: e.target.value }))}
-                  placeholder="Motivo, referência de documento…"
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.previsivel}
-                    onChange={e => setForm(f => ({ ...f, previsivel: e.target.checked }))}
-                    className="rounded"
-                  />
-                  Falta previsível
-                </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.dadoSaude}
-                    onChange={e => setForm(f => ({ ...f, dadoSaude: e.target.checked }))}
-                    className="rounded"
-                  />
-                  Dado de saúde (RGPD)
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-1">
-              <button
-                type="submit"
-                disabled={registando}
-                className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                {registando ? 'A registar…' : 'Registar'}
-              </button>
-            </div>
-          </form>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-medium block mb-1">Período</label>
+          <select className="w-full border border-input rounded-lg px-3 py-2 bg-background text-sm"
+            value={form.periodo ?? 'DIA'}
+            onChange={e => setForm(f => ({ ...f, periodo: e.target.value as typeof form.periodo }))}>
+            <option value="DIA">Dia completo</option>
+            <option value="MANHA">Manhã</option>
+            <option value="TARDE">Tarde</option>
+            <option value="HORAS">Horas (parcial)</option>
+          </select>
         </div>
-      )}
-
-      {/* Filtros */}
-      <div className="bg-card rounded-2xl border border-border p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <label className={labelCls}>Colaborador</label>
-            <select
-              className={selectCls + ' w-full'}
-              value={filterColabId}
-              onChange={e => setFilterColabId(e.target.value)}
-            >
-              <option value="">Todos</option>
-              {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Estado</label>
-            <select
-              className={selectCls}
-              value={filterEstado}
-              onChange={e => setFilterEstado(e.target.value as FilterEstado)}
-            >
-              <option value="todos">Todos</option>
-              {(Object.keys(ESTADO_LABEL) as FaltaEstado[]).map(e => (
-                <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label className="text-sm font-medium block mb-1">Tipo de falta</label>
+          <select className="w-full border border-input rounded-lg px-3 py-2 bg-background text-sm"
+            value={form.tipoFaltaId ?? ''}
+            onChange={e => setForm(f => ({ ...f, tipoFaltaId: e.target.value || undefined }))}>
+            <option value="">Sem tipo específico</option>
+            {tipos.map(t => <option key={t.id} value={t.id}>{t.designacao}</option>)}
+          </select>
         </div>
       </div>
-
-      {/* Lista */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        {loading ? (
-          <div className="divide-y divide-border">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-4">
-                <div className="skeleton h-3 w-24" />
-                <div className="skeleton h-3 w-32" />
-                <div className="skeleton h-5 w-20 ml-auto" />
-              </div>
-            ))}
-          </div>
-        ) : faltas.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground text-sm">
-            <CalendarX className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            Nenhuma falta registada.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {faltas.map(falta => (
-              <FaltaRow
-                key={falta.id}
-                falta={falta}
-                onEstado={handleEstado}
-                atualizando={atualizando}
-              />
-            ))}
-          </div>
-        )}
+      <div>
+        <label className="text-sm font-medium block mb-1">Justificação (texto)</label>
+        <textarea className="w-full border border-input rounded-lg px-3 py-2 bg-background text-sm resize-none"
+          rows={2}
+          value={form.justificacaoTexto ?? ''}
+          onChange={e => setForm(f => ({ ...f, justificacaoTexto: e.target.value || undefined }))}
+          placeholder="Opcional…" />
+      </div>
+      <div className="flex gap-4">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={form.previsivel ?? false}
+            onChange={e => setForm(f => ({ ...f, previsivel: e.target.checked }))} />
+          Ausência prevista
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={form.dadoSaude ?? false}
+            onChange={e => setForm(f => ({ ...f, dadoSaude: e.target.checked }))} />
+          Dado de saúde (RGPD)
+        </label>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onCancelar}
+          className="flex-1 py-2 border border-input rounded-lg text-sm hover:bg-muted/50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button"
+          disabled={!form.colaboradorId || !form.dataInicio || !form.dataFim || loading}
+          onClick={() => void onRegistar(form)}
+          className="flex-1 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors">
+          {loading ? 'A registar…' : 'Registar Falta'}
+        </button>
       </div>
     </div>
   )
 }
 
-function FaltaRow({
-  falta,
-  onEstado,
-  atualizando,
-}: {
-  falta: Falta
-  onEstado: (f: Falta, e: FaltaEstado) => void
-  atualizando: boolean
-}) {
-  const [open, setOpen] = useState(false)
+export function FaltasPage() {
+  const [filtroColab, setFiltroColab] = useState('')
+  const [modoNovo, setModoNovo]       = useState(false)
 
-  const diasCount = Math.max(
-    1,
-    Math.round((new Date(falta.dataFim).getTime() - new Date(falta.dataInicio).getTime()) / 86_400_000) + 1,
-  )
+  const { colaboradores }                  = useColaboradores(true)
+  const { tipos }                          = useTiposFalta()
+  const { faltas, loading, reload }        = useFaltas(filtroColab || undefined)
+  const { registar, loading: saving }      = useRegistarFalta()
+  const { atualizar, loading: atualizando} = useAtualizarEstadoFalta()
+
+  async function handleRegistar(form: NovaFalta) {
+    await registar(form)
+    reload()
+    setModoNovo(false)
+  }
+
+  async function handleEstado(id: string, estado: EstadoFalta) {
+    await atualizar(id, estado)
+    reload()
+  }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">{falta.colaboradorNome ?? '—'}</span>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold ${ESTADO_CLS[falta.estado]}`}>
-              {ESTADO_LABEL[falta.estado]}
-            </span>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2.5 rounded-xl">
+            <FileX className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {falta.dataInicio === falta.dataFim
-              ? new Date(falta.dataInicio + 'T12:00').toLocaleDateString('pt-PT')
-              : `${new Date(falta.dataInicio + 'T12:00').toLocaleDateString('pt-PT')} – ${new Date(falta.dataFim + 'T12:00').toLocaleDateString('pt-PT')}`}
-            {' '}&nbsp;·&nbsp; {diasCount} dia{diasCount !== 1 ? 's' : ''}
-            {falta.tipoFaltaDesignacao && ` · ${falta.tipoFaltaDesignacao}`}
-          </p>
+          <div>
+            <h1 className="text-xl font-bold">Faltas</h1>
+            <p className="text-sm text-muted-foreground">Registo e gestão de faltas dos colaboradores</p>
+          </div>
         </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Acções rápidas para estados pendentes */}
-          {falta.estado === 'COMUNICADA' && (
-            <>
-              <button
-                onClick={() => onEstado(falta, 'JUSTIFICADA')}
-                disabled={atualizando}
-                className="p-1.5 hover:bg-success/10 text-muted-foreground hover:text-success rounded-lg transition-colors"
-                title="Marcar como justificada"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onEstado(falta, 'INJUSTIFICADA')}
-                disabled={atualizando}
-                className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                title="Marcar como injustificada"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setOpen(v => !v)}
-            className="p-1.5 hover:bg-accent text-muted-foreground rounded-lg transition-colors"
-            title="Detalhes"
-          >
-            <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {!modoNovo && (
+          <button onClick={() => setModoNovo(true)}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+            <Plus className="w-4 h-4" /> Registar Falta
           </button>
-        </div>
+        )}
       </div>
 
-      {open && (
-        <div className="px-4 pb-3 border-t border-border bg-muted/30 pt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-          {falta.periodo && (
-            <div>
-              <p className="text-muted-foreground font-semibold uppercase tracking-wide mb-0.5">Período</p>
-              <p>{PERIODO_OPTS_MAP[falta.periodo] ?? falta.periodo}</p>
+      {modoNovo && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><Plus className="w-4 h-4" /> Nova Falta</h2>
+          <NovaFaltaForm
+            colaboradores={colaboradores}
+            tipos={tipos}
+            onRegistar={handleRegistar}
+            onCancelar={() => setModoNovo(false)}
+            loading={saving}
+          />
+        </div>
+      )}
+
+      {/* Filtro */}
+      <div className="flex items-center gap-3 bg-card border border-border rounded-xl p-3">
+        <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+        <select
+          className="flex-1 bg-transparent text-sm outline-none"
+          value={filtroColab}
+          onChange={e => setFiltroColab(e.target.value)}
+        >
+          <option value="">Todos os colaboradores</option>
+          {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div className="w-7 h-7 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : faltas.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground text-sm bg-card border border-border rounded-xl">
+          Nenhuma falta registada.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {faltas.map(f => (
+            <div key={f.id} className="bg-card border border-border rounded-xl p-4">
+              <div className="flex flex-wrap items-start gap-3 justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{f.colaboradorNome ?? f.colaboradorId}</span>
+                    <EstadoBadge estado={f.estado} />
+                    {f.previsivel && (
+                      <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Prevista</span>
+                    )}
+                    {f.dadoSaude && (
+                      <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Paperclip className="w-3 h-3" /> Dado saúde
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {f.dataInicio === f.dataFim ? f.dataInicio : `${f.dataInicio} → ${f.dataFim}`}
+                    {f.periodo && f.periodo !== 'DIA' && ` · ${f.periodo.toLowerCase()}`}
+                    {f.tipoFaltaDesignacao && ` · ${f.tipoFaltaDesignacao}`}
+                  </p>
+                  {f.prazoProvaAte && f.estado === 'COMUNICADA' && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Prazo de prova: {f.prazoProvaAte}
+                    </p>
+                  )}
+                  {f.justificacaoTexto && (
+                    <p className="text-xs text-muted-foreground mt-1 italic">&ldquo;{f.justificacaoTexto}&rdquo;</p>
+                  )}
+                </div>
+                {/* Ações de transição de estado */}
+                {(f.estado === 'COMUNICADA' || f.estado === 'COM_COMPROVATIVO') && (
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => void handleEstado(f.id, 'JUSTIFICADA')}
+                      disabled={atualizando}
+                      className="flex items-center gap-1 text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2.5 py-1.5 rounded-lg hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Justificar
+                    </button>
+                    <button
+                      onClick={() => void handleEstado(f.id, 'INJUSTIFICADA')}
+                      disabled={atualizando}
+                      className="flex items-center gap-1 text-xs bg-red-500/10 text-red-700 dark:text-red-400 px-2.5 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Injustificar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-          {falta.prazoProvaAte && (
-            <div>
-              <p className="text-muted-foreground font-semibold uppercase tracking-wide mb-0.5">Prazo de prova</p>
-              <p>{new Date(falta.prazoProvaAte + 'T12:00').toLocaleDateString('pt-PT')}</p>
-            </div>
-          )}
-          {falta.justificacaoTexto && (
-            <div className="sm:col-span-2">
-              <p className="text-muted-foreground font-semibold uppercase tracking-wide mb-0.5">Justificação</p>
-              <p>{falta.justificacaoTexto}</p>
-            </div>
-          )}
-          {falta.dadoSaude && (
-            <div>
-              <p className="text-muted-foreground font-semibold uppercase tracking-wide mb-0.5">RGPD</p>
-              <p>Dado de saúde</p>
-            </div>
-          )}
-          <div>
-            <p className="text-muted-foreground font-semibold uppercase tracking-wide mb-0.5">Registada em</p>
-            <p>{falta.comunicadaEm.toLocaleDateString('pt-PT')}</p>
-          </div>
-          {/* Acções de estado completas */}
-          {falta.estado !== 'JUSTIFICADA' && falta.estado !== 'INJUSTIFICADA' && (
-            <div className="sm:col-span-3 flex gap-2 pt-1">
-              <button
-                onClick={() => onEstado(falta, 'JUSTIFICADA')}
-                disabled={atualizando}
-                className="px-3 py-1.5 bg-success/10 text-success rounded-lg text-xs font-medium hover:bg-success/20 transition-colors disabled:opacity-50"
-              >
-                Justificada
-              </button>
-              <button
-                onClick={() => onEstado(falta, 'INJUSTIFICADA')}
-                disabled={atualizando}
-                className="px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs font-medium hover:bg-destructive/20 transition-colors disabled:opacity-50"
-              >
-                Injustificada
-              </button>
-              {falta.estado === 'COMUNICADA' && (
-                <button
-                  onClick={() => onEstado(falta, 'COM_COMPROVATIVO')}
-                  disabled={atualizando}
-                  className="px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 transition-colors disabled:opacity-50"
-                >
-                  Com comprovativo
-                </button>
-              )}
-            </div>
-          )}
+          ))}
         </div>
       )}
     </div>
   )
-}
-
-const PERIODO_OPTS_MAP: Record<FaltaPeriodo, string> = {
-  DIA:   'Dia inteiro',
-  MANHA: 'Manhã',
-  TARDE: 'Tarde',
-  HORAS: 'Horas parciais',
 }

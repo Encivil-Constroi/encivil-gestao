@@ -124,6 +124,7 @@ const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPag
 const VeiculoFormPage          = lazy(() => import('./pages/VeiculoFormPage').then(m => ({ default: m.VeiculoFormPage })));
 
 const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/components/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
+const RHPage             = lazy(() => import('@/features/horarios').then(m => ({ default: m.RHPage })));
 const AlertasPage        = lazy(() => import('@/features/alertas').then(m => ({ default: m.AlertasPage })));
 const AuditoriaPage      = lazy(() => import('./pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
@@ -190,8 +191,9 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id/editar',   element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
           { path: 'ferramentas/:id/devolucao', element: <L><RoleGuard require="gestor"><ToolReturnPage /></RoleGuard></L> },
           { path: 'colaboradores', element: <L><RoleGuard require="gestor"><ColaboradoresPage /></RoleGuard></L> },
-          { path: 'horarios',     element: <Navigate to="/colaboradores" replace /> },
-          { path: 'faltas',       element: <Navigate to="/colaboradores" replace /> },
+          { path: 'rh',           element: <L><RoleGuard require="gestor"><RHPage /></RoleGuard></L> },
+          { path: 'horarios',     element: <Navigate to="/rh" replace /> },
+          { path: 'faltas',       element: <Navigate to="/rh" replace /> },
           { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },
           { path: 'obras',                    element: <L><ObrasPage /></L> },
           { path: 'obras/nova',               element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },

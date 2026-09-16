@@ -190,6 +190,290 @@ export type Database = {
           },
         ]
       }
+      horarios: {
+        Row: {
+          ativo: boolean
+          dias_semana: number[]
+          hora_entrada: string
+          hora_saida: string
+          id: string
+          intervalo_fim: string | null
+          intervalo_inicio: string | null
+          intervalo_min: number | null
+          designacao: string
+          periodo_diario_h: number
+          periodo_semanal_h: number
+          tolerancia_entrada_min: number | null
+          valido_ate: string | null
+          valido_de: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          dias_semana: number[]
+          hora_entrada: string
+          hora_saida: string
+          id?: string
+          intervalo_fim?: string | null
+          intervalo_inicio?: string | null
+          intervalo_min?: number | null
+          designacao: string
+          periodo_diario_h: number
+          periodo_semanal_h: number
+          tolerancia_entrada_min?: number | null
+          valido_ate?: string | null
+          valido_de?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          dias_semana?: number[]
+          hora_entrada?: string
+          hora_saida?: string
+          id?: string
+          intervalo_fim?: string | null
+          intervalo_inicio?: string | null
+          intervalo_min?: number | null
+          designacao?: string
+          periodo_diario_h?: number
+          periodo_semanal_h?: number
+          tolerancia_entrada_min?: number | null
+          valido_ate?: string | null
+          valido_de?: string | null
+        }
+        Relationships: []
+      }
+      horario_colaborador: {
+        Row: {
+          colaborador_id: string
+          horario_id: string
+          valido_ate: string | null
+          valido_de: string
+        }
+        Insert: {
+          colaborador_id: string
+          horario_id: string
+          valido_ate?: string | null
+          valido_de: string
+        }
+        Update: {
+          colaborador_id?: string
+          horario_id?: string
+          valido_ate?: string | null
+          valido_de?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horario_colaborador_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_colaborador_horario_id_fkey"
+            columns: ["horario_id"]
+            isOneToOne: false
+            referencedRelation: "horarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feriados_excecoes: {
+        Row: {
+          ambito: string
+          data: string
+          designacao: string
+          tipo: string
+        }
+        Insert: {
+          ambito: string
+          data: string
+          designacao: string
+          tipo: string
+        }
+        Update: {
+          ambito?: string
+          data?: string
+          designacao?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      custo_hora_colaborador: {
+        Row: {
+          colaborador_id: string
+          custo_normal: number
+          custo_supl: number
+          valido_ate: string | null
+          valido_de: string
+        }
+        Insert: {
+          colaborador_id: string
+          custo_normal: number
+          custo_supl: number
+          valido_ate?: string | null
+          valido_de: string
+        }
+        Update: {
+          colaborador_id?: string
+          custo_normal?: number
+          custo_supl?: number
+          valido_ate?: string | null
+          valido_de?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custo_hora_colaborador_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resumo_assiduidade_dia: {
+        Row: {
+          colaborador_id: string
+          data: string
+          desvio: number | null
+          horas_efetivas: number | null
+          horas_previstas: number | null
+          horas_supl_propostas: number | null
+          horas_supl_validadas: number | null
+          obra_id: string | null
+          validado_em: string | null
+          validado_por: string | null
+        }
+        Insert: {
+          colaborador_id: string
+          data: string
+          desvio?: number | null
+          horas_efetivas?: number | null
+          horas_previstas?: number | null
+          horas_supl_propostas?: number | null
+          horas_supl_validadas?: number | null
+          obra_id?: string | null
+          validado_em?: string | null
+          validado_por?: string | null
+        }
+        Update: {
+          colaborador_id?: string
+          data?: string
+          desvio?: number | null
+          horas_efetivas?: number | null
+          horas_previstas?: number | null
+          horas_supl_propostas?: number | null
+          horas_supl_validadas?: number | null
+          obra_id?: string | null
+          validado_em?: string | null
+          validado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resumo_assiduidade_dia_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resumo_assiduidade_dia_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tipos_falta: {
+        Row: {
+          descontavel: boolean | null
+          designacao: string
+          id: string
+          justificada: boolean | null
+        }
+        Insert: {
+          descontavel?: boolean | null
+          designacao: string
+          id?: string
+          justificada?: boolean | null
+        }
+        Update: {
+          descontavel?: boolean | null
+          designacao?: string
+          id?: string
+          justificada?: boolean | null
+        }
+        Relationships: []
+      }
+      faltas: {
+        Row: {
+          colaborador_id: string
+          comunicada_em: string
+          comprovativo_key: string | null
+          dado_saude: boolean
+          data_fim: string
+          data_inicio: string
+          decidida_em: string | null
+          decidida_por: string | null
+          estado: string
+          id: string
+          justificacao_texto: string | null
+          periodo: string | null
+          prazo_prova_ate: string | null
+          previsivel: boolean
+          tipo_falta_id: string | null
+        }
+        Insert: {
+          colaborador_id: string
+          comunicada_em?: string
+          comprovativo_key?: string | null
+          dado_saude?: boolean
+          data_fim: string
+          data_inicio: string
+          decidida_em?: string | null
+          decidida_por?: string | null
+          estado?: string
+          id?: string
+          justificacao_texto?: string | null
+          periodo?: string | null
+          prazo_prova_ate?: string | null
+          previsivel?: boolean
+          tipo_falta_id?: string | null
+        }
+        Update: {
+          colaborador_id?: string
+          comunicada_em?: string
+          comprovativo_key?: string | null
+          dado_saude?: boolean
+          data_fim?: string
+          data_inicio?: string
+          decidida_em?: string | null
+          decidida_por?: string | null
+          estado?: string
+          id?: string
+          justificacao_texto?: string | null
+          periodo?: string | null
+          prazo_prova_ate?: string | null
+          previsivel?: boolean
+          tipo_falta_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faltas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faltas_tipo_falta_id_fkey"
+            columns: ["tipo_falta_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_falta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alertas: {
         Row: {
           atualizado_em: string
@@ -947,6 +1231,7 @@ export type Database = {
       }
     }
     Functions: {
+      calcular_resumo_dia: { Args: { p_data: string }; Returns: void }
       aprovar_abastecimento_pendente: { Args: { p_id: string }; Returns: void }
       avaliar_regras_alerta: {
         Args: Record<PropertyKey, never>

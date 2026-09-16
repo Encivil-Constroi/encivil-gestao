@@ -354,6 +354,8 @@ export interface Feriado {
   designacao: string;
   ambito: 'nacional' | 'municipal' | 'empresa';
 }
+// Alias para compat. com o service
+export type FeriadoExcecao = Feriado;
 
 export interface TipoFalta {
   id: string;
@@ -363,8 +365,33 @@ export interface TipoFalta {
   ativo: boolean;
 }
 
+export interface CustoHoraColaborador {
+  colaboradorId: string;
+  custoNormal: number;
+  custoSupl: number;
+  validoDe: string;
+  validoAte?: string;
+}
+
+export interface ResumoAssiduidade {
+  colaboradorId: string;
+  colaboradorNome?: string;
+  data: string;
+  obraId?: string;
+  horasPrevistas?: number;
+  horasEfetivas?: number;
+  desvio?: number;
+  horasSuplPropostas?: number;
+  horasSuplValidadas?: number;
+  validadoPor?: string;
+  validadoEm?: Date;
+}
+
 export type FaltaEstado = 'COMUNICADA' | 'COM_COMPROVATIVO' | 'JUSTIFICADA' | 'INJUSTIFICADA';
 export type FaltaPeriodo = 'DIA' | 'MANHA' | 'TARDE' | 'HORAS';
+// Aliases para manter compatibilidade com os services F2
+export type EstadoFalta = FaltaEstado;
+export type PeriodoFalta = FaltaPeriodo;
 
 export interface Falta {
   id: string;

@@ -12,6 +12,7 @@ import {
   Building2,
   HardHat,
   Users,
+  CalendarDays,
   Bell,
   X,
   Shield,
@@ -69,8 +70,10 @@ const menuSections: MenuSection[] = [
   {
     title: 'Recursos Humanos',
     items: [
-      { path: '/colaboradores', label: 'Colaboradores', icon: Users, gestorOnly: true,
+      { path: '/colaboradores', label: 'Colaboradores', icon: Users,   gestorOnly: true,
         prefetch: () => { void import('@/features/colaboradores/components/ColaboradoresPage') } },
+      { path: '/rh',            label: 'RH',            icon: CalendarDays, gestorOnly: true,
+        prefetch: () => { void import('@/features/horarios') } },
     ],
   },
   {

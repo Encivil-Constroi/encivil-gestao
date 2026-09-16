@@ -1,30 +1,43 @@
 import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import {
-  listarHorarios, criarHorario, atualizarHorario, arquivarHorario,
-  listarTiposFalta, listarFaltas, registarFalta, atualizarEstadoFalta,
-  type NovoHorario, type FiltrosFaltas, type NovaFalta,
+  listarHorarios, buscarHorario, criarHorario, atualizarHorario, arquivarHorario,
+  listarHorarioColaborador, atribuirHorario,
 } from '../services/horariosService'
-import type { FaltaEstado } from '@/app/types'
+import type { Horario } from '@/app/types'
+
+type HorarioInput = Omit<Horario, 'id' | 'createdAt'>
+
+const CACHE_ATIVOS = 'horarios-ativos'
+const CACHE_TODOS  = 'horarios-todos'
+const CACHE_LISTAS = [CACHE_ATIVOS, CACHE_TODOS]
 
 export function useHorarios(apenasAtivos = true) {
-  const { data: horarios, loading, error, reload } = useAsync(
-    () => listarHorarios(apenasAtivos),
-    [apenasAtivos],
-    { errorMsg: 'Erro ao carregar horários' },
+  const { data, loading, error, reload } = useAsync(
+    () => listarHorarios(apenasAtivos), [apenasAtivos],
+    { errorMsg: 'Erro ao carregar horários', cacheKey: apenasAtivos ? CACHE_ATIVOS : CACHE_TODOS }
   )
-  return { horarios: horarios ?? [], loading, error, reload }
+  return { horarios: data ?? [], loading, error, reload }
+}
+
+export function useHorario(id: string | undefined) {
+  const { data: horario, loading, error, reload } = useAsync(
+    () => buscarHorario(id!), [id],
+    { enabled: !!id, errorMsg: 'Horário não encontrado', cacheKey: id ? `horario-${id}` : undefined }
+  )
+  return { horario, loading, error, reload }
 }
 
 export function useGuardarHorario() {
-  const criador    = useMutation(criarHorario, 'Erro ao guardar horário')
+  const criador     = useMutation(criarHorario,    'Erro ao criar horário',    { invalidates: CACHE_LISTAS })
   const atualizador = useMutation(
-    (id: string, input: Partial<NovoHorario>) => atualizarHorario(id, input),
-    'Erro ao guardar horário',
+    (id: string, input: Partial<HorarioInput>) => atualizarHorario(id, input),
+    'Erro ao atualizar horário',
+    { invalidates: CACHE_LISTAS }
   )
   return {
-    criar:     criador.mutate,
-    atualizar: atualizador.mutate,
+    criar:     (input: HorarioInput) => criador.mutate(input as Omit<Horario, 'id'>),
+    atualizar: (id: string, input: Partial<HorarioInput>) => atualizador.mutate(id, input),
     loading:   criador.loading || atualizador.loading,
     error:     criador.error   || atualizador.error,
   }
@@ -33,42 +46,31 @@ export function useGuardarHorario() {
 export function useArquivarHorario() {
   const { mutate, loading } = useMutation(
     async (id: string): Promise<true> => { await arquivarHorario(id); return true },
+    'Erro ao arquivar horário',
+    { invalidates: CACHE_LISTAS }
   )
   const arquivar = async (id: string) => (await mutate(id)) === true
   return { arquivar, loading }
 }
 
-export function useTiposFalta() {
-  const { data, loading, error } = useAsync(
-    () => listarTiposFalta(),
-    [],
-    { errorMsg: 'Erro ao carregar tipos de falta' },
-  )
-  return { tiposFalta: data ?? [], loading, error }
-}
-
-export function useFaltas(filtros: FiltrosFaltas = {}) {
-  const deps = [filtros.colaboradorId, filtros.estado, filtros.dataInicio, filtros.dataFim] as const
+export function useHorarioColaborador(colaboradorId: string | undefined) {
   const { data, loading, error, reload } = useAsync(
-    () => listarFaltas(filtros),
-    deps,
-    { errorMsg: 'Erro ao carregar faltas' },
+    () => listarHorarioColaborador(colaboradorId!), [colaboradorId],
+    {
+      enabled: !!colaboradorId,
+      errorMsg: 'Erro ao carregar horário do colaborador',
+      cacheKey: colaboradorId ? `horario-colab-${colaboradorId}` : undefined,
+    }
   )
-  return { faltas: data ?? [], loading, error, reload }
+  return { atribuicoes: data ?? [], loading, error, reload }
 }
 
-export function useRegistarFalta() {
-  const { mutate: registar, loading, error } = useMutation(
-    (input: NovaFalta) => registarFalta(input),
-    'Erro ao registar falta',
-  )
-  return { registar, loading, error }
-}
-
-export function useAtualizarEstadoFalta() {
+export function useAtribuirHorario() {
   const { mutate, loading, error } = useMutation(
-    (id: string, estado: FaltaEstado) => atualizarEstadoFalta(id, estado),
-    'Erro ao atualizar estado',
+    (colaboradorId: string, horarioId: string, validoDe: string, validoAte?: string) =>
+      atribuirHorario(colaboradorId, horarioId, validoDe, validoAte),
+    'Erro ao atribuir horário',
+    { invalidates: CACHE_LISTAS }
   )
-  return { atualizar: mutate, loading, error }
+  return { atribuir: mutate, loading, error }
 }

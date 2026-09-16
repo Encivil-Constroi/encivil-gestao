@@ -1,2 +1,5 @@
-export { HorariosPage } from './components/HorariosPage'
-export { FaltasPage }   from './components/FaltasPage'
+export { RHPage }               from './components/RHPage'
+export { HorariosPage }         from './components/HorariosPage'
+export { AtribuicaoHorarioPage } from './components/AtribuicaoHorarioPage'
+export { AssiduidadePage }       from './components/AssiduidadePage'
+export { FaltasPage }            from './components/FaltasPage'
