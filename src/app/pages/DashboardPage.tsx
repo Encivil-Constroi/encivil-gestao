@@ -12,9 +12,19 @@ import { useResumoObras } from '@/features/dashboard/hooks/useResumoObras';
 import { useRole } from '@/features/auth/useRole';
 import { AlertasWidget } from '@/features/alertas';
 
+const OBRA_KPI_BORDER: Record<string, string> = {
+  'text-primary':     'var(--primary)',
+  'text-destructive': 'var(--destructive)',
+  'text-success':     'var(--success)',
+  'text-foreground':  'var(--border)',
+}
+
 function ObraKpi({ label, value, icon: Icon, color }: { label: string; value: string; icon: typeof Building2; color: string }) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4">
+    <div
+      className="bg-card rounded-xl border border-border border-l-[3px] p-4"
+      style={{ borderLeftColor: OBRA_KPI_BORDER[color] ?? 'var(--border)' }}
+    >
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <p className="text-xs text-muted-foreground leading-tight">{label}</p>
         <Icon className={`w-4 h-4 shrink-0 ${color}`} />
@@ -63,7 +73,9 @@ export function DashboardPage() {
 
       <div>
         <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Visão geral · ENCIVIL Gestão</p>
+        <p className="text-sm text-muted-foreground mt-0.5 capitalize">
+          {new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'short' })} · ENCIVIL Gestão
+        </p>
       </div>
 
       {(podeArmazem || podeCombustivel) && (

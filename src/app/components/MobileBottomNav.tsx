@@ -50,11 +50,14 @@ export function MobileBottomNav() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center gap-1 px-3 h-full min-w-[48px] transition-colors
-                ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+              className="flex flex-col items-center justify-center h-full min-w-[48px] transition-colors"
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <div className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
+                isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+              }`}>
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </div>
             </Link>
           );
         })}

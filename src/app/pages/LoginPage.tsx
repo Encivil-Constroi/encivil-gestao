@@ -7,7 +7,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 
 type Mode = 'login' | 'request-reset' | 'reset-sent';
 
-const inputCls = 'w-full pl-10 pr-4 py-3 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary';
+const inputCls = 'w-full pl-10 pr-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -102,7 +102,7 @@ export function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className="w-full py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
                   {isLoading ? 'A entrar…' : 'Entrar'}
                 </button>
@@ -147,7 +147,7 @@ export function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 font-medium"
+                  className="w-full py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 font-medium"
                 >
                   {isLoading ? 'A enviar…' : 'Enviar link de redefinição'}
                 </button>

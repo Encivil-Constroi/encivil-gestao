@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Package as PackageIcon, ChevronRight, RotateCcw, Archive } from 'lucide-react';
+import { Plus, Search, Package as PackageIcon, ChevronRight, RotateCcw, Archive, CheckCircle2, AlertTriangle, XCircle, ListFilter } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { SkeletonList } from '../components/Skeletons';
 import { toast } from 'sonner';
@@ -21,11 +21,12 @@ import type { ProductCategory, Unit, StockStatus } from '../types';
 type StatusFilter = 'todos' | StockStatus;
 type Tab = 'ativos' | 'arquivados';
 
-const statusFilters: { value: StatusFilter; label: string; cls: string }[] = [
-  { value: 'todos',     label: 'Todos',       cls: 'bg-accent text-foreground hover:bg-accent/80' },
-  { value: 'normal',    label: '✓ Normal',    cls: 'bg-success/10 text-success hover:bg-success/20 border-success/30' },
-  { value: 'baixo',     label: '⚠ Baixo',     cls: 'bg-warning/10 text-warning hover:bg-warning/20 border-warning/30' },
-  { value: 'sem-stock', label: '✕ Sem Stock', cls: 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/30' },
+type StatusFilterDef = { value: StatusFilter; label: string; icon: typeof ListFilter; cls: string };
+const statusFilters: StatusFilterDef[] = [
+  { value: 'todos',     label: 'Todos',     icon: ListFilter,    cls: 'bg-accent text-foreground hover:bg-accent/80' },
+  { value: 'normal',    label: 'Normal',    icon: CheckCircle2,  cls: 'bg-success/10 text-success hover:bg-success/20 border-success/30' },
+  { value: 'baixo',     label: 'Baixo',     icon: AlertTriangle, cls: 'bg-warning/10 text-warning hover:bg-warning/20 border-warning/30' },
+  { value: 'sem-stock', label: 'Sem Stock', icon: XCircle,       cls: 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/30' },
 ];
 
 export function ProductsPage() {
@@ -150,8 +151,9 @@ export function ProductsPage() {
           {tab === 'ativos' && (
             <div className="flex items-center gap-2 flex-wrap">
               {statusFilters.map(f => {
-                const count   = f.value !== 'todos' ? counts[f.value as StockStatus] : products.length;
+                const count    = f.value !== 'todos' ? counts[f.value as StockStatus] : products.length;
                 const isActive = statusFilter === f.value;
+                const Icon     = f.icon;
                 return (
                   <button
                     key={f.value}
@@ -160,6 +162,7 @@ export function ProductsPage() {
                       isActive ? `${f.cls} border-current ring-2 ring-current/20` : `${f.cls} border-transparent`
                     }`}
                   >
+                    <Icon className="w-3.5 h-3.5" aria-hidden="true" />
                     {f.label}
                     <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-current/20' : 'bg-muted/50 text-muted-foreground'}`}>
                       {count}
