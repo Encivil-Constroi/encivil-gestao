@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { useParams, Link } from 'react-router'
+import type { ElementType } from 'react'
 import {
   ArrowLeft, Plus, Printer, X, Loader2, Truck,
   CheckCircle2, XCircle, Clock,
@@ -12,10 +13,10 @@ import type { GuiaTransporte, EstadoGuia, LinhaGuia, CriarGuiaInput } from '../s
 
 // ── Estado badges ─────────────────────────────────────────────────────────────
 
-const ESTADO_CONFIG: Record<EstadoGuia, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  EMITIDA:  { label: 'Emitida',  icon: Clock,         color: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-100 dark:bg-amber-900/30'   },
-  ENTREGUE: { label: 'Entregue', icon: CheckCircle2,   color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-  ANULADA:  { label: 'Anulada',  icon: XCircle,        color: 'text-red-700 dark:text-red-400',       bg: 'bg-red-100 dark:bg-red-900/30'       },
+const ESTADO_CONFIG: Record<EstadoGuia, { label: string; icon: ElementType; color: string; bg: string }> = {
+  EMITIDA:  { label: 'Emitida',  icon: Clock,       color: 'text-amber-700 dark:text-amber-400',     bg: 'bg-amber-100 dark:bg-amber-900/30'   },
+  ENTREGUE: { label: 'Entregue', icon: CheckCircle2, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  ANULADA:  { label: 'Anulada',  icon: XCircle,      color: 'text-red-700 dark:text-red-400',         bg: 'bg-red-100 dark:bg-red-900/30'       },
 }
 
 function EstadoBadge({ estado }: { estado: EstadoGuia }) {
@@ -34,13 +35,11 @@ function EstadoBadge({ estado }: { estado: EstadoGuia }) {
 function EmitirGuiaModal({ obraId, onClose, onSaved }: {
   obraId:  string
   onClose: () => void
-  onSaved: (id: string) => void
+  onSaved: () => void
 }) {
-  const { criar, loading } = useCriarGuia()
+  const { criar, loading } = useCriarGuia(obraId)
 
-  const hoje = new Date().toISOString().slice(0, 10)
-
-  const [dataCarga, setDataCarga] = useState(hoje)
+  const [dataCarga, setDataCarga] = useState(() => new Date().toISOString().slice(0, 10))
   const [origem,    setOrigem]    = useState('')
   const [destino,   setDestino]   = useState('')
   const [linhas,    setLinhas]    = useState<LinhaGuia[]>([
@@ -69,7 +68,7 @@ function EmitirGuiaModal({ obraId, onClose, onSaved }: {
     const id = await criar(input)
     if (id !== null) {
       toast.success('Guia de transporte emitida.')
-      onSaved(id as string)
+      onSaved()
       onClose()
     }
   }
@@ -119,14 +118,10 @@ function EmitirGuiaModal({ obraId, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* Linhas */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Artigos</label>
-              <button
-                onClick={addLinha}
-                className="text-xs text-primary hover:underline font-medium"
-              >
+              <button onClick={addLinha} className="text-xs text-primary hover:underline font-medium">
                 + Adicionar linha
               </button>
             </div>
@@ -183,15 +178,19 @@ function EmitirGuiaModal({ obraId, onClose, onSaved }: {
   )
 }
 
-// ── Item de guia ──────────────────────────────────────────────────────────────
+// Formatter ao nível do módulo — Intl.DateTimeFormat é caro de construir
+const fmtDataGuia = new Intl.DateTimeFormat('pt-PT')
+function formatDataGuia(iso: string | null) {
+  return iso ? fmtDataGuia.format(new Date(iso + 'T00:00:00')) : '—'
+}
 
-function GuiaItem({ guia, onImprimir, onEstado }: {
+// ── Item de guia (memo — lista estável) ───────────────────────────────────────
+
+const GuiaItem = memo(function GuiaItem({ guia, onImprimir, onEstado }: {
   guia:       GuiaTransporte
   onImprimir: (g: GuiaTransporte) => void
   onEstado:   (g: GuiaTransporte, e: EstadoGuia) => void
 }) {
-  const fmtData = (iso: string | null) =>
-    iso ? new Intl.DateTimeFormat('pt-PT').format(new Date(iso + 'T00:00:00')) : '—'
 
   return (
     <div className="bg-card rounded-2xl border border-border p-4">
@@ -206,7 +205,7 @@ function GuiaItem({ guia, onImprimir, onEstado }: {
               <EstadoBadge estado={guia.estado} />
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {fmtData(guia.dataCarga)}
+              {formatDataGuia(guia.dataCarga)}
               {guia.origem && ` · ${guia.origem}`}
               {guia.destino && ` → ${guia.destino}`}
             </p>
@@ -243,27 +242,27 @@ function GuiaItem({ guia, onImprimir, onEstado }: {
       </div>
     </div>
   )
-}
+})
 
 // ── Página principal ───────────────────────────────────────────────────────────
 
 export function GuiasTransportePage() {
   const { id } = useParams<{ id: string }>()
 
-  const [showEmitir,    setShowEmitir]    = useState(false)
-  const [printGuia,     setPrintGuia]     = useState<GuiaTransporte | null>(null)
+  const [showEmitir, setShowEmitir] = useState(false)
+  const [printGuia,  setPrintGuia]  = useState<GuiaTransporte | null>(null)
 
-  const { obra, loading: obraLoading }           = useObra(id)
-  const { guias, loading, error, reload }         = useGuias(id)
-  const { actualizar, loading: actualizarLoading } = useActualizarEstadoGuia()
+  const { obra, loading: obraLoading }  = useObra(id)
+  const { guias, loading, error, reload } = useGuias(id)
+  const { actualizar }                    = useActualizarEstadoGuia(id ?? '')
 
-  const handleEstado = async (guia: GuiaTransporte, estado: EstadoGuia) => {
+  const handleEstado = useCallback(async (guia: GuiaTransporte, estado: EstadoGuia) => {
     const r = await actualizar(guia.id, estado)
     if (r !== null) {
       toast.success(`Guia ${guia.numero} marcada como ${estado.toLowerCase()}.`)
       reload()
     }
-  }
+  }, [actualizar, reload])
 
   if (obraLoading || !obra) {
     return (
@@ -295,21 +294,18 @@ export function GuiasTransportePage() {
         </button>
       </div>
 
-      {/* Erro */}
       {error && (
         <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Loading */}
-      {(loading || actualizarLoading) && (
+      {loading && (
         <div className="flex justify-center py-8">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      {/* Lista */}
       {!loading && guias.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <Truck className="w-10 h-10 text-muted-foreground/40" />
@@ -334,16 +330,14 @@ export function GuiasTransportePage() {
         ))}
       </div>
 
-      {/* Modal emitir */}
       {showEmitir && (
         <EmitirGuiaModal
           obraId={id!}
           onClose={() => setShowEmitir(false)}
-          onSaved={() => reload()}
+          onSaved={reload}
         />
       )}
 
-      {/* Vista de impressão */}
       {printGuia && (
         <GuiaPrintView
           guia={printGuia}

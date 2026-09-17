@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, memo } from 'react'
 import { useParams, Link } from 'react-router'
+import type { ElementType } from 'react'
 import {
   ArrowLeft, Plus, Printer, X, Loader2,
   AlertCircle, Users, Cloud, HardHat, Wrench,
@@ -16,12 +17,12 @@ import {
 
 // ── Ícones por categoria ───────────────────────────────────────────────────────
 
-const CAT_CONFIG: Record<CategoriaRegisto, { icon: React.ElementType; color: string; bg: string }> = {
-  OCORRENCIA:      { icon: AlertCircle, color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-100 dark:bg-red-900/30'     },
-  VISITA:          { icon: Users,       color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-100 dark:bg-blue-900/30'   },
-  CONDICOES_METEO: { icon: Cloud,       color: 'text-sky-600 dark:text-sky-400',     bg: 'bg-sky-100 dark:bg-sky-900/30'     },
-  PESSOAL:         { icon: Users,       color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30' },
-  EQUIPAMENTO:     { icon: Wrench,      color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+const CAT_CONFIG: Record<CategoriaRegisto, { icon: ElementType; color: string; bg: string }> = {
+  OCORRENCIA:      { icon: AlertCircle, color: 'text-red-600 dark:text-red-400',       bg: 'bg-red-100 dark:bg-red-900/30'        },
+  VISITA:          { icon: Users,       color: 'text-blue-600 dark:text-blue-400',     bg: 'bg-blue-100 dark:bg-blue-900/30'      },
+  CONDICOES_METEO: { icon: Cloud,       color: 'text-sky-600 dark:text-sky-400',       bg: 'bg-sky-100 dark:bg-sky-900/30'        },
+  PESSOAL:         { icon: Users,       color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30'  },
+  EQUIPAMENTO:     { icon: Wrench,      color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-100 dark:bg-amber-900/30'    },
 }
 
 const CATEGORIA_LABELS: Record<CategoriaRegisto, string> = {
@@ -32,7 +33,7 @@ const CATEGORIA_LABELS: Record<CategoriaRegisto, string> = {
   EQUIPAMENTO:     'Equipamento',
 }
 
-// ── Helpers de data ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmt = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
 
@@ -52,12 +53,12 @@ function RegistoModal({ obraId, registo, onClose, onSaved }: {
   onClose:  () => void
   onSaved:  () => void
 }) {
-  const { registar, loading: criarLoading } = useRegistarOcorrencia()
-  const { editar, loading: editarLoading }  = useEditarRegisto()
+  const { registar, loading: criarLoading } = useRegistarOcorrencia(obraId)
+  const { editar,   loading: editarLoading } = useEditarRegisto(obraId)
 
-  const [data,      setData]      = useState(registo?.data      ?? hoje())
-  const [categoria, setCategoria] = useState<CategoriaRegisto>(registo?.categoria ?? 'OCORRENCIA')
-  const [descricao, setDescricao] = useState(registo?.descricao ?? '')
+  const [data,      setData]      = useState(() => registo?.data      ?? hoje())
+  const [categoria, setCategoria] = useState<CategoriaRegisto>(() => registo?.categoria ?? 'OCORRENCIA')
+  const [descricao, setDescricao] = useState(() => registo?.descricao ?? '')
 
   const loading = criarLoading || editarLoading
 
@@ -142,9 +143,14 @@ function RegistoModal({ obraId, registo, onClose, onSaved }: {
   )
 }
 
-// ── Item da timeline ───────────────────────────────────────────────────────────
+// ── Item da timeline (memo — lista potencialmente longa) ──────────────────────
 
-function RegistoItem({ registo, onEdit }: { registo: RegistoObra; onEdit: (r: RegistoObra) => void }) {
+const RegistoItem = memo(function RegistoItem({
+  registo, onEdit,
+}: {
+  registo: RegistoObra
+  onEdit:  (r: RegistoObra) => void
+}) {
   const cfg  = CAT_CONFIG[registo.categoria]
   const Icon = cfg.icon
 
@@ -153,14 +159,12 @@ function RegistoItem({ registo, onEdit }: { registo: RegistoObra; onEdit: (r: Re
       className="flex gap-3 group cursor-pointer"
       onClick={() => onEdit(registo)}
     >
-      {/* Marcador da timeline */}
       <div className="flex flex-col items-center">
         <div className={`p-2 rounded-xl ${cfg.bg} shrink-0 mt-0.5 group-hover:scale-105 transition-transform`}>
           <Icon className={`w-4 h-4 ${cfg.color}`} />
         </div>
         <div className="w-px flex-1 bg-border mt-2" />
       </div>
-      {/* Conteúdo */}
       <div className="flex-1 pb-4 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${cfg.bg} ${cfg.color}`}>
@@ -171,38 +175,46 @@ function RegistoItem({ registo, onEdit }: { registo: RegistoObra; onEdit: (r: Re
       </div>
     </div>
   )
-}
+})
 
 // ── Página principal ───────────────────────────────────────────────────────────
 
 export function LivroObraPage() {
   const { id } = useParams<{ id: string }>()
 
-  const [filtro,       setFiltro]       = useState<CategoriaRegisto | undefined>(undefined)
-  const [showModal,    setShowModal]    = useState(false)
-  const [editRegisto,  setEditRegisto]  = useState<RegistoObra | undefined>(undefined)
+  const [filtro,      setFiltro]      = useState<CategoriaRegisto | undefined>(undefined)
+  const [showModal,   setShowModal]   = useState(false)
+  const [editRegisto, setEditRegisto] = useState<RegistoObra | undefined>(undefined)
 
-  const { obra, loading: obraLoading } = useObra(id)
-  const { registos, loading, error, reload } = useLivroObra(id, filtro)
+  const { obra, loading: obraLoading }         = useObra(id)
+  const { registos, loading, error, reload }   = useLivroObra(id, filtro)
 
-  // Agrupar por data para a timeline
+  // Agrupamento por data — calculado a partir da lista já filtrada no hook.
+  // Usa push (O(n)) em vez de spread (O(n²)) para grupos com muitas entradas.
   const groups = useMemo(() => {
     const map = new Map<string, RegistoObra[]>()
     for (const r of registos) {
-      const existing = map.get(r.data) ?? []
-      map.set(r.data, [...existing, r])
+      let arr = map.get(r.data)
+      if (!arr) { arr = []; map.set(r.data, arr) }
+      arr.push(r)
     }
     return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [registos])
 
-  const handleNovoRegisto = () => {
+  const handleNovoRegisto = useCallback(() => {
     setEditRegisto(undefined)
     setShowModal(true)
-  }
+  }, [])
 
-  const handlePrint = () => {
-    window.print()
-  }
+  const handleEdit = useCallback((r: RegistoObra) => {
+    setEditRegisto(r)
+    setShowModal(true)
+  }, [])
+
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false)
+    setEditRegisto(undefined)
+  }, [])
 
   if (obraLoading || !obra) {
     return (
@@ -214,7 +226,6 @@ export function LivroObraPage() {
 
   return (
     <>
-      {/* ── Print styles ──────────────────────────────────────────────────────── */}
       <style>{`
         @media print {
           body { font-size: 12px; }
@@ -238,7 +249,7 @@ export function LivroObraPage() {
           </div>
           <div className="flex gap-2 shrink-0">
             <button
-              onClick={handlePrint}
+              onClick={() => window.print()}
               className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-xs font-medium hover:bg-accent transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -285,21 +296,18 @@ export function LivroObraPage() {
           ))}
         </div>
 
-        {/* Estado de erro */}
         {error && (
           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive print-hidden">
             {error}
           </div>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="flex justify-center py-8 print-hidden">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         )}
 
-        {/* Timeline */}
         {!loading && groups.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-12 text-center print-hidden">
             <HardHat className="w-10 h-10 text-muted-foreground/40" />
@@ -317,7 +325,6 @@ export function LivroObraPage() {
 
         {groups.map(([data, items]) => (
           <div key={data} className="space-y-0">
-            {/* Separador de data */}
             <div className="flex items-center gap-3 mb-3">
               <div className="h-px flex-1 bg-border" />
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">
@@ -325,15 +332,10 @@ export function LivroObraPage() {
               </span>
               <div className="h-px flex-1 bg-border" />
             </div>
-            {/* Registos desse dia */}
             <div className="bg-card rounded-2xl border border-border p-4 space-y-0">
               {items.map((registo, idx) => (
                 <div key={registo.id}>
-                  <RegistoItem
-                    registo={registo}
-                    onEdit={r => { setEditRegisto(r); setShowModal(true) }}
-                  />
-                  {/* Ocultar o separador após o último item */}
+                  <RegistoItem registo={registo} onEdit={handleEdit} />
                   {idx < items.length - 1 && <div className="h-px bg-border -mx-4 mb-3" />}
                 </div>
               ))}
@@ -342,12 +344,11 @@ export function LivroObraPage() {
         ))}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <RegistoModal
           obraId={id!}
           registo={editRegisto}
-          onClose={() => { setShowModal(false); setEditRegisto(undefined) }}
+          onClose={handleCloseModal}
           onSaved={reload}
         />
       )}

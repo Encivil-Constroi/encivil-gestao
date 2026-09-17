@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { captureError } from './sentry'
 import { parseSupabaseError } from './parseSupabaseError'
 import { invalidateCache } from './useAsync'
@@ -11,6 +11,9 @@ import { invalidateCache } from './useAsync'
  * `invalidates`: chaves de cache a limpar após sucesso da mutação.
  * Usar nas mesmas chaves passadas como `cacheKey` nos hooks de fetch
  * correspondentes, para garantir que a próxima visita busca dados frescos.
+ *
+ * `mutate` é estável (useCallback + useRef) — não quebrará dependências em
+ * useCallback/useMemo dos componentes que o consomem, tornando React.memo eficaz.
  */
 export function useMutation<TArgs extends unknown[], TResult>(
   mutateFn: (...args: TArgs) => Promise<TResult>,
@@ -20,21 +23,30 @@ export function useMutation<TArgs extends unknown[], TResult>(
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
-  const mutate = async (...args: TArgs): Promise<TResult | null> => {
+  // Refs guardam sempre a versão mais recente sem forçar re-criação de mutate.
+  // Permite que mutate tenha deps [] e seja referência estável entre renders.
+  const mutateFnRef    = useRef(mutateFn)
+  mutateFnRef.current  = mutateFn
+  const invalidatesRef = useRef(options.invalidates)
+  invalidatesRef.current = options.invalidates
+  const errorMsgRef    = useRef(errorMsg)
+  errorMsgRef.current  = errorMsg
+
+  const mutate = useCallback(async (...args: TArgs): Promise<TResult | null> => {
     setLoading(true)
     setError(null)
     try {
-      const result = await mutateFn(...args)
-      if (options.invalidates?.length) invalidateCache(...options.invalidates)
+      const result = await mutateFnRef.current(...args)
+      if (invalidatesRef.current?.length) invalidateCache(...invalidatesRef.current)
       return result
     } catch (e) {
-      setError(parseSupabaseError(e, errorMsg))
+      setError(parseSupabaseError(e, errorMsgRef.current))
       captureError(e)
       return null
     } finally {
       setLoading(false)
     }
-  }
+  }, []) // deps vazia — mutate é estável por design via useRef
 
   return { mutate, loading, error }
 }
