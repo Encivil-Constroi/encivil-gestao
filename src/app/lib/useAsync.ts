@@ -7,10 +7,19 @@ import { parseSupabaseError } from './parseSupabaseError'
 // reload completo da página. Invalidado por mutações via invalidateCache().
 const _cache = new Map<string, { data: unknown; ts: number }>()
 
-/** Remove as entradas de cache com as chaves indicadas. Chamar após mutações
- *  que alteram os dados em lista (criar, atualizar, arquivar, eliminar). */
+/** Remove entradas de cache pelas chaves indicadas.
+ *  Chaves terminadas em '*' invalidam por prefixo (ex: 'abastecimentos-*'). */
 export function invalidateCache(...keys: string[]): void {
-  for (const k of keys) _cache.delete(k)
+  for (const k of keys) {
+    if (k.endsWith('*')) {
+      const prefix = k.slice(0, -1)
+      for (const ck of _cache.keys()) {
+        if (ck.startsWith(prefix)) _cache.delete(ck)
+      }
+    } else {
+      _cache.delete(k)
+    }
+  }
 }
 
 /**

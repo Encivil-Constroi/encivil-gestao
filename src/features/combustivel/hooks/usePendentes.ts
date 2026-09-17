@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { useAsync } from '@/app/lib/useAsync'
+import { useAsync, invalidateCache } from '@/app/lib/useAsync'
 
 export type AbastecimentoPendente = {
   id: string
@@ -35,6 +35,8 @@ export function usePendentes() {
   const aprovar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('aprovar_abastecimento_pendente', { p_id: id })
     if (err) return false
+    // Invalidar pendentes + todos os caches de abastecimentos (filtros variados)
+    invalidateCache('abastecimentos-pendentes', 'abastecimentos-*')
     reload()
     return true
   }, [reload])
@@ -42,6 +44,7 @@ export function usePendentes() {
   const rejeitar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('rejeitar_abastecimento_pendente', { p_id: id })
     if (err) return false
+    invalidateCache('abastecimentos-pendentes', 'abastecimentos-*')
     reload()
     return true
   }, [reload])

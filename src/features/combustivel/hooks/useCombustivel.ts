@@ -63,10 +63,11 @@ export function useAbastecimento(id: string | undefined) {
 }
 
 export function useGuardarAbastecimento() {
-  const criador    = useMutation(criarAbastecimento,    'Erro ao guardar')
+  const inv = { invalidates: ['abastecimentos-*'] }
+  const criador    = useMutation(criarAbastecimento,    'Erro ao guardar', inv)
   const atualizador = useMutation(
     (id: string, input: AtualizarAbastecimento) => atualizarAbastecimento(id, input),
-    'Erro ao guardar'
+    'Erro ao guardar', inv
   )
   return {
     criar:    criador.mutate,
@@ -78,7 +79,9 @@ export function useGuardarAbastecimento() {
 
 export function useEliminarAbastecimento() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await eliminarAbastecimento(id); return true }
+    async (id: string): Promise<true> => { await eliminarAbastecimento(id); return true },
+    'Erro ao eliminar',
+    { invalidates: ['abastecimentos-*'] }
   )
   const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }
