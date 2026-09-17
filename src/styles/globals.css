@@ -1,3 +1,22 @@
+/* ── Base UX ─────────────────────────────────────────────────────────
+ * Smooth scrolling e foco visível acessível. */
+html { scroll-behavior: smooth; }
+
+/* Foco visível mais nítido que o padrão do Tailwind */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Linha interativa — hover suave para listas e tabelas */
+.row-hover {
+  transition: background-color 0.14s ease;
+}
+.row-hover:hover {
+  background-color: color-mix(in oklch, var(--accent) 70%, transparent);
+}
+
 /* ── ENCIVIL Motion System ───────────────────────────────────────────
  * Pure CSS animations — zero runtime cost, GPU-composited transforms.
  * All animations respect prefers-reduced-motion.

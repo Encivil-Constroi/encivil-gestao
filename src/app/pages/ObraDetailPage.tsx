@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
-  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench, BarChart2, PieChart, BookOpen, Truck,
+  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench, BarChart2, PieChart, BookOpen, Truck, MoreHorizontal,
 } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getUnitLabel } from '../data/mockData';
@@ -18,6 +18,18 @@ export function ObraDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { podeObras } = useRole();
+
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [moreOpen]);
 
   const { obra, loading } = useObra(id);
   const { subs, loading: subsLoading } = useSubempreiteirosComExecutado(id);
@@ -36,7 +48,7 @@ export function ObraDetailPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
       {/* Cabeçalho */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
           <ChevronLeft className="w-5 h-5" aria-hidden="true" />
         </button>
@@ -49,38 +61,50 @@ export function ObraDetailPage() {
             }`}>{obra.status === 'concluida' ? 'Concluída' : 'Ativa'}</span>
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/obras/${obra.id}/custos`)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
-          title="Custeio Consolidado"
-        >
-          <PieChart className="w-4 h-4" />
-          <span className="hidden sm:inline">Custos</span>
-        </button>
-        <button
-          onClick={() => navigate(`/obras/${obra.id}/livro`)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
-          title="Livro de Obra Digital"
-        >
-          <BookOpen className="w-4 h-4" />
-          <span className="hidden sm:inline">Livro</span>
-        </button>
-        <button
-          onClick={() => navigate(`/obras/${obra.id}/guias`)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
-          title="Guias de Transporte"
-        >
-          <Truck className="w-4 h-4" />
-          <span className="hidden sm:inline">Guias</span>
-        </button>
-        <button
-          onClick={() => window.open(`/obras/${obra.id}/relatorio`, '_blank')}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
-          title="Relatório Financeiro"
-        >
-          <BarChart2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Relatório</span>
-        </button>
+
+        {/* Ações secundárias — visíveis em sm+, colapsadas em mobile */}
+        <div className="hidden sm:flex items-center gap-1.5">
+          <button onClick={() => navigate(`/obras/${obra.id}/custos`)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground" title="Custeio Consolidado">
+            <PieChart className="w-4 h-4" /><span>Custos</span>
+          </button>
+          <button onClick={() => navigate(`/obras/${obra.id}/livro`)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground" title="Livro de Obra Digital">
+            <BookOpen className="w-4 h-4" /><span>Livro</span>
+          </button>
+          <button onClick={() => navigate(`/obras/${obra.id}/guias`)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground" title="Guias de Transporte">
+            <Truck className="w-4 h-4" /><span>Guias</span>
+          </button>
+          <button onClick={() => window.open(`/obras/${obra.id}/relatorio`, '_blank')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground" title="Relatório Financeiro">
+            <BarChart2 className="w-4 h-4" /><span>Relatório</span>
+          </button>
+        </div>
+
+        {/* ··· dropdown — apenas em mobile */}
+        <div ref={moreRef} className="relative sm:hidden">
+          <button
+            onClick={() => setMoreOpen(v => !v)}
+            className="p-2 rounded-xl border border-border hover:bg-accent transition-colors text-muted-foreground"
+            aria-label="Mais ações"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          {moreOpen && (
+            <div className="absolute right-0 top-full mt-1.5 bg-card border border-border rounded-xl shadow-lg z-20 py-1 min-w-40 enc-scale-in">
+              <button onClick={() => { navigate(`/obras/${obra.id}/custos`); setMoreOpen(false); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-accent transition-colors">
+                <PieChart className="w-4 h-4 text-muted-foreground" /> Custos
+              </button>
+              <button onClick={() => { navigate(`/obras/${obra.id}/livro`); setMoreOpen(false); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-accent transition-colors">
+                <BookOpen className="w-4 h-4 text-muted-foreground" /> Livro de Obra
+              </button>
+              <button onClick={() => { navigate(`/obras/${obra.id}/guias`); setMoreOpen(false); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-accent transition-colors">
+                <Truck className="w-4 h-4 text-muted-foreground" /> Guias
+              </button>
+              <button onClick={() => { window.open(`/obras/${obra.id}/relatorio`, '_blank'); setMoreOpen(false); }} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-accent transition-colors">
+                <BarChart2 className="w-4 h-4 text-muted-foreground" /> Relatório
+              </button>
+            </div>
+          )}
+        </div>
+
         {podeObras && (
           <button onClick={() => navigate(`/obras/${obra.id}/editar`)} className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold shrink-0">
             <Pencil className="w-4 h-4" /> <span className="hidden sm:inline">Editar</span>

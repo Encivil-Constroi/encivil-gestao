@@ -20,10 +20,10 @@ import {
 // ── Badge de estado ───────────────────────────────────────────────────────────
 
 const ESTADO_META: Record<EstadoFatura, { label: string; cls: string; icon: typeof FileText }> = {
-  RECEBIDA:     { label: 'Recebida',     cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',   icon: Inbox },
-  EXTRAIDA:     { label: 'Extraída',     cls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: Bot },
-  CLASSIFICADA: { label: 'Classificada', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400', icon: Tag },
-  LANCADA:      { label: 'Lançada',      cls: 'bg-success/15 text-success',  icon: CheckCircle },
+  RECEBIDA:     { label: 'Recebida',     cls: 'bg-muted text-muted-foreground',   icon: Inbox },
+  EXTRAIDA:     { label: 'Extraída',     cls: 'bg-warning/15 text-warning',       icon: Bot },
+  CLASSIFICADA: { label: 'Classificada', cls: 'bg-primary/10 text-primary',       icon: Tag },
+  LANCADA:      { label: 'Lançada',      cls: 'bg-success/15 text-success',       icon: CheckCircle },
 }
 
 type EstadoFilter = EstadoFatura | 'TODOS'
