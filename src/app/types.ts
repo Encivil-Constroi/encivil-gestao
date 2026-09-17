@@ -487,3 +487,47 @@ export interface FormacaoColaborador {
   entidade?: string;
   regraAlertaId?: string;
 }
+
+// ── Fase 6 — Faturas de Fornecedor ────────────────────────────────────────────
+
+export type EstadoFatura   = 'RECEBIDA' | 'EXTRAIDA' | 'CLASSIFICADA' | 'LANCADA';
+export type DestinoLinha   = 'ARMAZEM'  | 'OBRA'     | 'SERVICO'      | 'DESCONHECIDO';
+
+export interface LinhaFatura {
+  id: string;
+  faturaId: string;
+  descricao: string;
+  descricaoNorm?: string;
+  quantidade?: number;
+  unidade?: string;
+  precoUnitario?: number;
+  totalLinha?: number;
+  destino: DestinoLinha;
+  artigoId?: string;
+  artigoNome?: string;
+  confianca?: number;   // 0–1; ≥ 0.8 = auto-classificado com confiança
+  lancado: boolean;
+  movimentoId?: string;
+}
+
+export interface FaturaFornecedor {
+  id: string;
+  numeroFatura?: string;
+  fornecedor: string;
+  dataFatura?: Date;
+  dataRecepcao: Date;
+  totalFatura?: number;
+  estado: EstadoFatura;
+  ficheiroPatch?: string;   // path no storage (para URL assinada)
+  ficheiroUrl?: string;     // URL assinada temporária (não persistida)
+  obraId?: string;
+  obraNome?: string;
+  observacoes?: string;
+  linhas?: LinhaFatura[];
+  extraidoEm?: Date;
+  classificadoEm?: Date;
+  lancadoEm?: Date;
+  criadoPor?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

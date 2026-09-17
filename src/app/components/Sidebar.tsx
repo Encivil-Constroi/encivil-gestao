@@ -21,6 +21,7 @@ import {
   Fingerprint,
   GraduationCap,
   UserCheck,
+  Receipt,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
@@ -92,6 +93,8 @@ const menuSections: MenuSection[] = [
     items: [
       { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart,
         prefetch: () => { void import('@/app/pages/ReportsPage') } },
+      { path: '/faturas',                 label: 'Faturas',       icon: Receipt,   gestorOnly: true,
+        prefetch: () => { void import('@/features/faturas') } },
       { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true,
         prefetch: () => { void import('@/app/pages/ExportacaoContabilidadePage') } },
     ],

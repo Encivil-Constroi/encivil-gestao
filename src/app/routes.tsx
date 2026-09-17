@@ -146,6 +146,9 @@ const ObraRelatorioPage         = lazy(() => import('./pages/ObraRelatorioPage')
 const ExportacaoContabilidadePage = lazy(() => import('./pages/ExportacaoContabilidadePage').then(m => ({ default: m.ExportacaoContabilidadePage })));
 const BackupPage                = lazy(() => import('./pages/BackupPage').then(m => ({ default: m.BackupPage })));
 
+const FaturasPage           = lazy(() => import('@/features/faturas').then(m => ({ default: m.FaturasPage })));
+const ClassificarFaturaPage = lazy(() => import('@/features/faturas').then(m => ({ default: m.ClassificarFaturaPage })));
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -225,6 +228,8 @@ export const router = createBrowserRouter([
           { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
           { path: 'relatorio-semanal', element: <Navigate to="/relatorios" replace /> },
+          { path: 'faturas',                  element: <L><RoleGuard require="gestor"><FaturasPage /></RoleGuard></L> },
+          { path: 'faturas/:id/classificar', element: <L><RoleGuard require="gestor"><ClassificarFaturaPage /></RoleGuard></L> },
           { path: 'exportacao-contabilidade', element: <L><RoleGuard require="gestor"><ExportacaoContabilidadePage /></RoleGuard></L> },
           { path: 'backup',                element: <L><RoleGuard require="admin"><BackupPage /></RoleGuard></L> },
           { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
