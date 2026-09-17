@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { Outlet, useLocation, ScrollRestoration } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { MobileBottomNav } from '../components/MobileBottomNav';
@@ -26,6 +26,7 @@ export function MainLayout() {
             <Outlet />
           </div>
         </main>
+        <ScrollRestoration />
       </div>
 
       <MobileBottomNav />
