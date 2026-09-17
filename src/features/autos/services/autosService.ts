@@ -73,10 +73,7 @@ function toMeasurement(row: AutoRow): Measurement {
 const SELECT = '*, auto_linhas(*), subempreiteiros(percentagem_retencao)'
 
 export async function listarAutos(subId: string): Promise<Measurement[]> {
-  // autos_medicao ausente dos tipos gerados — regenerar após `npx supabase gen types --local`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as unknown as any
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('autos_medicao')
     .select(SELECT)
     .eq('subempreiteiro_id', subId)
@@ -86,9 +83,7 @@ export async function listarAutos(subId: string): Promise<Measurement[]> {
 }
 
 export async function buscarAuto(id: string): Promise<Measurement> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as unknown as any
-  const { data, error } = await db.from('autos_medicao').select(SELECT).eq('id', id).single()
+  const { data, error } = await supabase.from('autos_medicao').select(SELECT).eq('id', id).single()
   if (error) throw error
   return toMeasurement(data as AutoRow)
 }
@@ -169,18 +164,14 @@ export async function validarAuto(id: string): Promise<Measurement> {
 }
 
 export async function marcarAutoPago(id: string, referencia?: string): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as unknown as any
-  const { error } = await db.rpc('marcar_auto_pago', {
+  const { error } = await supabase.rpc('marcar_auto_pago', {
     p_auto_id:    id,
-    p_referencia: referencia ?? null,
+    p_referencia: referencia,
   })
   if (error) throw error
 }
 
 export async function marcarAutoEmAtraso(id: string): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as unknown as any
-  const { error } = await db.rpc('marcar_auto_em_atraso', { p_auto_id: id })
+  const { error } = await supabase.rpc('marcar_auto_em_atraso', { p_auto_id: id })
   if (error) throw error
 }

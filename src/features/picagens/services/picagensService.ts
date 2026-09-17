@@ -39,7 +39,7 @@ function toPicagem(r: RowWithJoins): Picagem {
     obraNome: r.obras?.nome,
     tipo: r.tipo as TipoPicagem,
     timestampDispositivo: new Date(r.timestamp_dispositivo),
-    timestampServidor: new Date(r.timestamp_servidor),
+    timestampServidor: r.timestamp_servidor ? new Date(r.timestamp_servidor) : new Date(),
     desvioRelogioS: r.desvio_relogio_s ?? undefined,
     resultado: r.resultado as ResultadoPicagem,
     origem: r.origem as OrigemPicagem,
