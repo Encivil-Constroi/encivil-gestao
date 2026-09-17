@@ -149,6 +149,8 @@ const BackupPage                = lazy(() => import('./pages/BackupPage').then(m
 const FaturasPage           = lazy(() => import('@/features/faturas').then(m => ({ default: m.FaturasPage })));
 const ClassificarFaturaPage = lazy(() => import('@/features/faturas').then(m => ({ default: m.ClassificarFaturaPage })));
 const CustosObraPage        = lazy(() => import('@/features/custos').then(m => ({ default: m.CustosObraPage })));
+const LivroObraPage         = lazy(() => import('@/features/livro-obra').then(m => ({ default: m.LivroObraPage })));
+const GuiasTransportePage   = lazy(() => import('@/features/livro-obra').then(m => ({ default: m.GuiasTransportePage })));
 
 export const router = createBrowserRouter([
   {
@@ -214,6 +216,8 @@ export const router = createBrowserRouter([
           { path: 'obras/:id',                element: <L><ObraDetailPage /></L> },
           { path: 'obras/:id/editar',         element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
           { path: 'obras/:id/custos',         element: <L><CustosObraPage /></L> },
+          { path: 'obras/:id/livro',          element: <L><LivroObraPage /></L> },
+          { path: 'obras/:id/guias',          element: <L><GuiasTransportePage /></L> },
           { path: 'subempreiteiros',          element: <L><SubempreiteirosPage /></L> },
           { path: 'subempreiteiros/novo',     element: <L><RoleGuard require="gestor"><SubempreiteiroFormPage /></RoleGuard></L> },
           { path: 'subempreiteiros/:id',      element: <L><SubempreiteiroDetailPage /></L> },
