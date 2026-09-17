@@ -5,9 +5,6 @@ import { toast } from 'sonner'
 const CHECK_INTERVAL_MS = 60_000
 
 export function UpdatePrompt() {
-  // Rastreia se o app esteve em background desde o último foco.
-  // Se sim, a atualização aplica-se silenciosamente — o utilizador não vai
-  // reparar num reload enquanto o app estava minimizado.
   const wasHiddenRef = useRef(false)
 
   useEffect(() => {
@@ -28,7 +25,6 @@ export function UpdatePrompt() {
         if (registration.installing || !navigator.onLine) return
         registration.update().catch(() => {})
       }
-      // Verifica a cada minuto e sempre que o app ganhar visibilidade/foco
       setInterval(check, CHECK_INTERVAL_MS)
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') check()
@@ -40,15 +36,31 @@ export function UpdatePrompt() {
   useEffect(() => {
     if (!needRefresh) return
 
+    const apply = () => {
+      // Registar o controllerchange ANTES de chamar skipWaiting para não perder o evento.
+      // Usar window.location.href em vez de reload() — no iOS Safari PWA o reload()
+      // pode servir o bundle antigo do cache do browser, enquanto uma navegação
+      // limpa força o novo SW a responder com os assets correctos.
+      navigator.serviceWorker.addEventListener(
+        'controllerchange',
+        () => { window.location.href = '/' },
+        { once: true },
+      )
+
+      // Envia SKIP_WAITING ao SW em espera (reloadPage=false: reload é nosso)
+      updateServiceWorker(false)
+
+      // Fallback: se controllerchange não disparar em 4s (iOS edge case), recarregar
+      setTimeout(() => { window.location.href = '/' }, 4_000)
+    }
+
     if (wasHiddenRef.current) {
-      // App estava em background — recarrega imediatamente sem interrupção
-      updateServiceWorker(true)
+      apply()
       return
     }
 
-    // App em uso — avisa brevemente e atualiza sozinho
-    toast.loading('A atualizar para nova versão…', { duration: 3000 })
-    const t = setTimeout(() => updateServiceWorker(true), 3000)
+    toast.loading('Nova versão — a atualizar…', { duration: 2500 })
+    const t = setTimeout(apply, 2500)
     return () => clearTimeout(t)
   }, [needRefresh, updateServiceWorker])
 
