@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
-  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench, BarChart2,
+  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench, BarChart2, PieChart,
 } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getUnitLabel } from '../data/mockData';
@@ -49,6 +49,14 @@ export function ObraDetailPage() {
             }`}>{obra.status === 'concluida' ? 'Concluída' : 'Ativa'}</span>
           </div>
         </div>
+        <button
+          onClick={() => navigate(`/obras/${obra.id}/custos`)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
+          title="Custeio Consolidado"
+        >
+          <PieChart className="w-4 h-4" />
+          <span className="hidden sm:inline">Custos</span>
+        </button>
         <button
           onClick={() => window.open(`/obras/${obra.id}/relatorio`, '_blank')}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border hover:bg-accent transition-colors text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"

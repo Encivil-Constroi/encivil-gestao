@@ -148,6 +148,7 @@ const BackupPage                = lazy(() => import('./pages/BackupPage').then(m
 
 const FaturasPage           = lazy(() => import('@/features/faturas').then(m => ({ default: m.FaturasPage })));
 const ClassificarFaturaPage = lazy(() => import('@/features/faturas').then(m => ({ default: m.ClassificarFaturaPage })));
+const CustosObraPage        = lazy(() => import('@/features/custos').then(m => ({ default: m.CustosObraPage })));
 
 export const router = createBrowserRouter([
   {
@@ -212,6 +213,7 @@ export const router = createBrowserRouter([
           { path: 'obras/nova',               element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
           { path: 'obras/:id',                element: <L><ObraDetailPage /></L> },
           { path: 'obras/:id/editar',         element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
+          { path: 'obras/:id/custos',         element: <L><CustosObraPage /></L> },
           { path: 'subempreiteiros',          element: <L><SubempreiteirosPage /></L> },
           { path: 'subempreiteiros/novo',     element: <L><RoleGuard require="gestor"><SubempreiteiroFormPage /></RoleGuard></L> },
           { path: 'subempreiteiros/:id',      element: <L><SubempreiteiroDetailPage /></L> },
