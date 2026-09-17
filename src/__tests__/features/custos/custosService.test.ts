@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client'
 import {
   custoObra,
   custosMateriaisCombustivelPorObra,
+  custoConsolidado,
+  actualizarOrcamentosObra,
 } from '@/features/custos/custosService'
 
 // ── Supabase mock ─────────────────────────────────────────────────────────────
@@ -205,5 +207,132 @@ describe('custosMateriaisCombustivelPorObra', () => {
   it('propaga erro da RPC', async () => {
     rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'timeout' } })
     await expect(custosMateriaisCombustivelPorObra()).rejects.toMatchObject({ message: 'timeout' })
+  })
+})
+
+// ── custoConsolidado (F7) ─────────────────────────────────────────────────────
+
+// Helper: configura os dois mocks em paralelo (rpc + from.select.eq.single)
+function setupConsolidado(
+  rpcData: Record<string, number>,
+  obraData: Record<string, number | null> = {},
+) {
+  // 1º call: rpc (vai para rpcMock via db.rpc)
+  rpcMock.mockResolvedValueOnce({ data: rpcData, error: null })
+  // 2º call: from('obras').select(...).eq('id',...).single()
+  const single = vi.fn().mockResolvedValueOnce({ data: obraData, error: null })
+  b.eq.mockReturnValueOnce({ single })
+  vi.mocked(supabase.from).mockReturnValueOnce(b as never)
+}
+
+const RPC_ZERO = {
+  materiais: 0, combustivel: 0, mao_de_obra: 0,
+  fornecedores: 0, subempreiteiros: 0, total: 0,
+}
+
+describe('custoConsolidado', () => {
+  it('mapeia campos do RPC para camelCase', async () => {
+    setupConsolidado({
+      materiais: 500, combustivel: 300, mao_de_obra: 1200,
+      fornecedores: 800, subempreiteiros: 5000, total: 7800,
+    })
+
+    const r = await custoConsolidado('obra-1', '2026-01-01', '2026-12-31')
+
+    expect(r.materiais).toBe(500)
+    expect(r.maoDeObra).toBe(1200)
+    expect(r.combustivel).toBe(300)
+    expect(r.fornecedores).toBe(800)
+    expect(r.subempreiteiros).toBe(5000)
+    expect(r.total).toBe(7800)
+  })
+
+  it('não inclui orcamentos quando todos os campos são null', async () => {
+    setupConsolidado(RPC_ZERO, {
+      orcamento_materiais: null, orcamento_mao_obra: null,
+      orcamento_combustivel: null, orcamento_fornecedores: null,
+      orcamento_subempreiteiros: null,
+    })
+
+    const r = await custoConsolidado('obra-1', '2026-01-01', '2026-12-31')
+    expect(r.orcamentos).toBeUndefined()
+  })
+
+  it('calcula total do orçamento somando apenas os campos definidos', async () => {
+    setupConsolidado(RPC_ZERO, {
+      orcamento_materiais: 1000,
+      orcamento_mao_obra: 2000,
+      orcamento_combustivel: null,
+      orcamento_fornecedores: null,
+      orcamento_subempreiteiros: null,
+    })
+
+    const r = await custoConsolidado('obra-1', '2026-01-01', '2026-12-31')
+    expect(r.orcamentos?.total).toBe(3000)
+    expect(r.orcamentos?.materiais).toBe(1000)
+    expect(r.orcamentos?.maoDeObra).toBe(2000)
+    expect(r.orcamentos?.combustivel).toBeUndefined()
+  })
+
+  it('propaga erro da RPC', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'rpc error' } })
+    const single = vi.fn().mockResolvedValueOnce({ data: {}, error: null })
+    b.eq.mockReturnValueOnce({ single })
+
+    await expect(custoConsolidado('obra-1', '2026-01-01', '2026-12-31'))
+      .rejects.toMatchObject({ message: 'rpc error' })
+  })
+
+  it('período sem movimentos retorna zeros (não null nem erro)', async () => {
+    setupConsolidado(RPC_ZERO)
+
+    const r = await custoConsolidado('obra-1', '2025-01-01', '2025-01-31')
+    expect(r.total).toBe(0)
+    expect(r.materiais).toBe(0)
+    expect(r.maoDeObra).toBe(0)
+  })
+})
+
+// ── actualizarOrcamentosObra (F7) ─────────────────────────────────────────────
+
+describe('actualizarOrcamentosObra', () => {
+  it('envia os campos mapeados para snake_case', async () => {
+    const updateMock = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValueOnce({ error: null }) })
+    vi.mocked(supabase.from).mockReturnValueOnce({ update: updateMock } as never)
+
+    await actualizarOrcamentosObra('obra-1', {
+      materiais: 1000, maoDeObra: 2000, combustivel: 500,
+      fornecedores: 300, subempreiteiros: 4000,
+    })
+
+    expect(updateMock).toHaveBeenCalledWith({
+      orcamento_materiais: 1000,
+      orcamento_mao_obra:  2000,
+      orcamento_combustivel: 500,
+      orcamento_fornecedores: 300,
+      orcamento_subempreiteiros: 4000,
+    })
+  })
+
+  it('envia null para campos omitidos (limpeza de orçamento)', async () => {
+    const updateMock = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValueOnce({ error: null }) })
+    vi.mocked(supabase.from).mockReturnValueOnce({ update: updateMock } as never)
+
+    await actualizarOrcamentosObra('obra-1', { materiais: 1000 })
+
+    const call = updateMock.mock.calls[0][0] as Record<string, unknown>
+    expect(call.orcamento_materiais).toBe(1000)
+    expect(call.orcamento_mao_obra).toBeNull()
+    expect(call.orcamento_combustivel).toBeNull()
+  })
+
+  it('propaga erro do Supabase', async () => {
+    const updateMock = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValueOnce({ error: { message: 'permission denied' } }),
+    })
+    vi.mocked(supabase.from).mockReturnValueOnce({ update: updateMock } as never)
+
+    await expect(actualizarOrcamentosObra('obra-1', {}))
+      .rejects.toMatchObject({ message: 'permission denied' })
   })
 })
