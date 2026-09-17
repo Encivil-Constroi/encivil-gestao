@@ -304,9 +304,9 @@ export function ClassificarFaturaPage() {
 
   const [mobileTab, setMobileTab] = useState<'doc' | 'linhas'>('linhas')
   const [linhaStates, setLinhaStates] = useState<LinhaState[]>([])
-  const [inicializado, setInicializado] = useState(false)
+  const [faturaCached, setFaturaCached] = useState<string | null>(null)
 
-  const { data: fatura, loading, error } = useAsync(
+  const { data: fatura, loading, error, reload: reloadFatura } = useAsync(
     () => buscarFatura(id!),
     [id],
     { enabled: !!id, errorMsg: 'Erro ao carregar fatura' }
@@ -327,17 +327,18 @@ export function ClassificarFaturaPage() {
     'Erro ao lançar fatura'
   )
 
-  // Inicializar estado local das linhas quando a fatura carrega
+  // Inicializar estado local apenas quando carrega uma fatura diferente (fatura.id muda).
+  // Não re-inicializa em reloads do mesmo id — preserva edições locais não guardadas.
   useEffect(() => {
-    if (!fatura?.linhas || inicializado) return
+    if (!fatura?.linhas || fatura.id === faturaCached) return
     setLinhaStates(fatura.linhas.map(l => ({
       id:        l.id,
       destino:   l.destino,
       artigoId:  l.artigoId ?? '',
       confianca: l.confianca ?? 0,
     })))
-    setInicializado(true)
-  }, [fatura, inicializado])
+    setFaturaCached(fatura.id)
+  }, [fatura, faturaCached])
 
   const handleChange = (id: string, patch: Partial<LinhaState>) => {
     setLinhaStates(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
@@ -353,6 +354,7 @@ export function ClassificarFaturaPage() {
     const result = await guardarMut(linhas)
     if (result !== null) {
       toast.success('Classificação guardada e regras de aprendizagem actualizadas.')
+      reloadFatura()
     }
   }
 

@@ -190,7 +190,7 @@ export async function extrairFatura(id: string): Promise<ExtrairFaturaResult> {
   const jwt = sessionData.session?.access_token
   if (!jwt) throw new Error('Não autenticado')
 
-  const supabaseUrl = (import.meta as unknown as { env: Record<string, string> }).env.VITE_SUPABASE_URL
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
   const res = await fetch(`${supabaseUrl}/functions/v1/extrair-fatura`, {
     method:  'POST',
