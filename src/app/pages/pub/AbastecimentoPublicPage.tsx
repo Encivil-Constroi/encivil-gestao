@@ -95,10 +95,19 @@ export function AbastecimentoPublicPage() {
     if (!nome.trim()) { setErr('Indique o seu nome.'); return }
 
     setSaving(true)
-    // tipo_fonte e estado adicionados em migration 20260921, tipos ainda não regenerados
-    // @ts-ignore
-    const insertResult = await supabase.from('comb_abastecimentos_pendentes').insert({ veiculo_id: vehicleId!, veiculo_nome: vehicleName, funcionario_nome: nome.trim(), data: todayStr(), tipo_fonte: tipo, estado: 'AGUARDA_AUTORIZACAO', contador: km ? parseFloat(km) : null }).select('id').single()
-    const { data, error } = insertResult as { data: { id: string } | null; error: unknown }
+    const { data, error } = await supabase
+      .from('comb_abastecimentos_pendentes')
+      .insert({
+        veiculo_id:       vehicleId!,
+        veiculo_nome:     vehicleName,
+        funcionario_nome: nome.trim(),
+        data:             todayStr(),
+        tipo_fonte:       tipo ?? 'POSTO_RUA',
+        estado:           'AGUARDA_AUTORIZACAO',
+        contador:         km ? parseFloat(km) : null,
+      })
+      .select('id')
+      .single()
     setSaving(false)
 
     if (error || !data) { setErr('Erro ao enviar. Verifica a ligação.'); return }
@@ -157,10 +166,8 @@ export function AbastecimentoPublicPage() {
       return
     }
 
-    // Concluir o registo — @ts-ignore: rpc adicionado em migration 20260921, tipos ainda não regenerados
-    // @ts-ignore
     const { error: conclErr } = await supabase.rpc('concluir_abastecimento', {
-      p_id:           pendId,
+      p_id:           pendId!,
       p_litros:       litrosLidos,
       p_custo_total:  custoLido ?? 0,
       p_foto_medidor: fotoUrl,
@@ -186,9 +193,8 @@ export function AbastecimentoPublicPage() {
       .getPublicUrl(`${vehicleId}/${todayStr()}_${pendId}.${foto?.name.split('.').pop() ?? 'jpg'}`))
       .data.publicUrl : ''
 
-    // @ts-ignore
     const { error: conclErr } = await supabase.rpc('concluir_abastecimento', {
-      p_id:           pendId,
+      p_id:           pendId!,
       p_litros:       l,
       p_custo_total:  isNaN(c) ? 0 : c,
       p_foto_medidor: fotoUrl,

@@ -410,42 +410,57 @@ export type Database = {
         Row: {
           contador: number | null
           criado_em: string
-          custo_total: number
+          custo_gemini: number | null
+          custo_total: number | null
           data: string
+          estado: string
+          foto_medidor_url: string | null
           foto_url: string | null
           funcionario_nome: string
           id: string
-          litros: number
+          litros: number | null
+          litros_gemini: number | null
           local: string | null
           observacoes: string | null
+          tipo_fonte: string
           veiculo_id: string
           veiculo_nome: string
         }
         Insert: {
           contador?: number | null
           criado_em?: string
-          custo_total: number
+          custo_gemini?: number | null
+          custo_total?: number | null
           data?: string
+          estado?: string
+          foto_medidor_url?: string | null
           foto_url?: string | null
           funcionario_nome: string
           id?: string
-          litros: number
+          litros?: number | null
+          litros_gemini?: number | null
           local?: string | null
           observacoes?: string | null
+          tipo_fonte?: string
           veiculo_id: string
           veiculo_nome: string
         }
         Update: {
           contador?: number | null
           criado_em?: string
-          custo_total?: number
+          custo_gemini?: number | null
+          custo_total?: number | null
           data?: string
+          estado?: string
+          foto_medidor_url?: string | null
           foto_url?: string | null
           funcionario_nome?: string
           id?: string
-          litros?: number
+          litros?: number | null
+          litros_gemini?: number | null
           local?: string | null
           observacoes?: string | null
+          tipo_fonte?: string
           veiculo_id?: string
           veiculo_nome?: string
         }
@@ -458,6 +473,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       comb_veiculos: {
         Row: {
@@ -1791,6 +1839,10 @@ export type Database = {
         Args: { p_id: string }
         Returns: undefined
       }
+      autorizar_abastecimento: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       auth_role: { Args: never; Returns: string }
       avaliar_regras_alerta: { Args: never; Returns: number }
       calcular_resumo_dia: { Args: { p_data: string }; Returns: undefined }
@@ -2164,8 +2216,21 @@ export type Database = {
         }
         Returns: Json
       }
+      rejeitar_abastecimento: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       rejeitar_abastecimento_pendente: {
         Args: { p_id: string }
+        Returns: undefined
+      }
+      concluir_abastecimento: {
+        Args: {
+          p_id: string
+          p_litros: number
+          p_custo_total: number
+          p_foto_medidor: string
+        }
         Returns: undefined
       }
       st_3dclosestpoint: {

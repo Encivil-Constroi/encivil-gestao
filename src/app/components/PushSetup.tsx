@@ -23,11 +23,10 @@ async function guardarSubscricao(sub: PushSubscription): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  // tabela adicionada em migration 20260921, tipos ainda não regenerados
-  // @ts-ignore
-  const pushTbl = supabase.from('push_subscriptions')
-  // @ts-ignore
-  await pushTbl.upsert({ user_id: user.id, endpoint: json.endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: navigator.userAgent.slice(0, 255) }, { onConflict: 'endpoint' })
+  await supabase.from('push_subscriptions').upsert(
+    { user_id: user.id, endpoint: json.endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: navigator.userAgent.slice(0, 255) },
+    { onConflict: 'endpoint' }
+  )
 }
 
 export function PushSetup() {

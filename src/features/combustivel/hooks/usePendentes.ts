@@ -51,7 +51,6 @@ export function usePendentes() {
 
   // Ação 1: autorizar pedido (AGUARDA_AUTORIZACAO → AUTORIZADO)
   const autorizar = useCallback(async (id: string): Promise<boolean> => {
-    // @ts-ignore — rpc adicionado em 20260921000000_combustivel_novo_fluxo.sql; tipos ainda não regenerados
     const { error: err } = await supabase.rpc('autorizar_abastecimento', { p_id: id })
     if (err) return false
     invalidateCache(...INV)
@@ -61,7 +60,6 @@ export function usePendentes() {
 
   // Ação 2: rejeitar pedido (qualquer estado → REJEITADO)
   const rejeitar = useCallback(async (id: string): Promise<boolean> => {
-    // @ts-ignore — rpc adicionado em 20260921000000_combustivel_novo_fluxo.sql; tipos ainda não regenerados
     const { error: err } = await supabase.rpc('rejeitar_abastecimento', { p_id: id })
     if (err) return false
     invalidateCache(...INV)
