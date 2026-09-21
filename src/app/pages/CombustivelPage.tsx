@@ -4,6 +4,7 @@ import {
   Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode,
   Printer, Clock, CheckCircle2, XCircle, AlertTriangle,
   ChevronLeft, ChevronRight, Calendar, Download, BarChart2,
+  ShieldCheck, Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -14,8 +15,15 @@ import { exportarCsv } from '../lib/exportCsv';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
 import { useAbastecimentos, useVeiculos } from '@/features/combustivel/hooks/useCombustivel';
 import { usePendentes } from '@/features/combustivel/hooks/usePendentes';
+import type { TipoFonte } from '@/features/combustivel/hooks/usePendentes';
 import { useRole } from '@/features/auth/useRole';
 import type { FuelEntry } from '@/app/types';
+
+const TIPO_LABEL: Record<TipoFonte, { label: string; cor: string }> = {
+  POLO2:     { label: 'Polo 2',    cor: 'bg-blue-100 text-blue-700'    },
+  CARRINHA:  { label: 'Carrinha',  cor: 'bg-amber-100 text-amber-700'  },
+  POSTO_RUA: { label: 'Posto Rua', cor: 'bg-emerald-100 text-emerald-700' },
+}
 
 type Tab = 'abastecimentos' | 'veiculos' | 'pendentes' | 'analise';
 type PeriodoTipo = 'mes' | 'tudo';
@@ -72,7 +80,16 @@ export function CombustivelPage() {
   const { entries: allEntries, loading: aLoading } = useAbastecimentos(filtrosAnalise);
 
   const { vehicles, loading: vLoading } = useVeiculos(true);
-  const { items: pendentes, loading: pLoading, error: pError, aprovar, rejeitar } = usePendentes();
+  const {
+    items: pendentes,
+    pedidosAutorizacao,
+    aguardaAprovacao,
+    loading: pLoading,
+    error: pError,
+    autorizar,
+    aprovar,
+    rejeitar,
+  } = usePendentes();
   const [exporting, setExporting] = useState(false);
 
   async function handleExportCombustivel() {
@@ -148,16 +165,25 @@ export function CombustivelPage() {
     window.open(`/pub/imprimir-qr?v=${id}&vn=${encodeURIComponent(name)}&vc=${encodeURIComponent(code)}`, '_blank');
   };
 
+  const handleAutorizar = async (id: string) => {
+    setActionId(id);
+    const ok = await autorizar(id);
+    if (!ok) toast.error('Erro ao autorizar. Tenta novamente.');
+    setActionId(null);
+  };
+
   const handleAprovar = async (id: string) => {
     setActionId(id);
-    await aprovar(id);
+    const ok = await aprovar(id);
+    if (!ok) toast.error('Erro ao aprovar. Tenta novamente.');
     setActionId(null);
   };
 
   const handleRejeitar = async (id: string) => {
-    if (!window.confirm('Rejeitar este abastecimento? Será eliminado permanentemente.')) return;
+    if (!window.confirm('Rejeitar este pedido?')) return;
     setActionId(id);
-    await rejeitar(id);
+    const ok = await rejeitar(id);
+    if (!ok) toast.error('Erro ao rejeitar. Tenta novamente.');
     setActionId(null);
   };
 
@@ -170,7 +196,7 @@ export function CombustivelPage() {
       : `${vehicles.length} viatura${vehicles.length !== 1 ? 's' : ''}/máquina${vehicles.length !== 1 ? 's' : ''}`,
     pendentes: pLoading
       ? 'A carregar…'
-      : `${pendentes.length} pendente${pendentes.length !== 1 ? 's' : ''} por aprovação`,
+      : `${pedidosAutorizacao.length} a aguardar autorização · ${aguardaAprovacao.length} por aprovar`,
     analise: aLoading
       ? 'A carregar…'
       : `${porViatura.length} viatura${porViatura.length !== 1 ? 's' : ''} com dados`,
@@ -493,59 +519,144 @@ export function CombustivelPage() {
             <p className="text-sm text-muted-foreground">{pError}</p>
           </div>
         ) : pendentes.length === 0 ? (
-          <EmptyState icon={CheckCircle2} title="Sem pendentes" description="Quando os motoristas registarem abastecimentos via QR code, aparecem aqui para aprovação." />
+          <EmptyState icon={CheckCircle2} title="Sem pendentes" description="Quando os motoristas pedirem autorização via QR code, aparecem aqui." />
         ) : (
-          <div className="space-y-3">
-            {pendentes.map(p => (
-              <div key={p.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold truncate">{p.veiculo_nome}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      por <span className="font-medium text-foreground">{p.funcionario_nome}</span>
-                      {' · '}{new Date(p.criado_em).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <span className="text-base font-bold whitespace-nowrap">{fmtEuro(p.custo_total)}</span>
+          <div className="space-y-5">
+
+            {/* ── Pedidos de Autorização ─── */}
+            {pedidosAutorizacao.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-sm font-bold text-foreground">
+                    Pedidos de Autorização
+                    <span className="ml-2 text-xs font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                      {pedidosAutorizacao.length}
+                    </span>
+                  </h3>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Fuel className="w-3.5 h-3.5" /> {fmtNumber(p.litros)} L
-                  </span>
-                  {p.local && <span className="text-muted-foreground truncate">{p.local}</span>}
-                  {p.contador != null && <span className="text-muted-foreground">{fmtNumber(p.contador)} km/h</span>}
-                </div>
-                {p.foto_url && (
-                  <a href={p.foto_url} target="_blank" rel="noopener noreferrer" className="block mt-1">
-                    <img
-                      src={p.foto_url}
-                      alt="Talão"
-                      className="h-24 w-auto rounded-lg border border-border object-cover hover:opacity-90 transition-opacity"
-                    />
-                  </a>
-                )}
-                {podeCombustivel && (
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => handleAprovar(p.id)}
-                      disabled={actionId === p.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-semibold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {actionId === p.id ? 'A processar…' : 'Aprovar'}
-                    </button>
-                    <button
-                      onClick={() => handleRejeitar(p.id)}
-                      disabled={actionId === p.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-destructive/10 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/20 active:scale-[0.98] transition-all disabled:opacity-50"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Rejeitar
-                    </button>
+                {pedidosAutorizacao.map(p => (
+                  <div key={p.id} className="bg-card rounded-2xl border border-amber-200 p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold">{p.veiculo_nome}</p>
+                          {p.tipo_fonte && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TIPO_LABEL[p.tipo_fonte].cor}`}>
+                              {TIPO_LABEL[p.tipo_fonte].label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          por <span className="font-medium text-foreground">{p.funcionario_nome}</span>
+                          {' · '}{new Date(p.criado_em).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      {p.contador != null && (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtNumber(p.contador)} km/h</span>
+                      )}
+                    </div>
+                    {podeCombustivel && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleAutorizar(p.id)}
+                          disabled={actionId === p.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-semibold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          {actionId === p.id ? 'A processar…' : 'Autorizar'}
+                        </button>
+                        <button
+                          onClick={() => handleRejeitar(p.id)}
+                          disabled={actionId === p.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-destructive/10 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Rejeitar
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
+            )}
+
+            {/* ── A Aguardar Aprovação Final ─── */}
+            {aguardaAprovacao.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-blue-500" />
+                  <h3 className="text-sm font-bold text-foreground">
+                    A Aguardar Aprovação Final
+                    <span className="ml-2 text-xs font-semibold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
+                      {aguardaAprovacao.length}
+                    </span>
+                  </h3>
+                </div>
+                {aguardaAprovacao.map(p => (
+                  <div key={p.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold">{p.veiculo_nome}</p>
+                          {p.tipo_fonte && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TIPO_LABEL[p.tipo_fonte].cor}`}>
+                              {TIPO_LABEL[p.tipo_fonte].label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          por <span className="font-medium text-foreground">{p.funcionario_nome}</span>
+                          {' · '}{new Date(p.criado_em).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {(p.litros ?? p.litros_gemini) != null && (
+                          <p className="text-sm font-bold">{fmtNumber((p.litros ?? p.litros_gemini)!)} L</p>
+                        )}
+                        {(p.custo_total ?? p.custo_gemini) != null && (
+                          <p className="text-xs text-muted-foreground">{fmtEuro((p.custo_total ?? p.custo_gemini)!)}</p>
+                        )}
+                      </div>
+                    </div>
+                    {(p.foto_medidor_url ?? p.foto_url) && (
+                      <a href={(p.foto_medidor_url ?? p.foto_url)!} target="_blank" rel="noopener noreferrer" className="block">
+                        <img
+                          src={(p.foto_medidor_url ?? p.foto_url)!}
+                          alt="Foto"
+                          className="h-28 w-auto rounded-xl border border-border object-cover hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    )}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {p.contador != null && <span>{fmtNumber(p.contador)} km/h</span>}
+                      {p.local && <span>{p.local}</span>}
+                    </div>
+                    {podeCombustivel && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleAprovar(p.id)}
+                          disabled={actionId === p.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-semibold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {actionId === p.id ? 'A processar…' : 'Aprovar'}
+                        </button>
+                        <button
+                          onClick={() => handleRejeitar(p.id)}
+                          disabled={actionId === p.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-destructive/10 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Rejeitar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
           </div>
         )
       )}

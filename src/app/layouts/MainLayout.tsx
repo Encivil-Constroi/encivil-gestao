@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { OfflineSyncBanner } from '../components/OfflineSyncBanner';
+import { PushSetup } from '../components/PushSetup';
 
 export function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -27,6 +28,7 @@ export function MainLayout() {
           </div>
         </main>
         <ScrollRestoration />
+        <PushSetup />
       </div>
 
       <MobileBottomNav />
