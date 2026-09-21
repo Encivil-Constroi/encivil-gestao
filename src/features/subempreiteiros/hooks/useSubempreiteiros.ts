@@ -31,10 +31,11 @@ export function useSubempreiteiro(id: string | undefined) {
 }
 
 export function useGuardarSubempreiteiro() {
-  const criador    = useMutation(criarSubempreiteiro, 'Erro ao guardar')
+  const criador    = useMutation(criarSubempreiteiro, 'Erro ao guardar', { invalidates: INV_SUBS })
   const atualizador = useMutation(
     (id: string, input: AtualizarSubempreiteiro) => atualizarSubempreiteiro(id, input),
-    'Erro ao guardar'
+    'Erro ao guardar',
+    { invalidates: INV_SUBS }
   )
   return {
     criar:    criador.mutate,
@@ -44,7 +45,7 @@ export function useGuardarSubempreiteiro() {
   }
 }
 
-const INV_SUBS = ['subs-todos', 'subs-obra-*', 'subs-executado-*', 'resumo-obras']
+const INV_SUBS = ['subs-todos', 'subs-obra-*', 'subs-executado-*', 'sub-*', 'resumo-obras']
 
 export function useValidarSubempreiteiro() {
   const { mutate: validar, loading, error } = useMutation(

@@ -12,7 +12,8 @@ const CACHE_LISTAS     = [CACHE_ATIVOS, CACHE_ARQUIVADOS]
 export function useProdutos(apenasAtivos = true) {
   const { data, loading, error, reload } = useAsync(
     () => listarProdutos(apenasAtivos), [apenasAtivos],
-    { errorMsg: 'Erro ao carregar produtos', cacheKey: apenasAtivos ? CACHE_ATIVOS : CACHE_ARQUIVADOS }
+    // useProdutos(false) devolve TODOS os produtos — cache key diferente de arquivados
+    { errorMsg: 'Erro ao carregar produtos', cacheKey: apenasAtivos ? CACHE_ATIVOS : 'produtos-todos' }
   )
   return { products: data ?? [], loading, error, reload }
 }
@@ -26,11 +27,11 @@ export function useProduto(id: string | undefined) {
 }
 
 export function useProdutosArquivados(enabled = true) {
-  const { data, loading, reload } = useAsync(
+  const { data, loading, error, reload } = useAsync(
     listarProdutosArquivados, [],
-    { enabled, cacheKey: CACHE_ARQUIVADOS }
+    { enabled, cacheKey: CACHE_ARQUIVADOS, errorMsg: 'Erro ao carregar produtos arquivados' }
   )
-  return { products: data ?? [], loading, reload }
+  return { products: data ?? [], loading, error, reload }
 }
 
 export function useCriarProduto() {
@@ -42,7 +43,8 @@ export function useCriarProduto() {
 
 export function useAtualizarProduto() {
   const { mutate: atualizar, loading, error } = useMutation(
-    atualizarProduto, 'Erro ao atualizar produto', { invalidates: CACHE_LISTAS }
+    atualizarProduto, 'Erro ao atualizar produto',
+    { invalidates: [...CACHE_LISTAS, 'produtos-todos', 'produto-*'] }
   )
   return { atualizar, loading, error }
 }

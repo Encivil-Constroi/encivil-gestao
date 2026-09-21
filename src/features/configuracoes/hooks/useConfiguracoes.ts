@@ -13,7 +13,8 @@ export function useConfiguracoes() {
 
   const { mutate: _guardar, loading: saving, error: saveError } = useMutation(
     (input: AtualizarConfiguracoes) => atualizarConfiguracoes(config!.id, input),
-    'Erro ao guardar configurações'
+    'Erro ao guardar configurações',
+    { invalidates: ['configuracoes'] }
   )
 
   const atualizar = async (input: AtualizarConfiguracoes): Promise<boolean> => {

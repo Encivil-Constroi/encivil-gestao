@@ -42,7 +42,9 @@ export function useNotifications() {
         ? supabase.from('autos_medicao').select('id, numero, subempreiteiros(nome)').eq('estado', 'rascunho')
         : Promise.resolve({ data: [] }),
       podeCombustivel
-        ? supabase.from('comb_abastecimentos_pendentes').select('id', { count: 'exact', head: true })
+        ? supabase.from('comb_abastecimentos_pendentes')
+            .select('id', { count: 'exact', head: true })
+            .in('estado', ['AGUARDA_AUTORIZACAO', 'AGUARDA_APROVACAO'])
         : Promise.resolve({ data: null, count: 0 }),
     ])
 
@@ -115,7 +117,12 @@ export function useNotifications() {
       })
     }
 
-    if (produtosRes.error || atrasoRes.error) setError(true)
+    if (produtosRes.error || atrasoRes.error ||
+        ('error' in subsPend && subsPend.error) ||
+        ('error' in autosPend && autosPend.error) ||
+        ('error' in combustPend && combustPend.error)) {
+      setError(true)
+    }
 
     setItems(notifs)
     setLoading(false)

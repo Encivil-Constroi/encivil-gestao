@@ -36,7 +36,7 @@ export function useAtualizarObra() {
   const { mutate: atualizar, loading, error } = useMutation(
     (id: string, input: AtualizarObra) => atualizarObra(id, input),
     'Erro ao atualizar obra',
-    { invalidates: CACHE_LISTAS }
+    { invalidates: [...CACHE_LISTAS, 'obra-*', 'resumo-obras'] }
   )
   return { atualizar, loading, error }
 }

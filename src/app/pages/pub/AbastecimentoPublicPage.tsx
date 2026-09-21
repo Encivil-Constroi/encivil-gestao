@@ -78,11 +78,16 @@ export function AbastecimentoPublicPage() {
         setPollTimedOut(true)
         return
       }
-      const { data } = await supabase
+      const { data, error: pollErr } = await supabase
         .from('comb_abastecimentos_pendentes')
         .select('estado')
         .eq('id', pendId)
         .single()
+      if (pollErr) {
+        // Erros de rede transitórios não interrompem o polling — tentar de novo no próximo tick
+        console.warn('poll error:', pollErr.message)
+        return
+      }
       const row = data as { estado?: string } | null
       if (row?.estado === 'AUTORIZADO') { stopPoll(); setPasso('FOTO') }
       if (row?.estado === 'REJEITADO')  { stopPoll(); setPasso('REJEITADO') }
@@ -254,6 +259,7 @@ export function AbastecimentoPublicPage() {
     })
     setSaving(false)
     if (conclErr) { setErr('Erro ao guardar. Tenta novamente.'); return }
+    setLitros(l)
     setPasso('DONE')
   }
 

@@ -47,6 +47,9 @@ export function useResolverAlerta() {
 }
 
 export function useAvaliarAlertas() {
-  const { mutate: avaliar, loading } = useMutation(avaliarAlertas, 'Erro ao avaliar alertas')
+  const { mutate: avaliar, loading } = useMutation(
+    avaliarAlertas, 'Erro ao avaliar alertas',
+    { invalidates: ['alertas-ativos', 'alertas-todos'] }
+  )
   return { avaliar, loading }
 }

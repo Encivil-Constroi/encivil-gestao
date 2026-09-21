@@ -23,10 +23,11 @@ async function guardarSubscricao(sub: PushSubscription): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  await supabase.from('push_subscriptions').upsert(
+  const { error } = await supabase.from('push_subscriptions').upsert(
     { user_id: user.id, endpoint: json.endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: navigator.userAgent.slice(0, 255) },
     { onConflict: 'endpoint' }
   )
+  if (error) throw error
 }
 
 export function PushSetup() {

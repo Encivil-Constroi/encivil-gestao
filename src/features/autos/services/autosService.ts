@@ -112,7 +112,7 @@ export async function criarAuto(input: NovoAuto): Promise<Measurement> {
     p_data:        input.date,
     p_percentagem: input.periodPercentage ?? 0,
     p_valor:       input.periodValue,
-    p_notas:       input.notes ?? undefined,
+    p_notas:       input.notes,
   })
   if (error) throw error
   const { id } = (data as { id: string; numero: number }[])[0]

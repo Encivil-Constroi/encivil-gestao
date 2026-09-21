@@ -13,7 +13,8 @@ const CACHE_LISTAS     = [CACHE_ATIVAS, CACHE_ARQUIVADAS]
 export function useFerramentas(apenasAtivas = true) {
   const { data, loading, error, reload } = useAsync(
     () => listarFerramentas(apenasAtivas), [apenasAtivas],
-    { errorMsg: 'Erro ao carregar ferramentas', cacheKey: apenasAtivas ? CACHE_ATIVAS : CACHE_ARQUIVADAS }
+    // useFerramentas(false) devolve TODAS as ferramentas — cache key diferente de arquivadas
+    { errorMsg: 'Erro ao carregar ferramentas', cacheKey: apenasAtivas ? CACHE_ATIVAS : 'ferramentas-todas' }
   )
   return { tools: data ?? [], loading, error, reload }
 }
@@ -45,7 +46,7 @@ export function useAtualizarFerramenta() {
   const { mutate: atualizar, loading, error } = useMutation(
     (id: string, input: AtualizarFerramenta) => atualizarFerramenta(id, input),
     'Erro ao atualizar ferramenta',
-    { invalidates: CACHE_LISTAS }
+    { invalidates: [...CACHE_LISTAS, 'ferramentas-todas', 'ferramenta-*'] }
   )
   return { atualizar, loading, error }
 }

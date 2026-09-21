@@ -52,7 +52,6 @@ export async function listarAlertasAtivos(): Promise<Alerta[]> {
     .from('alertas_detalhados')
     .select('*')
     .in('estado', ['ATIVO', 'RECONHECIDO'])
-    .order('severidade', { ascending: true }) // URGENTE vem antes (U > A alfabeticamente desc)
     .order('criado_em', { ascending: false })
   if (error) throw error
   // Ordenar URGENTE antes de ATENCAO
@@ -73,7 +72,8 @@ export async function listarTodosAlertas(): Promise<Alerta[]> {
 }
 
 export async function reconhecerAlerta(id: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  if (authErr) throw authErr
   const { error } = await supabase
     .from('alertas')
     .update({
@@ -86,7 +86,8 @@ export async function reconhecerAlerta(id: string): Promise<void> {
 }
 
 export async function resolverAlerta(id: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  if (authErr) throw authErr
   const { error } = await supabase
     .from('alertas')
     .update({

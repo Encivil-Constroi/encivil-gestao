@@ -18,9 +18,10 @@ export function useLiberacoes(subId: string | undefined) {
 /** Calcula os totais de retenção para um subempreiteiro. */
 export function useRetencaoTotais(
   autos: Measurement[],
+  autosLoading: boolean,
   subId: string | undefined,
 ) {
-  const { liberacoes, loading, reload } = useLiberacoes(subId)
+  const { liberacoes, loading: libLoading, error, reload } = useLiberacoes(subId)
 
   const totais = useMemo(() => {
     const validados = autos.filter(a => a.status === 'validado')
@@ -30,7 +31,7 @@ export function useRetencaoTotais(
     return { retencaoAcumulada, retencaoLibertada, retencaoEmAberto }
   }, [autos, liberacoes])
 
-  return { ...totais, liberacoes, loading, reload }
+  return { ...totais, liberacoes, loading: autosLoading || libLoading, error, reload }
 }
 
 export function useCriarLiberacao() {

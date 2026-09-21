@@ -27,28 +27,30 @@ export function useOfflineQueue() {
     let failCount = 0
     let stoppedByNetwork = false
 
-    for (const item of queue) {
-      try {
-        const { queueId, queuedAt, ...input } = item
-        void queuedAt
-        await registarMovimento(input)
-        removeFromQueue(queueId)
-        okCount++
-      } catch (e) {
-        if (isNetworkError(e)) {
-          stoppedByNetwork = true
-          break // ainda sem ligação fiável — tenta de novo mais tarde, mantém o resto na fila
+    try {
+      for (const item of queue) {
+        try {
+          const { queueId, queuedAt, ...input } = item
+          void queuedAt
+          await registarMovimento(input)
+          removeFromQueue(queueId)
+          okCount++
+        } catch (e) {
+          if (isNetworkError(e)) {
+            stoppedByNetwork = true
+            break // ainda sem ligação fiável — tenta de novo mais tarde, mantém o resto na fila
+          }
+          // Erro de negócio (ex: produto removido, stock alterado) — não tem como
+          // resolver-se a sozinho com retentativas. Remove da fila e avisa o utilizador.
+          removeFromQueue(item.queueId)
+          failCount++
         }
-        // Erro de negócio (ex: produto removido, stock alterado) — não tem como
-        // resolver-se a sozinho com retentativas. Remove da fila e avisa o utilizador.
-        removeFromQueue(item.queueId)
-        failCount++
       }
+    } finally {
+      setSyncing(false)
+      flushingRef.current = false
+      refresh()
     }
-
-    setSyncing(false)
-    flushingRef.current = false
-    refresh()
 
     if (okCount > 0) {
       // Invalidar caches afetadas pelos movimentos sincronizados

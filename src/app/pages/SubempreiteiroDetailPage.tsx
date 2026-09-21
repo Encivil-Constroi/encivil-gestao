@@ -44,7 +44,7 @@ export function SubempreiteiroDetailPage() {
   const {
     retencaoAcumulada, retencaoLibertada, retencaoEmAberto,
     liberacoes, loading: libLoading, reload: reloadLib,
-  } = useRetencaoTotais(autos, id);
+  } = useRetencaoTotais(autos, autosLoading, id);
 
   const { criar: criarLib, loading: criarLibLoading } = useCriarLiberacao();
   const { eliminar: eliminarLib } = useEliminarLiberacao();

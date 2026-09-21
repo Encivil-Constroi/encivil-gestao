@@ -156,11 +156,15 @@ export async function atualizarSubempreiteiro(id: string, input: AtualizarSubemp
   if (input.obraId !== undefined)     update.obra_id = input.obraId
   if (input.name !== undefined)       update.nome = input.name
   if (input.contact !== undefined)    update.contacto_responsavel = input.contact || null
-  if (input.type !== undefined)       update.tipo = input.type
-  if (input.conditions !== undefined) update.condicoes = input.conditions || null
-  if (input.type !== undefined || input.globalValue !== undefined) {
+  if (input.type !== undefined) {
+    update.tipo = input.type
+    // Quando o tipo muda, sincronizar valor_global (pode receber novo valor no mesmo update)
     update.valor_global = input.type === 'global' ? (input.globalValue ?? null) : null
+  } else if (input.globalValue !== undefined) {
+    // Atualizar apenas o valor, sem mudar o tipo
+    update.valor_global = input.globalValue ?? null
   }
+  if (input.conditions !== undefined) update.condicoes = input.conditions || null
   if (input.retencaoPercentagem !== undefined) {
     update.percentagem_retencao = input.retencaoPercentagem
   }
@@ -169,7 +173,8 @@ export async function atualizarSubempreiteiro(id: string, input: AtualizarSubemp
   if (error) throw error
 
   if (input.items !== undefined) {
-    await substituirArtigos(id, input.type === 'unitario' ? input.items : [])
+    // Se o tipo muda para global, limpar artigos; caso contrário, usar os novos artigos
+    await substituirArtigos(id, input.type === 'global' ? [] : input.items)
   }
   return buscarSubempreiteiro(id)
 }

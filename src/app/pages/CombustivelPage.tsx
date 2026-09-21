@@ -58,6 +58,7 @@ export function CombustivelPage() {
   const { podeCombustivel } = useRole();
   const [tab, setTab] = useState<Tab>('abastecimentos');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [rejeitarId, setRejeitarId] = useState<string | null>(null);
 
   // Filtros da aba de abastecimentos
   const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes');
@@ -186,8 +187,12 @@ export function CombustivelPage() {
     }
   };
 
-  const handleRejeitar = async (id: string) => {
-    if (!window.confirm('Rejeitar este pedido?')) return;
+  const handleRejeitar = (id: string) => setRejeitarId(id);
+
+  const confirmarRejeitar = async () => {
+    if (!rejeitarId) return;
+    const id = rejeitarId;
+    setRejeitarId(null);
     setActionId(id);
     try {
       const ok = await rejeitar(id);
@@ -214,6 +219,19 @@ export function CombustivelPage() {
 
   return (
     <div className="space-y-4">
+      {/* Diálogo de confirmação de rejeição — substitui window.confirm (iOS PWA safe) */}
+      {rejeitarId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <p className="font-semibold text-base mb-1">Rejeitar pedido?</p>
+            <p className="text-sm text-muted-foreground mb-5">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setRejeitarId(null)} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors">Cancelar</button>
+              <button onClick={confirmarRejeitar} className="flex-1 px-4 py-2.5 bg-destructive text-destructive-foreground rounded-xl text-sm font-medium hover:bg-destructive/90 transition-colors">Rejeitar</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Combustível</h1>

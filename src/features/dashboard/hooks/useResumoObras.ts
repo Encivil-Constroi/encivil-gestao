@@ -23,6 +23,7 @@ async function fetchResumoObras(): Promise<ResumoObras> {
     custosMateriaisCombustivelPorObra(),
   ])
 
+  if (autosRes.error) throw autosRes.error
   const autos = (autosRes.data ?? []) as { valor_periodo: number; estado: string }[]
   const executado = autos
     .filter(a => a.estado === 'validado')

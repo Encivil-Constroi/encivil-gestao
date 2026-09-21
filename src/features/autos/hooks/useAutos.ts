@@ -23,10 +23,11 @@ export function useAuto(id: string | undefined) {
 }
 
 export function useGuardarAuto() {
-  const criador    = useMutation(criarAuto,    'Erro ao guardar')
+  const criador    = useMutation(criarAuto, 'Erro ao guardar', { invalidates: INV_AUTOS })
   const atualizador = useMutation(
     (id: string, input: AtualizarAuto) => atualizarAuto(id, input),
-    'Erro ao guardar'
+    'Erro ao guardar',
+    { invalidates: INV_AUTOS }
   )
   return {
     criar:    criador.mutate,
@@ -39,11 +40,11 @@ export function useGuardarAuto() {
 const INV_AUTOS = ['autos-*', 'subs-executado-*', 'resumo-obras']
 
 export function useValidarAuto() {
-  const { mutate: validar, loading } = useMutation(
+  const { mutate: validar, loading, error } = useMutation(
     validarAuto, 'Erro ao validar',
     { invalidates: INV_AUTOS }
   )
-  return { validar, loading }
+  return { validar, loading, error }
 }
 
 export function useEliminarAuto() {

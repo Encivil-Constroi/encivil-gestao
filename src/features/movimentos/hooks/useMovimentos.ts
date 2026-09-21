@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Movement } from '@/app/types'
-import { useAsync } from '@/app/lib/useAsync'
+import { useAsync, invalidateCache } from '@/app/lib/useAsync'
 import {
   listarMovimentos,
   listarMovimentosPaginados,
@@ -17,7 +17,7 @@ export function useMovimentos(filtros: FiltrosMovimentos = {}) {
   const { data, loading, error, reload } = useAsync(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     () => listarMovimentos(filtros), [key],
-    { errorMsg: 'Erro ao carregar movimentos' }
+    { cacheKey: `movimentos-${key}`, errorMsg: 'Erro ao carregar movimentos' }
   )
   return { movements: data ?? [], loading, error, reload }
 }
@@ -84,6 +84,7 @@ export function useRegistarMovimento() {
         return { status: 'queued' }
       }
       await registarMovimento(input)
+      invalidateCache('produtos-ativos', 'produtos-*', 'dashboard', 'movimentos-*', 'alertas-ativos')
       return { status: 'ok' }
     } catch (e) {
       if (isNetworkError(e)) {

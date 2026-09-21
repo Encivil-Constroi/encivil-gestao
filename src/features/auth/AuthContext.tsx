@@ -29,11 +29,15 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('role, nome')
     .eq('id', userId)
     .single()
+  if (error) {
+    console.error('fetchProfile:', error.message)
+    return null
+  }
   return data ?? null
 }
 
