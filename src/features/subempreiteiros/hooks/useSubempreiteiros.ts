@@ -44,14 +44,21 @@ export function useGuardarSubempreiteiro() {
   }
 }
 
+const INV_SUBS = ['subs-todos', 'subs-obra-*', 'subs-executado-*', 'resumo-obras']
+
 export function useValidarSubempreiteiro() {
-  const { mutate: validar, loading, error } = useMutation(validarSubempreiteiro, 'Erro ao validar')
+  const { mutate: validar, loading, error } = useMutation(
+    validarSubempreiteiro, 'Erro ao validar',
+    { invalidates: INV_SUBS }
+  )
   return { validar, loading, error }
 }
 
 export function useEliminarSubempreiteiro() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await eliminarSubempreiteiro(id); return true }
+    async (id: string): Promise<true> => { await eliminarSubempreiteiro(id); return true },
+    'Erro ao eliminar',
+    { invalidates: INV_SUBS }
   )
   const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }

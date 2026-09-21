@@ -36,14 +36,17 @@ export function useRetencaoTotais(
 export function useCriarLiberacao() {
   const { mutate: criar, loading, error } = useMutation(
     (input: NovaLiberacao) => criarLiberacao(input),
-    'Erro ao registar libertação'
+    'Erro ao registar libertação',
+    { invalidates: ['liberacoes-*'] }
   )
   return { criar, loading, error }
 }
 
 export function useEliminarLiberacao() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await eliminarLiberacao(id); return true }
+    async (id: string): Promise<true> => { await eliminarLiberacao(id); return true },
+    'Erro ao eliminar libertação',
+    { invalidates: ['liberacoes-*'] }
   )
   const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }

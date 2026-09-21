@@ -59,16 +59,20 @@ export function useEmprestimosPaginados(filtros: FiltrosEmprestimos = {}) {
   }
 }
 
+const INV_EMPRESTIMOS = ['emprestimos-*', 'ferramentas-ativas', 'ferramentas-arquivadas']
+
 export function useRegistarEmprestimo() {
   const { mutate: registar, loading, error } = useMutation(
-    registarEmprestimo, 'Erro ao registar empréstimo'
+    registarEmprestimo, 'Erro ao registar empréstimo',
+    { invalidates: INV_EMPRESTIMOS }
   )
   return { registar, loading, error }
 }
 
 export function useRegistarDevolucao() {
   const { mutate: devolver, loading, error } = useMutation(
-    registarDevolucao, 'Erro ao registar devolução'
+    registarDevolucao, 'Erro ao registar devolução',
+    { invalidates: INV_EMPRESTIMOS }
   )
   return { devolver, loading, error }
 }

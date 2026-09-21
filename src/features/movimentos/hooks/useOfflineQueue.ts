@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { getQueue, removeFromQueue, onQueueChange, isNetworkError, type PendingMovimento } from '../offlineQueue'
 import { registarMovimento } from '../services/movimentosService'
+import { invalidateCache } from '@/app/lib/useAsync'
 
 // Só deve existir UMA instância ativa deste hook na app (montada uma vez no
 // MainLayout) — caso contrário duas instâncias tentariam sincronizar a
@@ -50,6 +51,8 @@ export function useOfflineQueue() {
     refresh()
 
     if (okCount > 0) {
+      // Invalidar caches afetadas pelos movimentos sincronizados
+      invalidateCache('produtos-ativos', 'produtos-*', 'dashboard', 'movimentos-*')
       toast.success(`${okCount} movimento${okCount !== 1 ? 's' : ''} pendente${okCount !== 1 ? 's' : ''} sincronizado${okCount !== 1 ? 's' : ''} com sucesso.`)
     }
     if (failCount > 0) {

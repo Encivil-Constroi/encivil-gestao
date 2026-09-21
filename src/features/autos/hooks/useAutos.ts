@@ -36,14 +36,21 @@ export function useGuardarAuto() {
   }
 }
 
+const INV_AUTOS = ['autos-*', 'subs-executado-*', 'resumo-obras']
+
 export function useValidarAuto() {
-  const { mutate: validar, loading } = useMutation(validarAuto, 'Erro ao validar')
+  const { mutate: validar, loading } = useMutation(
+    validarAuto, 'Erro ao validar',
+    { invalidates: INV_AUTOS }
+  )
   return { validar, loading }
 }
 
 export function useEliminarAuto() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await eliminarAuto(id); return true }
+    async (id: string): Promise<true> => { await eliminarAuto(id); return true },
+    'Erro ao eliminar',
+    { invalidates: INV_AUTOS }
   )
   const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }
@@ -55,7 +62,8 @@ export function useMarcarAutoPago() {
       await marcarAutoPago(id, referencia)
       return true
     },
-    'Erro ao marcar auto como pago'
+    'Erro ao marcar auto como pago',
+    { invalidates: INV_AUTOS }
   )
   const marcar = async (id: string, referencia?: string) => (await mutate(id, referencia)) === true
   return { marcar, loading, error }
@@ -63,7 +71,9 @@ export function useMarcarAutoPago() {
 
 export function useMarcarAutoEmAtraso() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await marcarAutoEmAtraso(id); return true }
+    async (id: string): Promise<true> => { await marcarAutoEmAtraso(id); return true },
+    'Erro ao marcar auto em atraso',
+    { invalidates: INV_AUTOS }
   )
   const marcar = async (id: string) => (await mutate(id)) === true
   return { marcar, loading }

@@ -43,13 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
-    // Initial session + profile load — keeps loading=true until both are resolved
+    // Initial session + profile load — keeps loading=true until both are resolved.
+    // .catch() garante que loading=false mesmo em falha de rede no arranque.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
       if (session?.user) {
         const p = await fetchProfile(session.user.id)
         setProfile(p)
       }
+      setLoading(false)
+    }).catch(() => {
       setLoading(false)
     })
 

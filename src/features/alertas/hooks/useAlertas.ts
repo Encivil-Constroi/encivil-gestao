@@ -28,7 +28,9 @@ export function useTodosAlertas() {
 
 export function useReconhecerAlerta() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await reconhecerAlerta(id); return true }
+    async (id: string): Promise<true> => { await reconhecerAlerta(id); return true },
+    'Erro ao reconhecer alerta',
+    { invalidates: ['alertas-ativos', 'alertas-todos'] }
   )
   const reconhecer = async (id: string) => (await mutate(id)) === true
   return { reconhecer, loading }
@@ -36,7 +38,9 @@ export function useReconhecerAlerta() {
 
 export function useResolverAlerta() {
   const { mutate, loading } = useMutation(
-    async (id: string): Promise<true> => { await resolverAlerta(id); return true }
+    async (id: string): Promise<true> => { await resolverAlerta(id); return true },
+    'Erro ao resolver alerta',
+    { invalidates: ['alertas-ativos', 'alertas-todos'] }
   )
   const resolver = async (id: string) => (await mutate(id)) === true
   return { resolver, loading }

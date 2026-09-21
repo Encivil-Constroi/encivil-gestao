@@ -26,10 +26,13 @@ export async function custoObra(obraId: string, orcamento?: number): Promise<Cus
     supabase.from('comb_abastecimentos').select('custo_total').eq('obra_id', obraId),
   ])
 
-  const materiais = ((matRes.data ?? []) as MovCustoRow[])
+  if (matRes.error)  throw matRes.error
+  if (fuelRes.error) throw fuelRes.error
+
+  const materiais = (matRes.data as MovCustoRow[])
     .reduce((s, r) => s + Number(r.quantidade) * Number(r.produtos?.custo_unitario ?? 0), 0)
   const subempreiteiros = subs.reduce((s, x) => s + x.executed, 0)
-  const combustivel = ((fuelRes.data ?? []) as { custo_total: number }[])
+  const combustivel = (fuelRes.data as { custo_total: number }[])
     .reduce((s, r) => s + Number(r.custo_total), 0)
 
   const total = materiais + subempreiteiros + combustivel
@@ -94,7 +97,8 @@ export async function custoConsolidado(
       .single(),
   ])
 
-  if (rpcRes.error) throw rpcRes.error
+  if (rpcRes.error)  throw rpcRes.error
+  if (obraRes.error) throw obraRes.error
 
   const r = rpcRes.data as {
     materiais: number; combustivel: number; mao_de_obra: number
