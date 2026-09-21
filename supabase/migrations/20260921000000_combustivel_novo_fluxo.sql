@@ -219,10 +219,23 @@ GRANT EXECUTE ON FUNCTION public.aprovar_abastecimento_pendente(uuid) TO authent
 
 -- ── 7. Anon pode ler o próprio pedido pendente por ID (para polling do estado) ─
 
-CREATE POLICY IF NOT EXISTS "comb_pend_anon_select_by_id"
-  ON public.comb_abastecimentos_pendentes
-  FOR SELECT
-  TO anon
-  USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'comb_abastecimentos_pendentes'
+      AND policyname = 'comb_pend_anon_select_by_id'
+  ) THEN
+    EXECUTE $p$
+      CREATE POLICY "comb_pend_anon_select_by_id"
+        ON public.comb_abastecimentos_pendentes
+        FOR SELECT
+        TO anon
+        USING (true)
+    $p$;
+  END IF;
+END;
+$$;
 -- Nota: a tabela já deve ter policy anon para INSERT (criada anteriormente).
 -- SELECT permite ao motorista fazer polling do estado sem autenticação.
