@@ -4,7 +4,7 @@ import {
   Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode,
   Printer, Clock, CheckCircle2, XCircle, AlertTriangle,
   ChevronLeft, ChevronRight, Calendar, Download, BarChart2,
-  ShieldCheck, Camera,
+  ShieldCheck, Camera, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -86,6 +86,7 @@ export function CombustivelPage() {
     aguardaAprovacao,
     loading: pLoading,
     error: pError,
+    reload,
     autorizar,
     aprovar,
     rejeitar,
@@ -167,24 +168,33 @@ export function CombustivelPage() {
 
   const handleAutorizar = async (id: string) => {
     setActionId(id);
-    const ok = await autorizar(id);
-    if (!ok) toast.error('Erro ao autorizar. Tenta novamente.');
-    setActionId(null);
+    try {
+      const ok = await autorizar(id);
+      if (!ok) toast.error('Erro ao autorizar. Tenta novamente.');
+    } finally {
+      setActionId(null);
+    }
   };
 
   const handleAprovar = async (id: string) => {
     setActionId(id);
-    const ok = await aprovar(id);
-    if (!ok) toast.error('Erro ao aprovar. Tenta novamente.');
-    setActionId(null);
+    try {
+      const ok = await aprovar(id);
+      if (!ok) toast.error('Erro ao aprovar. Tenta novamente.');
+    } finally {
+      setActionId(null);
+    }
   };
 
   const handleRejeitar = async (id: string) => {
     if (!window.confirm('Rejeitar este pedido?')) return;
     setActionId(id);
-    const ok = await rejeitar(id);
-    if (!ok) toast.error('Erro ao rejeitar. Tenta novamente.');
-    setActionId(null);
+    try {
+      const ok = await rejeitar(id);
+      if (!ok) toast.error('Erro ao rejeitar. Tenta novamente.');
+    } finally {
+      setActionId(null);
+    }
   };
 
   const subtitleMap: Record<Tab, string> = {
@@ -513,15 +523,25 @@ export function CombustivelPage() {
       {tab === 'pendentes' && (
         pLoading ? (
           <SkeletonList rows={3} cols={3} />
-        ) : pError ? (
+        ) : pError != null ? (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
             <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">{pError}</p>
+            <p className="text-sm text-muted-foreground">{typeof pError === 'string' ? pError : 'Erro ao carregar pendentes'}</p>
           </div>
-        ) : pendentes.length === 0 ? (
-          <EmptyState icon={CheckCircle2} title="Sem pendentes" description="Quando os motoristas pedirem autorização via QR code, aparecem aqui." />
         ) : (
           <div className="space-y-5">
+            <div className="flex justify-end">
+              <button
+                onClick={() => reload()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Atualizar
+              </button>
+            </div>
+            {pendentes.length === 0 && (
+              <EmptyState icon={CheckCircle2} title="Sem pendentes" description="Quando os motoristas pedirem autorização via QR code, aparecem aqui." />
+            )}
 
             {/* ── Pedidos de Autorização ─── */}
             {pedidosAutorizacao.length > 0 && (

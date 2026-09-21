@@ -31,6 +31,12 @@ export default defineConfig({
       // para poder forçar verificações periódicas — sem isto o browser só
       // verifica por uma versão nova a cada ~24h.
       injectRegister: false,
+      // injectManifest: o SW custom em src/sw.ts contém os handlers de push e
+      // toda a lógica de caching — necessário para Web Push (generateSW não
+      // suporta handlers de eventos customizados).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'ENCIVIL Gestão',
@@ -68,49 +74,9 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // NÃO usar skipWaiting: no modo 'prompt' queremos que o novo SW espere
-        // em "waiting" até o utilizador confirmar a atualização. É o clique no
-        // botão que dispara o skipWaiting (updateServiceWorker(true)).
-        clientsClaim: true,
+      injectManifest: {
+        // Ficheiros a incluir no precache manifest (injetados em self.__WB_MANIFEST)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        navigateFallback: '/index.html',
-        // /sw-reset.html é a válvula de escape manual para limpar um SW
-        // preso — se ficasse sujeita ao fallback de SPA, nunca chegaria a
-        // correr, porque o fallback serve sempre o index.html cacheado
-        // antes de tentar a rede.
-        navigateFallbackDenylist: [/^\/auth\//, /^\/sw-reset\.html$/],
-        runtimeCaching: [
-          {
-            // JS/CSS: StaleWhileRevalidate so new chunks are fetched in background.
-            // CacheFirst would keep 30-day-old chunks even after a new deploy.
-            urlPattern: /\.(?:js|css)$/,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'static-assets',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
-          {
-            // Images/fonts: still CacheFirst — these never change between deploys
-            urlPattern: /\.(?:png|svg|ico|woff2?)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'immutable-assets',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            // Supabase API: network-first — dados críticos de stock nunca do cache
-            urlPattern: /supabase\.co\/(rest|auth|storage)\//,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              networkTimeoutSeconds: 10,
-              expiration: { maxAgeSeconds: 60 * 5 },
-            },
-          },
-        ],
       },
       devOptions: {
         enabled: false, // desativar em dev para não interferir com HMR
