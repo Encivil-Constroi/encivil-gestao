@@ -1,7 +1,8 @@
 import type { NovaPicagem } from './services/picagensService'
 
-const STORAGE_KEY = 'encivil_pending_picagens'
-const QUEUE_EVENT = 'encivil:picagens-queue-changed'
+const STORAGE_KEY  = 'encivil_pending_picagens'
+const QUEUE_EVENT  = 'encivil:picagens-queue-changed'
+const MAX_QUEUE_SIZE = 200
 
 export type PendingPicagem = NovaPicagem & {
   queueId: string
@@ -47,8 +48,12 @@ export function getQueue(): PendingPicagem[] {
 }
 
 export function enqueuePendingPicagem(input: NovaPicagem): PendingPicagem {
+  const current = readQueue()
+  if (current.length >= MAX_QUEUE_SIZE) {
+    throw new Error(`Fila offline cheia (máx. ${MAX_QUEUE_SIZE} registos). Sincronize antes de continuar.`)
+  }
   const item: PendingPicagem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString() }
-  writeQueue([...readQueue(), item])
+  writeQueue([...current, item])
   return item
 }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { captureError } from './sentry'
 import { parseSupabaseError } from './parseSupabaseError'
 import { invalidateCache } from './useAsync'
@@ -32,6 +32,12 @@ export function useMutation<TArgs extends unknown[], TResult>(
   const errorMsgRef    = useRef(errorMsg)
   errorMsgRef.current  = errorMsg
 
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => { isMountedRef.current = false }
+  }, [])
+
   const mutate = useCallback(async (...args: TArgs): Promise<TResult | null> => {
     setLoading(true)
     setError(null)
@@ -40,11 +46,11 @@ export function useMutation<TArgs extends unknown[], TResult>(
       if (invalidatesRef.current?.length) invalidateCache(...invalidatesRef.current)
       return result
     } catch (e) {
-      setError(parseSupabaseError(e, errorMsgRef.current))
+      if (isMountedRef.current) setError(parseSupabaseError(e, errorMsgRef.current))
       captureError(e)
       return null
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) setLoading(false)
     }
   }, []) // deps vazia — mutate é estável por design via useRef
 

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { getQueue, removeFromQueue, onQueueChange, isNetworkError, type PendingMovimento } from '../offlineQueue'
 import { registarMovimento } from '../services/movimentosService'
 import { invalidateCache } from '@/app/lib/useAsync'
+import { supabase } from '@/integrations/supabase/client'
 
 // Só deve existir UMA instância ativa deste hook na app (montada uma vez no
 // MainLayout) — caso contrário duas instâncias tentariam sincronizar a
@@ -20,6 +21,14 @@ export function useOfflineQueue() {
     if (flushingRef.current) return
     const queue = getQueue()
     if (queue.length === 0 || !navigator.onLine) return
+
+    // Sessão pode ter expirado por inatividade (30 min) enquanto offline.
+    // Não sincronizar sem sessão válida — mantém a fila intacta para quando o utilizador iniciar sessão.
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      toast.warning('Inicie sessão para sincronizar os registos pendentes.')
+      return
+    }
 
     flushingRef.current = true
     setSyncing(true)

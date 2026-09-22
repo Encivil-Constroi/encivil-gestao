@@ -73,12 +73,12 @@ export function CombustivelPage() {
 
   const { entries, loading }          = useAbastecimentos(filtros);
 
-  // Para análise por viatura: mesmos filtros de período mas sem filtro de viatura
+  // Para análise por viatura: só carrega quando o utilizador abre o separador "analise"
   const filtrosAnalise = useMemo(() => ({
     dataInicio: periodoTipo === 'mes' ? toISO(primeiroDiaMes(mesRef)) : undefined,
     dataFim:    periodoTipo === 'mes' ? toISO(ultimoDiaMes(mesRef))   : undefined,
   }), [periodoTipo, mesRef]);
-  const { entries: allEntries, loading: aLoading } = useAbastecimentos(filtrosAnalise);
+  const { entries: allEntries, loading: aLoading } = useAbastecimentos(filtrosAnalise, tab === 'analise');
 
   const { vehicles, loading: vLoading } = useVeiculos(true);
   const {
@@ -666,9 +666,15 @@ export function CombustivelPage() {
                         />
                       </a>
                     )}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {p.contador != null && <span>{fmtNumber(p.contador)} km/h</span>}
                       {p.local && <span>{p.local}</span>}
+                      {p.pump_activated_at && (
+                        <span className="flex items-center gap-1 text-success font-semibold">
+                          <Gauge className="w-3.5 h-3.5" />
+                          Bomba ativou às {new Date(p.pump_activated_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     </div>
                     {podeCombustivel && (
                       <div className="flex gap-2 pt-1">

@@ -88,8 +88,15 @@ export function useRegistarMovimento() {
       return { status: 'ok' }
     } catch (e) {
       if (isNetworkError(e)) {
-        enqueuePendingMovimento(input)
-        return { status: 'queued' }
+        // Se a fila estiver cheia, enqueuePendingMovimento lança — tratar como erro de negócio
+        try {
+          enqueuePendingMovimento(input)
+          return { status: 'queued' }
+        } catch (queueErr) {
+          const msg = friendlyErrorMessage(queueErr)
+          setError(msg)
+          return { status: 'error', message: msg }
+        }
       }
       const msg = friendlyErrorMessage(e)
       setError(msg)

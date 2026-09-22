@@ -28,6 +28,10 @@ export type AbastecimentoPendente = {
   litros_gemini:    number | null
   custo_gemini:     number | null
   criado_em:        string
+  // Bomba Polo 2
+  pump_auth_token:      string | null
+  pump_auth_expires_at: string | null
+  pump_activated_at:    string | null
 }
 
 // Busca apenas os pendentes que precisam de ação (autorização ou aprovação final)

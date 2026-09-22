@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Lock, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,8 @@ const inputCls = 'w-full pl-10 pr-4 py-3 bg-input-background border border-input
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? '/';
   const { signIn, session } = useAuth();
   const [mode, setMode]         = useState<Mode>('login');
   const [email, setEmail]       = useState('');
@@ -19,7 +21,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading]   = useState(false);
 
   if (session) {
-    navigate('/', { replace: true });
+    navigate(from, { replace: true });
     return null;
   }
 
@@ -32,7 +34,7 @@ export function LoginPage() {
       setIsLoading(false);
       return;
     }
-    navigate('/');
+    navigate(from, { replace: true });
   };
 
   const handleRequestReset = async (e: React.FormEvent) => {

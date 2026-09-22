@@ -94,9 +94,9 @@ import { MainLayout }   from './layouts/MainLayout';
 import { AuthGuard }    from '@/features/auth/AuthGuard';
 import { RoleGuard }    from '@/features/auth/RoleGuard';
 import { LoginPage }    from './pages/LoginPage';
-// Páginas públicas (acedidas via QR code sem autenticação)
-import { AbastecimentoPublicPage } from './pages/pub/AbastecimentoPublicPage';
-import { ImprimirQrPage }          from './pages/pub/ImprimirQrPage';
+// Páginas públicas (acedidas via QR code — lazy para não pesar o bundle principal)
+const AbastecimentoPublicPage = lazy(() => import('./pages/pub/AbastecimentoPublicPage').then(m => ({ default: m.AbastecimentoPublicPage })));
+const ImprimirQrPage          = lazy(() => import('./pages/pub/ImprimirQrPage').then(m => ({ default: m.ImprimirQrPage })));
 
 // ── Imports lazy (carregados só quando a rota é visitada) ────────────────────
 const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -164,12 +164,12 @@ export const router = createBrowserRouter([
   },
   {
     path: '/pub/combustivel',
-    element: <AbastecimentoPublicPage />,
+    element: <L><AbastecimentoPublicPage /></L>,
     errorElement: <RouteErrorPage />,
   },
   {
     path: '/pub/imprimir-qr',
-    element: <ImprimirQrPage />,
+    element: <L><ImprimirQrPage /></L>,
     errorElement: <RouteErrorPage />,
   },
   {

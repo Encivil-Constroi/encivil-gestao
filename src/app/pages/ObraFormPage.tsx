@@ -92,7 +92,7 @@ export function ObraFormPage() {
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) {
       toast.success(isEdit ? 'Obra atualizada.' : 'Obra criada.');
-      navigate('/obras');
+      navigate(isEdit ? '/obras' : `/obras/${result.id}`);
     } else {
       toast.error('Não foi possível guardar a obra.');
     }

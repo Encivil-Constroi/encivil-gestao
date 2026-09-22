@@ -1,7 +1,8 @@
 import type { RegistarMovimentoInput } from './services/movimentosService'
 
-const STORAGE_KEY = 'encivil_pending_movimentos'
-const QUEUE_EVENT = 'encivil:queue-changed'
+const STORAGE_KEY  = 'encivil_pending_movimentos'
+const QUEUE_EVENT  = 'encivil:queue-changed'
+const MAX_QUEUE_SIZE = 200
 
 export type PendingMovimento = RegistarMovimentoInput & {
   queueId: string
@@ -47,8 +48,12 @@ export function getQueue(): PendingMovimento[] {
 }
 
 export function enqueuePendingMovimento(input: RegistarMovimentoInput): PendingMovimento {
+  const current = readQueue()
+  if (current.length >= MAX_QUEUE_SIZE) {
+    throw new Error(`Fila offline cheia (máx. ${MAX_QUEUE_SIZE} registos). Sincronize antes de continuar.`)
+  }
   const item: PendingMovimento = { ...input, queueId: uuid(), queuedAt: new Date().toISOString() }
-  writeQueue([...readQueue(), item])
+  writeQueue([...current, item])
   return item
 }
 

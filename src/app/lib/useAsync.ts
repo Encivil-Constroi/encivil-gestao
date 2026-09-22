@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type DependencyList } from 'react'
+import { useState, useEffect, useCallback, useRef, type DependencyList } from 'react'
 import { captureError } from './sentry'
 import { parseSupabaseError } from './parseSupabaseError'
 
@@ -59,16 +59,21 @@ export function useAsync<T>(
   })
   const [error, setError] = useState<string | null>(null)
 
+  // Proteção contra atualizações de estado após desmontagem ou mudança de deps:
+  // cada execução de run() captura o valor corrente de genRef; o cleanup do
+  // useEffect incrementa-o, tornando inválida qualquer execução anterior em voo.
+  const genRef = useRef(0)
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const run = useCallback(async () => {
     if (!enabled) { setLoading(false); return }
+    const gen = ++genRef.current
 
     // Cache hit: dados frescos — sem fetch, sem spinner
     if (cacheKey) {
       const hit = _cache.get(cacheKey)
       if (hit && Date.now() - hit.ts < cacheTtl) {
-        setData(hit.data as T)
-        setLoading(false)
+        if (genRef.current === gen) { setData(hit.data as T); setLoading(false) }
         return
       }
     }
@@ -77,18 +82,23 @@ export function useAsync<T>(
     setError(null)
     try {
       const result = await asyncFn()
+      if (genRef.current !== gen) return
       if (cacheKey) _cache.set(cacheKey, { data: result, ts: Date.now() })
       setData(result)
     } catch (e) {
+      if (genRef.current !== gen) return
       setError(parseSupabaseError(e, errorMsg))
       captureError(e)
     } finally {
-      setLoading(false)
+      if (genRef.current === gen) setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, cacheKey, cacheTtl, ...deps])
 
-  useEffect(() => { void run() }, [run])
+  useEffect(() => {
+    void run()
+    return () => { genRef.current++ }
+  }, [run])
 
   return { data, loading, error, reload: run }
 }

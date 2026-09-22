@@ -15,6 +15,19 @@ export function UpdatePrompt() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
+  // Refs para cleanup dos listeners registados em onRegisteredSW
+  const swIntervalRef    = useRef<ReturnType<typeof setInterval> | null>(null)
+  const swVisibilityRef  = useRef<(() => void) | null>(null)
+  const swFocusRef       = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (swIntervalRef.current)   clearInterval(swIntervalRef.current)
+      if (swVisibilityRef.current) document.removeEventListener('visibilitychange', swVisibilityRef.current)
+      if (swFocusRef.current)      window.removeEventListener('focus', swFocusRef.current)
+    }
+  }, [])
+
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
@@ -25,10 +38,11 @@ export function UpdatePrompt() {
         if (registration.installing || !navigator.onLine) return
         registration.update().catch(() => {})
       }
-      setInterval(check, CHECK_INTERVAL_MS)
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') check()
-      })
+      const onVisibility = () => { if (document.visibilityState === 'visible') check() }
+      swIntervalRef.current   = setInterval(check, CHECK_INTERVAL_MS)
+      swVisibilityRef.current = onVisibility
+      swFocusRef.current      = check
+      document.addEventListener('visibilitychange', onVisibility)
       window.addEventListener('focus', check)
     },
   })

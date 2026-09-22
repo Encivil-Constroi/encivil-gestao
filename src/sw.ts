@@ -42,8 +42,9 @@ registerRoute(
 )
 
 // Supabase API: NetworkFirst — dados críticos de stock nunca servidos do cache
+// Regex cobre todos os subdomínios Supabase: rest, auth, storage e Edge Functions
 registerRoute(
-  /supabase\.co\/(rest|auth|storage)\//,
+  /[a-z0-9-]+\.supabase\.co\//,
   new NetworkFirst({
     cacheName: 'supabase-api',
     networkTimeoutSeconds: 10,

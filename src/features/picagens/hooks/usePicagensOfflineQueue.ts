@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { getQueue, removeFromQueue, onQueueChange, isNetworkError, type PendingPicagem } from '../offlineQueue'
 import { registarPicagemOffline } from '../services/picagensService'
+import { supabase } from '@/integrations/supabase/client'
 
 // Só deve existir UMA instância ativa deste hook (montada em OfflineSyncBanner).
 export function usePicagensOfflineQueue() {
@@ -16,6 +17,9 @@ export function usePicagensOfflineQueue() {
     if (flushingRef.current) return
     const queue = getQueue()
     if (queue.length === 0 || !navigator.onLine) return
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return  // sessão expirada — manter fila intacta, sem notificar (movimentos já avisaram)
 
     flushingRef.current = true
     setSyncing(true)
