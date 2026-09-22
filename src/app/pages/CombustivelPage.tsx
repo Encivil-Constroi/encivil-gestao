@@ -594,6 +594,12 @@ export function CombustivelPage() {
                         <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtNumber(p.contador)} km/h</span>
                       )}
                     </div>
+                    {p.tipo_fonte === 'POLO2' && (
+                      <p className="text-xs text-blue-600 font-medium flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
+                        <Gauge className="w-3.5 h-3.5 shrink-0" />
+                        Autorizar abre a bomba do galpão por 3 min
+                      </p>
+                    )}
                     {podeCombustivel && (
                       <div className="flex gap-2 pt-1">
                         <button

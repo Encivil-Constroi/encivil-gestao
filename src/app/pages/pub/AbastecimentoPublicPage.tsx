@@ -17,7 +17,7 @@ import { useFormGuard } from '@/app/lib/useFormGuard'
 //   4. Tirar foto → Gemini extrai litros/custo → Confirmar
 
 type TipoFonte = 'POLO2' | 'CARRINHA' | 'POSTO_RUA'
-type Passo = 'TIPO' | 'FORM' | 'AGUARDAR' | 'FOTO' | 'DONE' | 'REJEITADO'
+type Passo = 'TIPO' | 'FORM' | 'AGUARDAR' | 'BOMBA' | 'FOTO' | 'DONE' | 'REJEITADO'
 
 const TIPO_CONFIG: Record<TipoFonte, {
   label:    string
@@ -56,16 +56,23 @@ export function AbastecimentoPublicPage() {
   const [saving,         setSaving]         = useState(false)
   const [err,            setErr]            = useState('')
   const [pollTimedOut,   setPollTimedOut]   = useState(false)
+  const [pumpTimedOut,   setPumpTimedOut]   = useState(false)
   const [litrosManual,   setLitrosManual]   = useState('')
   const [custoManual,    setCustoManual]    = useState('')
 
-  const fotoRef      = useRef<HTMLInputElement>(null)
-  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollCountRef = useRef(0)
+  const fotoRef          = useRef<HTMLInputElement>(null)
+  const pollRef          = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollCountRef     = useRef(0)
+  const pumpPollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pumpPollCountRef = useRef(0)
 
   // ── Polling do estado após pedido de autorização ──────────────────────────
   const stopPoll = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }, [])
+
+  const stopPumpPoll = useCallback(() => {
+    if (pumpPollRef.current) { clearInterval(pumpPollRef.current); pumpPollRef.current = null }
   }, [])
 
   useEffect(() => {
@@ -89,11 +96,43 @@ export function AbastecimentoPublicPage() {
         return
       }
       const row = data as { estado?: string } | null
-      if (row?.estado === 'AUTORIZADO') { stopPoll(); setPasso('FOTO') }
+      if (row?.estado === 'AUTORIZADO') {
+        stopPoll()
+        // POLO2: aguardar confirmação de ativação física da bomba
+        if (tipo === 'POLO2') setPasso('BOMBA')
+        else setPasso('FOTO')
+      }
       if (row?.estado === 'REJEITADO')  { stopPoll(); setPasso('REJEITADO') }
     }, 3_000)
     return stopPoll
-  }, [passo, pendId, stopPoll])
+  }, [passo, pendId, stopPoll, tipo])
+
+  // ── Polling de pump_activated_at após autorização POLO2 ───────────────────
+  // Shelly tem até 5s para fazer o poll à Edge Function → esperamos até 20s
+  useEffect(() => {
+    if (passo !== 'BOMBA' || !pendId) return
+    pumpPollCountRef.current = 0
+    setPumpTimedOut(false)
+    pumpPollRef.current = setInterval(async () => {
+      pumpPollCountRef.current++
+      if (pumpPollCountRef.current > 10) { // 10 × 2s = 20s
+        stopPumpPoll()
+        setPumpTimedOut(true)
+        return
+      }
+      const { data } = await supabase
+        .from('comb_abastecimentos_pendentes')
+        .select('pump_activated_at')
+        .eq('id', pendId)
+        .single()
+      const row = data as { pump_activated_at?: string | null } | null
+      if (row?.pump_activated_at) {
+        stopPumpPoll()
+        setPasso('FOTO')
+      }
+    }, 2_000)
+    return stopPumpPoll
+  }, [passo, pendId, stopPumpPoll])
 
   // ── Foto ──────────────────────────────────────────────────────────────────
   function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -282,7 +321,7 @@ export function AbastecimentoPublicPage() {
         <div className="ml-auto flex items-center gap-1">
           {([1, 2, 3, 4] as const).map(n => {
             const ativo = (passo === 'TIPO' && n === 1) || (passo === 'FORM' && n === 2)
-                        || (passo === 'AGUARDAR' && n === 3)
+                        || ((passo === 'AGUARDAR' || passo === 'BOMBA') && n === 3)
                         || ((passo === 'FOTO' || passo === 'DONE') && n === 4)
             const feito = (n === 1 && passo !== 'TIPO')
                         || (n === 2 && !['TIPO', 'FORM'].includes(passo))
@@ -419,6 +458,54 @@ export function AbastecimentoPublicPage() {
                     {tipo && TIPO_CONFIG[tipo].label} · {vehicleName}
                   </div>
                   <p className="text-xs text-gray-400">Esta página atualiza automaticamente.</p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── BOMBA: Aguardar ativação física (POLO2 apenas) ───────────────── */}
+          {passo === 'BOMBA' && (
+            <div className="text-center py-12 space-y-5">
+              {pumpTimedOut ? (
+                <>
+                  <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-12 h-12 text-amber-500" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">Confirmação lenta</h1>
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                      Não foi possível confirmar a abertura da bomba.<br />
+                      Verifica se o combustível está a fluir e prossegue.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { stopPumpPoll(); setPasso('FOTO') }}
+                    className="w-full py-4 bg-gray-800 text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform">
+                    Prosseguir e Fotografar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="relative w-24 h-24 mx-auto">
+                    <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Droplets className="w-12 h-12 text-blue-500 animate-pulse" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow">
+                      <Loader2 className="w-4 h-4 text-white animate-spin" />
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">A abrir bomba…</h1>
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                      Pedido autorizado!<br />
+                      A bomba está a ser ativada — aguarda o clique.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-xs text-blue-600 font-semibold bg-blue-50 border border-blue-100 rounded-full px-4 py-2 w-fit mx-auto">
+                    <Droplets className="w-3.5 h-3.5" />
+                    Polo 2 · Bomba ativa por 3 min
+                  </div>
+                  <p className="text-xs text-gray-400">Esta página avança automaticamente quando a bomba abrir.</p>
                 </>
               )}
             </div>
