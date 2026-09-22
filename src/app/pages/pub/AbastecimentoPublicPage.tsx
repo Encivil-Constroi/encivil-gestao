@@ -60,11 +60,34 @@ export function AbastecimentoPublicPage() {
   const [litrosManual,   setLitrosManual]   = useState('')
   const [custoManual,    setCustoManual]    = useState('')
 
-  const fotoRef          = useRef<HTMLInputElement>(null)
-  const pollRef          = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollCountRef     = useRef(0)
-  const pumpPollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pumpPollCountRef = useRef(0)
+  const fotoRef              = useRef<HTMLInputElement>(null)
+  const pollRef              = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollCountRef         = useRef(0)
+  const pumpPollRef          = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pumpPollCountRef     = useRef(0)
+  const pumpNetworkErrsRef   = useRef(0)
+  // Ref estável de `tipo` — evita que mudanças de estado reiniciem os polling effects
+  const tipoRef              = useRef<TipoFonte | null>(null)
+  tipoRef.current            = tipo
+
+  // ── Restaurar sessão interrompida (browser fechado durante AGUARDAR/BOMBA/FOTO) ──
+  useEffect(() => {
+    if (!vehicleId) return
+    try {
+      const saved = sessionStorage.getItem('encivil_fuel')
+      if (!saved) return
+      const { pendId: sid, tipo: stipo, vehicleId: svid } = JSON.parse(saved) as {
+        pendId: string; tipo: TipoFonte; vehicleId: string
+      }
+      // Só restaurar se for o mesmo QR code / viatura
+      if (sid && stipo && svid === vehicleId) {
+        setPendId(sid)
+        setTipo(stipo)
+        setPasso('AGUARDAR')  // re-poll irá detetar o estado atual e avançar
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId])
 
   // ── Polling do estado após pedido de autorização ──────────────────────────
   const stopPoll = useCallback(() => {
@@ -87,44 +110,54 @@ export function AbastecimentoPublicPage() {
       }
       const { data, error: pollErr } = await supabase
         .from('comb_abastecimentos_pendentes')
-        .select('estado')
+        .select('estado')   // mínimo necessário — não expõe pump_auth_token nem dados pessoais
         .eq('id', pendId)
         .single()
       if (pollErr) {
-        // Erros de rede transitórios não interrompem o polling — tentar de novo no próximo tick
         console.warn('poll error:', pollErr.message)
         return
       }
       const row = data as { estado?: string } | null
       if (row?.estado === 'AUTORIZADO') {
         stopPoll()
-        // POLO2: aguardar confirmação de ativação física da bomba
-        if (tipo === 'POLO2') setPasso('BOMBA')
+        // POLO2: aguardar confirmação de ativação física antes de ir para FOTO
+        if (tipoRef.current === 'POLO2') setPasso('BOMBA')
         else setPasso('FOTO')
       }
-      if (row?.estado === 'REJEITADO')  { stopPoll(); setPasso('REJEITADO') }
+      if (row?.estado === 'REJEITADO') { stopPoll(); setPasso('REJEITADO') }
     }, 3_000)
     return stopPoll
-  }, [passo, pendId, stopPoll, tipo])
+  }, [passo, pendId, stopPoll])
 
   // ── Polling de pump_activated_at após autorização POLO2 ───────────────────
-  // Shelly tem até 5s para fazer o poll à Edge Function → esperamos até 20s
+  // Shelly tem até 5s para fazer o poll à Edge Function → esperamos até 30s (15 × 2s)
   useEffect(() => {
     if (passo !== 'BOMBA' || !pendId) return
     pumpPollCountRef.current = 0
+    pumpNetworkErrsRef.current = 0
     setPumpTimedOut(false)
+    setErr('')
     pumpPollRef.current = setInterval(async () => {
       pumpPollCountRef.current++
-      if (pumpPollCountRef.current > 10) { // 10 × 2s = 20s
+      if (pumpPollCountRef.current > 15) { // 15 × 2s = 30s
         stopPumpPoll()
         setPumpTimedOut(true)
         return
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('comb_abastecimentos_pendentes')
-        .select('pump_activated_at')
+        .select('pump_activated_at')  // só o campo necessário — não expõe tokens nem dados pessoais
         .eq('id', pendId)
         .single()
+      if (error) {
+        pumpNetworkErrsRef.current++
+        if (pumpNetworkErrsRef.current >= 3) {
+          setErr('Sem ligação. A tentar reconectar…')
+        }
+        return
+      }
+      pumpNetworkErrsRef.current = 0
+      setErr('')
       const row = data as { pump_activated_at?: string | null } | null
       if (row?.pump_activated_at) {
         stopPumpPoll()
@@ -186,6 +219,12 @@ export function AbastecimentoPublicPage() {
     setPendId(data.id)
     setPollTimedOut(false)
     setPasso('AGUARDAR')
+
+    // Persistir sessão — se o browser fechar durante AGUARDAR/BOMBA/FOTO, o motorista
+    // pode reabrir o QR e retomar o fluxo sem perder o registo na BD
+    try {
+      sessionStorage.setItem('encivil_fuel', JSON.stringify({ pendId: data.id, tipo, vehicleId }))
+    } catch {}
 
     supabase.functions.invoke('send-push', {
       body: {
@@ -261,6 +300,7 @@ export function AbastecimentoPublicPage() {
     })
     setSaving(false)
     if (conclErr) { setErr('Erro ao guardar. Tenta novamente.'); return }
+    try { sessionStorage.removeItem('encivil_fuel') } catch {}
     setPasso('DONE')
   })
 
@@ -277,6 +317,7 @@ export function AbastecimentoPublicPage() {
     })
     setSaving(false)
     if (conclErr) { setErr('Erro ao guardar. Tenta novamente.'); return }
+    try { sessionStorage.removeItem('encivil_fuel') } catch {}
     setPasso('DONE')
   }
 
@@ -298,6 +339,7 @@ export function AbastecimentoPublicPage() {
     })
     setSaving(false)
     if (conclErr) { setErr('Erro ao guardar. Tenta novamente.'); return }
+    try { sessionStorage.removeItem('encivil_fuel') } catch {}
     setLitros(l)
     setPasso('DONE')
   }
@@ -647,6 +689,7 @@ export function AbastecimentoPublicPage() {
               </div>
               <button
                 onClick={() => {
+                  try { sessionStorage.removeItem('encivil_fuel') } catch {}
                   setPasso('TIPO'); setTipo(null); setNome(''); setKm('')
                   setPendId(null); setFoto(null); setFotoPreview(null)
                   setUploadedFotoUrl(''); setLitros(null); setCusto(null)
@@ -670,7 +713,10 @@ export function AbastecimentoPublicPage() {
                 <p className="text-gray-500 mt-2">O responsável não autorizou este abastecimento.</p>
               </div>
               <button
-                onClick={() => { setPasso('TIPO'); setTipo(null); setNome(''); setKm(''); setPendId(null); setErr('') }}
+                onClick={() => {
+                  try { sessionStorage.removeItem('encivil_fuel') } catch {}
+                  setPasso('TIPO'); setTipo(null); setNome(''); setKm(''); setPendId(null); setErr('')
+                }}
                 className="w-full py-4 bg-gray-800 text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform">
                 Tentar Novamente
               </button>
