@@ -63,9 +63,10 @@ Deno.serve(async (req: Request) => {
   if (error || !data) return IDLE
 
   // Marcar como ativado de forma atómica (protege contra corrida de polling duplo)
+  // { count: 'exact' } obrigatório — sem ele Supabase JS v2 retorna count=null sempre
   const { error: updErr, count } = await supabase
     .from('comb_abastecimentos_pendentes')
-    .update({ pump_activated_at: new Date().toISOString() })
+    .update({ pump_activated_at: new Date().toISOString() }, { count: 'exact' })
     .eq('id', data.id)
     .is('pump_activated_at', null)  // só atualiza se ainda não foi ativado
 
