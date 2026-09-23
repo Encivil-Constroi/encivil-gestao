@@ -35,5 +35,4 @@ ALTER FUNCTION public.lancar_fatura(UUID, TEXT)
 ALTER FUNCTION public.custos_consolidados_por_obra(UUID, DATE, DATE)
   SET search_path = public;
 
-ALTER FUNCTION public.criar_guia_transporte(uuid, uuid, text, text, date, jsonb)
-  SET search_path = public;
+-- criar_guia_transporte pertence ao módulo F8 (livro_obra) — aplicado quando F8 for instalado.
