@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAsync, invalidateCache } from '@/app/lib/useAsync'
 
@@ -34,15 +34,26 @@ export type AbastecimentoPendente = {
   pump_activated_at:    string | null
 }
 
+// Projeção explícita — pump_auth_token excluído intencionalmente:
+// é um token de uso único para ativar relay físico; expô-lo no browser
+// permitiria a qualquer admin com DevTools tentar ativar a bomba diretamente.
+const SELECT_PENDENTES = [
+  'id', 'veiculo_id', 'veiculo_nome', 'funcionario_nome', 'data',
+  'litros', 'custo_total', 'contador', 'local', 'observacoes',
+  'foto_url', 'foto_medidor_url', 'tipo_fonte', 'estado',
+  'litros_gemini', 'custo_gemini', 'criado_em',
+  'pump_auth_expires_at', 'pump_activated_at',
+].join(', ')
+
 // Busca apenas os pendentes que precisam de ação (autorização ou aprovação final)
 async function fetchPendentes(): Promise<AbastecimentoPendente[]> {
   const { data, error } = await supabase
     .from('comb_abastecimentos_pendentes')
-    .select('*')
+    .select(SELECT_PENDENTES)
     .in('estado', ['AGUARDA_AUTORIZACAO', 'AGUARDA_APROVACAO'])
     .order('criado_em', { ascending: false })
   if (error) throw error
-  return (data ?? []) as AbastecimentoPendente[]
+  return (data ?? []) as unknown as AbastecimentoPendente[]
 }
 
 const INV = ['abastecimentos-pendentes', 'abastecimentos-*'] as const
@@ -52,6 +63,12 @@ export function usePendentes() {
     { cacheKey: 'abastecimentos-pendentes', cacheTtl: 30_000 }
   )
   const items = data ?? []
+
+  // Polling automático a cada 15s — garante que novos pedidos aparecem sem reload manual
+  useEffect(() => {
+    const id = setInterval(() => { invalidateCache(...INV); reload() }, 15_000)
+    return () => clearInterval(id)
+  }, [reload])
 
   // Ação 1: autorizar pedido (AGUARDA_AUTORIZACAO → AUTORIZADO)
   const autorizar = useCallback(async (id: string): Promise<boolean> => {

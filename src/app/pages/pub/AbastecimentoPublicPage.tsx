@@ -84,6 +84,9 @@ export function AbastecimentoPublicPage() {
         setPendId(sid)
         setTipo(stipo)
         setPasso('AGUARDAR')  // re-poll irá detetar o estado atual e avançar
+      } else if (svid !== vehicleId) {
+        // QR diferente — limpar sessão antiga para não poluir storage
+        try { sessionStorage.removeItem('encivil_fuel') } catch {}
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,7 +209,7 @@ export function AbastecimentoPublicPage() {
         veiculo_nome:     vehicleName,
         funcionario_nome: nome.trim(),
         data:             todayStr(),
-        tipo_fonte:       tipo ?? 'POSTO_RUA',
+        tipo_fonte:       tipo!,
         estado:           'AGUARDA_AUTORIZACAO',
         contador:         km ? parseFloat(km) : null,
       })
@@ -562,7 +565,7 @@ export function AbastecimentoPublicPage() {
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">Autorizado!</h1>
                 <p className="text-sm text-gray-500 mt-1">
-                  {tipo === 'POLO2'    && 'Abastece no Polo 2 e tira foto ao medidor.'}
+                  {tipo === 'POLO2'    && 'Bomba aberta — abastece e tira foto ao medidor.'}
                   {tipo === 'CARRINHA' && 'Abastece na carrinha e tira foto ao medidor.'}
                   {tipo === 'POSTO_RUA'&& 'Abastece no posto e tira foto ao talão.'}
                 </p>

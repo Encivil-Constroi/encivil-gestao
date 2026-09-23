@@ -35,3 +35,6 @@ npm-debug.log*
 
 .vercel
 .env*
+
+# Supabase CLI temp files (contém project ref e metadados — não commitar)
+supabase/.temp/

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Movement } from '@/app/types'
 import { useAsync, invalidateCache } from '@/app/lib/useAsync'
 import {
@@ -34,17 +34,24 @@ export function useMovimentosPaginados(filtros: FiltrosMovimentos = {}) {
   const filtrosKey = JSON.stringify(filtros)
   useEffect(() => { setPage(0) }, [filtrosKey])
 
+  // Proteção contra respostas fora de ordem: quando filtros mudam rapidamente,
+  // múltiplas chamadas ficam em voo — apenas a mais recente deve atualizar o estado.
+  const loadGenRef = useRef(0)
+
   const load = useCallback(async (targetPage: number) => {
+    const gen = ++loadGenRef.current
     setLoading(true)
     setError(null)
     try {
       const result = await listarMovimentosPaginados(filtros, targetPage)
+      if (loadGenRef.current !== gen) return
       setMovements(result.data)
       setCount(result.count)
     } catch (e) {
+      if (loadGenRef.current !== gen) return
       setError(e instanceof Error ? e.message : 'Erro ao carregar movimentos')
     } finally {
-      setLoading(false)
+      if (loadGenRef.current === gen) setLoading(false)
     }
   // filtrosKey + targetPage drive re-fetches; filtros is captured via closure
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +82,7 @@ export function useRegistarMovimento() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const registar = async (input: RegistarMovimentoInput): Promise<RegistarResultado> => {
+  const registar = useCallback(async (input: RegistarMovimentoInput): Promise<RegistarResultado> => {
     setLoading(true)
     setError(null)
     try {
@@ -104,7 +111,9 @@ export function useRegistarMovimento() {
     } finally {
       setLoading(false)
     }
-  }
+  // setLoading/setError são estáveis; imports externos não mudam
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return { registar, loading, error }
 }

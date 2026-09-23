@@ -64,6 +64,12 @@ export function useAsync<T>(
   // useEffect incrementa-o, tornando inválida qualquer execução anterior em voo.
   const genRef = useRef(0)
 
+  // Ref estável para asyncFn — evita stale closures quando o consumer passa uma
+  // função que fecha sobre valores mutáveis não incluídos em deps.
+  // Mesmo padrão usado em useMutation.ts para mutateFnRef.
+  const asyncFnRef = useRef(asyncFn)
+  asyncFnRef.current = asyncFn
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const run = useCallback(async () => {
     if (!enabled) { setLoading(false); return }
@@ -81,7 +87,7 @@ export function useAsync<T>(
     setLoading(true)
     setError(null)
     try {
-      const result = await asyncFn()
+      const result = await asyncFnRef.current()
       if (genRef.current !== gen) return
       if (cacheKey) _cache.set(cacheKey, { data: result, ts: Date.now() })
       setData(result)
