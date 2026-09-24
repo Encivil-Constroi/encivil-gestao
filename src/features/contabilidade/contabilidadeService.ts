@@ -40,7 +40,7 @@ type MatRow = {
 export async function exportarMateriais(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
   let query = db
     .from('movimentos_stock')
-    .select('created_at, tipo, quantidade, responsavel, destino_obra, produtos(nome, codigo, unidade, custo_unitario), obras!obra_id(nome)')
+    .select('created_at, tipo, quantidade, responsavel, destino_obra, produtos(nome, codigo, unidade, custo_unitario), obras(nome)')
     .eq('tipo', 'saida')
     .order('created_at', { ascending: true })
 
@@ -75,16 +75,16 @@ type FuelRow = {
   litros: number
   custo_total: number
   responsavel: string
-  localizacao: string | null
+  local: string | null
   observacoes: string | null
-  comb_viaturas: { nome: string; codigo: string } | null
+  comb_veiculos: { nome: string; codigo: string } | null
   obras: { nome: string } | null
 }
 
 export async function exportarCombustivel(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
   let query = db
     .from('comb_abastecimentos')
-    .select('data, litros, custo_total, responsavel, localizacao, observacoes, comb_viaturas!veiculo_id(nome, codigo), obras!obra_id(nome)')
+    .select('data, litros, custo_total, responsavel, local, observacoes, comb_veiculos(nome, codigo), obras(nome)')
     .order('data', { ascending: true })
 
   if (filtros.dataInicio) query = query.gte('data', filtros.dataInicio)
@@ -99,14 +99,14 @@ export async function exportarCombustivel(filtros: FiltrosExport = {}): Promise<
     const custo  = Number(r.custo_total)
     return {
       'Data':              fmtData(r.data),
-      'Viatura':           r.comb_viaturas?.nome ?? '',
-      'Código Viatura':    r.comb_viaturas?.codigo ?? '',
+      'Viatura':           r.comb_veiculos?.nome ?? '',
+      'Código Viatura':    r.comb_veiculos?.codigo ?? '',
       'Litros':            litros,
       'Custo/Litro (€)':   litros > 0 ? num2(custo / litros) : '0.00',
       'Custo Total (€)':   num2(custo),
       'Responsável':       r.responsavel,
       'Obra':              r.obras?.nome ?? '',
-      'Local':             r.localizacao ?? '',
+      'Local':             r.local ?? '',
       'Observações':       r.observacoes ?? '',
     }
   })
@@ -133,7 +133,7 @@ type AutoRow = {
 export async function exportarAutos(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
   let query = db
     .from('autos_medicao')
-    .select('numero, data_medicao, valor_periodo, estado, estado_pagamento, data_pagamento, referencia_pagamento, validado_em, subempreiteiros!subempreiteiro_id(nome, percentagem_retencao, obras!obra_id(nome))')
+    .select('numero, data_medicao, valor_periodo, estado, estado_pagamento, data_pagamento, referencia_pagamento, validado_em, subempreiteiros(nome, percentagem_retencao, obras(nome))')
     .eq('estado', 'validado')
     .order('data_medicao', { ascending: true })
 
