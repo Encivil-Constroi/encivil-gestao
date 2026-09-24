@@ -174,6 +174,8 @@ export interface Subcontractor {
   agreedValue: number;
   /** Percentagem retida de cada auto validado (0–100). */
   retencaoPercentagem: number;
+  /** false = arquivada (soft delete). */
+  active: boolean;
 }
 
 /* ─── Combustível ──────────────────────────────────────────────── */

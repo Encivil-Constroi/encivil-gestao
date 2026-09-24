@@ -22,6 +22,7 @@ type SubRow = {
   percentagem_retencao: number
   condicoes: string | null
   estado: 'rascunho' | 'validado'
+  ativo: boolean
   created_at: string
   updated_at: string
   validado_em: string | null
@@ -57,6 +58,7 @@ function toSubcontractor(row: SubRow): Subcontractor {
     globalValue: row.valor_global ?? undefined,
     conditions: row.condicoes ?? undefined,
     status: row.estado,
+    active: row.ativo ?? true,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     validatedAt: row.validado_em ? new Date(row.validado_em) : undefined,
@@ -69,7 +71,12 @@ function toSubcontractor(row: SubRow): Subcontractor {
 const SELECT = '*, obras(nome), subempreiteiro_artigos(*)'
 
 export async function listarSubempreiteiros(obraId?: string): Promise<Subcontractor[]> {
-  let query = supabase.from('subempreiteiros').select(SELECT).order('created_at', { ascending: false })
+  // ativo não está nos tipos gerados (coluna nova) — cast para any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase.from('subempreiteiros') as any)
+    .select(SELECT)
+    .order('created_at', { ascending: false })
+    .eq('ativo', true)
   if (obraId) query = query.eq('obra_id', obraId)
   const { data, error } = await query
   if (error) throw error
@@ -205,6 +212,12 @@ async function substituirArtigos(subId: string, items: ItemInput[]): Promise<voi
 
 export async function eliminarSubempreiteiro(id: string): Promise<void> {
   const { error } = await supabase.from('subempreiteiros').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function arquivarSubempreiteiro(id: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.rpc as any)('arquivar_subempreiteiro', { p_id: id })
   if (error) throw error
 }
 

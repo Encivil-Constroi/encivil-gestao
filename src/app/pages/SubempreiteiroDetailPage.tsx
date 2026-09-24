@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
-  ChevronLeft, Pencil, Trash2, CheckCircle2, FileEdit, ShieldCheck,
+  ChevronLeft, Pencil, Trash2, Archive, CheckCircle2, FileEdit, ShieldCheck,
   Phone, Building2, Lock, Plus, Calendar, ClipboardList,
   Banknote, TrendingDown, AlertTriangle, X, TriangleAlert,
 } from 'lucide-react';
@@ -12,6 +12,7 @@ import {
   useSubempreiteiro,
   useValidarSubempreiteiro,
   useEliminarSubempreiteiro,
+  useArquivarSubempreiteiro,
 } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
 import { useAutos } from '@/features/autos/hooks/useAutos';
 import { useRetencaoTotais, useCriarLiberacao, useEliminarLiberacao } from '@/features/subempreiteiros/hooks/useRetencao';
@@ -40,6 +41,7 @@ export function SubempreiteiroDetailPage() {
   const { autos, loading: autosLoading } = useAutos(id);
   const { validar, loading: validating } = useValidarSubempreiteiro();
   const { eliminar, loading: deleting }  = useEliminarSubempreiteiro();
+  const { arquivar, loading: archiving } = useArquivarSubempreiteiro();
 
   const {
     retencaoAcumulada, retencaoLibertada, retencaoEmAberto,
@@ -51,6 +53,7 @@ export function SubempreiteiroDetailPage() {
 
   const [confirmValidate, setConfirmValidate] = useState(false);
   const [confirmDelete,   setConfirmDelete]   = useState(false);
+  const [confirmArchive,  setConfirmArchive]  = useState(false);
   const [showLibForm,     setShowLibForm]     = useState(false);
   const [libForm, setLibForm] = useState({
     valor: '', motivo: 'conclusao_obra' as LiberacaoRetencao['motivo'], observacoes: '',
@@ -76,6 +79,12 @@ export function SubempreiteiroDetailPage() {
     const ok = await eliminar(sub.id);
     if (ok) { toast.success('Contratação eliminada.'); navigate('/subempreiteiros'); }
     else toast.error('Não foi possível eliminar.');
+  };
+
+  const handleArchive = async () => {
+    const ok = await arquivar(sub.id);
+    if (ok) { toast.success('Contratação arquivada.'); navigate('/subempreiteiros'); }
+    else toast.error('Não foi possível arquivar.');
   };
 
   const handleCriarLib = async () => {
@@ -480,6 +489,27 @@ export function SubempreiteiroDetailPage() {
             <p className="text-xs text-muted-foreground text-center">A validação da contratação é feita por um administrador.</p>
           )}
         </div>
+      )}
+
+      {/* Arquivar (soft delete) — apenas contratações validadas, admin/gestor */}
+      {isValidado && podeSubempreitadas && (
+        confirmArchive ? (
+          <div className="bg-warning/5 border border-warning/30 rounded-2xl p-4 space-y-3">
+            <p className="text-sm font-medium">Arquivar esta contratação? Deixará de aparecer nas listagens, mas os dados ficam preservados.</p>
+            <div className="flex gap-3">
+              <button onClick={handleArchive} disabled={archiving} className="flex-1 py-3 bg-warning text-warning-foreground rounded-xl font-medium hover:bg-warning/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                <Archive className="w-4 h-4" /> {archiving ? 'A arquivar…' : 'Confirmar'}
+              </button>
+              <button onClick={() => setConfirmArchive(false)} disabled={archiving} className="px-4 py-3 bg-secondary/20 rounded-xl font-medium hover:bg-secondary/30 transition-all">Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <button onClick={() => setConfirmArchive(true)} className="px-4 py-3 text-muted-foreground hover:bg-accent rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+              <Archive className="w-4 h-4" /> <span className="hidden sm:inline">Arquivar</span>
+            </button>
+          </div>
+        )
       )}
     </div>
   );

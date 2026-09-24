@@ -2,7 +2,8 @@ import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import {
   listarSubempreiteiros, listarSubempreiteirosComExecutado, buscarSubempreiteiro,
-  criarSubempreiteiro, atualizarSubempreiteiro, eliminarSubempreiteiro, validarSubempreiteiro,
+  criarSubempreiteiro, atualizarSubempreiteiro, eliminarSubempreiteiro,
+  arquivarSubempreiteiro, validarSubempreiteiro,
   type AtualizarSubempreiteiro,
 } from '../services/subempreiteirosService'
 
@@ -63,4 +64,14 @@ export function useEliminarSubempreiteiro() {
   )
   const eliminar = async (id: string) => (await mutate(id)) === true
   return { eliminar, loading }
+}
+
+export function useArquivarSubempreiteiro() {
+  const { mutate, loading } = useMutation(
+    async (id: string): Promise<true> => { await arquivarSubempreiteiro(id); return true },
+    'Erro ao arquivar',
+    { invalidates: INV_SUBS }
+  )
+  const arquivar = async (id: string) => (await mutate(id)) === true
+  return { arquivar, loading }
 }
