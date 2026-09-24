@@ -9,8 +9,14 @@ declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>
 }
 
-// Take control of all clients when this SW activates (safe: 'prompt' mode means
-// activation only happens after the user confirms the update in UpdatePrompt.tsx)
+// Responder a SKIP_WAITING enviado por updateServiceWorker(false) no UpdatePrompt.
+// Sem este handler, o SW ignorava a mensagem e permanecia em "waiting" para sempre,
+// causando um loop de recarregamentos no cliente.
+self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
+// Take control of all clients immediately after activation
 clientsClaim()
 
 precacheAndRoute(self.__WB_MANIFEST)

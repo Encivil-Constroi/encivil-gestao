@@ -51,7 +51,8 @@ export function UpdatePrompt() {
     )
     updateServiceWorker(false)
     // Fallback: se controllerchange não disparar em 4s (iOS edge case), recarregar
-    setTimeout(() => { window.location.href = '/' }, 4_000)
+    const t = setTimeout(() => { window.location.href = '/' }, 4_000)
+    return () => clearTimeout(t)
   }, [needRefresh, updateServiceWorker])
 
   return null
