@@ -21,6 +21,8 @@ type VeiculoRow = {
   intervalo_revisao_meses: number | null
   data_fim_seguro: string | null
   data_proxima_ipo: string | null
+  // bomba POLO2
+  pump_max_seconds: number
 }
 
 function toVehicle(row: VeiculoRow): Vehicle {
@@ -42,6 +44,7 @@ function toVehicle(row: VeiculoRow): Vehicle {
     intervaloRevisaoMeses: row.intervalo_revisao_meses ?? undefined,
     dataFimSeguro: row.data_fim_seguro ? new Date(row.data_fim_seguro) : undefined,
     dataProximaIpo: row.data_proxima_ipo ? new Date(row.data_proxima_ipo) : undefined,
+    pumpMaxSeconds: row.pump_max_seconds ?? 180,
   }
 }
 
@@ -50,13 +53,14 @@ export async function listarVeiculos(apenasAtivos = true): Promise<Vehicle[]> {
   if (apenasAtivos) query = query.eq('ativo', true)
   const { data, error } = await query
   if (error) throw error
-  return (data as VeiculoRow[]).map(toVehicle)
+  // pump_max_seconds não está nos tipos gerados (coluna nova, sem acesso ao CLI)
+  return (data as unknown as VeiculoRow[]).map(toVehicle)
 }
 
 export async function buscarVeiculo(id: string): Promise<Vehicle> {
   const { data, error } = await supabase.from('comb_veiculos').select('*').eq('id', id).single()
   if (error) throw error
-  return toVehicle(data as VeiculoRow)
+  return toVehicle(data as unknown as VeiculoRow)
 }
 
 export type ManutencaoVeiculo = {
@@ -75,11 +79,12 @@ export type NovoVeiculo = {
   fuelType: FuelType
   counterUnit: CounterUnit
   notes?: string
+  pumpMaxSeconds?: number
 } & ManutencaoVeiculo
 
 export async function criarVeiculo(input: NovoVeiculo): Promise<Vehicle> {
-  const { data, error } = await supabase
-    .from('comb_veiculos')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from('comb_veiculos') as any)
     .insert({
       nome: input.name,
       tipo: input.type,
@@ -93,11 +98,13 @@ export async function criarVeiculo(input: NovoVeiculo): Promise<Vehicle> {
       intervalo_revisao_meses: input.intervaloRevisaoMeses ?? null,
       data_fim_seguro: input.dataFimSeguro ?? null,
       data_proxima_ipo: input.dataProximaIpo ?? null,
+      // pump_max_seconds: coluna nova, sem entrada nos tipos gerados
+      pump_max_seconds: input.pumpMaxSeconds ?? 180,
     })
     .select()
     .single()
   if (error) throw error
-  return toVehicle(data as VeiculoRow)
+  return toVehicle(data as unknown as VeiculoRow)
 }
 
 export type AtualizarVeiculo = Partial<NovoVeiculo> & { active?: boolean }
@@ -118,10 +125,11 @@ export async function atualizarVeiculo(id: string, input: AtualizarVeiculo): Pro
   if ('intervaloRevisaoMeses' in input)   update.intervalo_revisao_meses = input.intervaloRevisaoMeses ?? null
   if ('dataFimSeguro'        in input)    update.data_fim_seguro         = input.dataFimSeguro ?? null
   if ('dataProximaIpo'       in input)    update.data_proxima_ipo        = input.dataProximaIpo ?? null
+  if (input.pumpMaxSeconds !== undefined) update.pump_max_seconds        = input.pumpMaxSeconds
 
   const { data, error } = await supabase.from('comb_veiculos').update(update as TablesUpdate<'comb_veiculos'>).eq('id', id).select().single()
   if (error) throw error
-  return toVehicle(data as VeiculoRow)
+  return toVehicle(data as unknown as VeiculoRow)
 }
 
 export async function gerarCodigoVeiculoPreview(): Promise<string> {

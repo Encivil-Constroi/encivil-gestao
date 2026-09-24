@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ChevronLeft, Archive, Wrench } from 'lucide-react';
+import { ChevronLeft, Archive, Wrench, Droplets } from 'lucide-react';
 import { toast } from 'sonner';
 import { VEHICLE_TYPES, FUEL_TYPES, COUNTER_UNITS } from '@/features/combustivel/labels';
 import { useVeiculo, useGuardarVeiculo } from '@/features/combustivel/hooks/useCombustivel';
@@ -32,6 +32,8 @@ export function VeiculoFormPage() {
     intervaloRevisaoMeses: '',
     dataFimSeguro: '',
     dataProximaIpo: '',
+    // bomba POLO2
+    pumpMaxMinutos: '3',
   });
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export function VeiculoFormPage() {
       intervaloRevisaoMeses: vehicle.intervaloRevisaoMeses?.toString() ?? '',
       dataFimSeguro: toDateStr(vehicle.dataFimSeguro),
       dataProximaIpo: toDateStr(vehicle.dataProximaIpo),
+      pumpMaxMinutos: String(Math.round((vehicle.pumpMaxSeconds ?? 180) / 60)),
     });
   }, [isEdit, vehicle]);
 
@@ -76,6 +79,7 @@ export function VeiculoFormPage() {
       intervaloRevisaoMeses: form.intervaloRevisaoMeses ? Number(form.intervaloRevisaoMeses) : undefined,
       dataFimSeguro: form.dataFimSeguro || undefined,
       dataProximaIpo: form.dataProximaIpo || undefined,
+      pumpMaxSeconds: Math.max(60, Math.min(3600, (Number(form.pumpMaxMinutos) || 3) * 60)),
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) { toast.success(isEdit ? 'Viatura atualizada.' : 'Viatura criada.'); navigate('/combustivel'); }
@@ -208,6 +212,39 @@ export function VeiculoFormPage() {
                 className={inputCls}
               />
             </div>
+          </div>
+        </div>
+
+        {/* ── Bomba POLO2 ──────────────────────────────────────── */}
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Droplets className="w-4 h-4 text-blue-500" />
+            <h2 className="text-sm font-semibold">Bomba POLO2</h2>
+            <span className="text-xs text-muted-foreground">(Shelly Pro 3 — galpão)</span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Tempo máximo na bomba (minutos)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="1"
+                max="60"
+                step="1"
+                value={form.pumpMaxMinutos}
+                onChange={e => set({ pumpMaxMinutos: e.target.value })}
+                className={`${inputCls} max-w-[140px]`}
+                placeholder="3"
+              />
+              <p className="text-sm text-muted-foreground">
+                = {(Number(form.pumpMaxMinutos) || 3) * 60} segundos no Shelly
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              O Shelly fecha o relay automaticamente após este tempo.
+              Viaturas com depósito maior precisam de mais minutos.
+            </p>
           </div>
         </div>
 

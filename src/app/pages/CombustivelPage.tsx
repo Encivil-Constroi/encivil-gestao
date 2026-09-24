@@ -597,7 +597,7 @@ export function CombustivelPage() {
                     {p.tipo_fonte === 'POLO2' && (
                       <p className="text-xs text-blue-600 font-medium flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
                         <Gauge className="w-3.5 h-3.5 shrink-0" />
-                        Autorizar abre a bomba do galpão por 3 min
+                        Autorizar abre a bomba por {Math.round((p.comb_veiculos?.pump_max_seconds ?? 180) / 60)} min
                       </p>
                     )}
                     {podeCombustivel && (

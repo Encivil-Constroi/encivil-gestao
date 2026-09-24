@@ -57,6 +57,7 @@ export function AbastecimentoPublicPage() {
   const [err,            setErr]            = useState('')
   const [pollTimedOut,   setPollTimedOut]   = useState(false)
   const [pumpTimedOut,   setPumpTimedOut]   = useState(false)
+  const [pumpMaxSeconds, setPumpMaxSeconds] = useState(180)
   const [litrosManual,   setLitrosManual]   = useState('')
   const [custoManual,    setCustoManual]    = useState('')
 
@@ -113,19 +114,24 @@ export function AbastecimentoPublicPage() {
       }
       const { data, error: pollErr } = await supabase
         .from('comb_abastecimentos_pendentes')
-        .select('estado')   // mínimo necessário — não expõe pump_auth_token nem dados pessoais
+        // pump_max_seconds: lido após autorização (copiado da viatura pela RPC)
+        .select('estado, pump_max_seconds')
         .eq('id', pendId)
         .single()
       if (pollErr) {
         console.warn('poll error:', pollErr.message)
         return
       }
-      const row = data as { estado?: string } | null
+      const row = data as { estado?: string; pump_max_seconds?: number } | null
       if (row?.estado === 'AUTORIZADO') {
         stopPoll()
-        // POLO2: aguardar confirmação de ativação física antes de ir para FOTO
-        if (tipoRef.current === 'POLO2') setPasso('BOMBA')
-        else setPasso('FOTO')
+        if (tipoRef.current === 'POLO2') {
+          // Guardar tempo configurado na viatura para mostrar no passo BOMBA
+          setPumpMaxSeconds(row.pump_max_seconds ?? 180)
+          setPasso('BOMBA')
+        } else {
+          setPasso('FOTO')
+        }
       }
       if (row?.estado === 'REJEITADO') { stopPoll(); setPasso('REJEITADO') }
     }, 3_000)
@@ -548,7 +554,7 @@ export function AbastecimentoPublicPage() {
                   </div>
                   <div className="flex items-center justify-center gap-2 text-xs text-blue-600 font-semibold bg-blue-50 border border-blue-100 rounded-full px-4 py-2 w-fit mx-auto">
                     <Droplets className="w-3.5 h-3.5" />
-                    Polo 2 · Bomba ativa por 3 min
+                    Polo 2 · Bomba ativa por {Math.round(pumpMaxSeconds / 60)} min
                   </div>
                   <p className="text-xs text-gray-400">Esta página avança automaticamente quando a bomba abrir.</p>
                 </>

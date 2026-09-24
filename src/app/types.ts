@@ -201,6 +201,8 @@ export interface Vehicle {
   intervaloRevisaoMeses?: number;
   dataFimSeguro?: Date;
   dataProximaIpo?: Date;
+  // Bomba POLO2 — tempo máximo de ativação do Shelly (segundos). Default: 180.
+  pumpMaxSeconds: number;
 }
 
 export interface FuelEntry {

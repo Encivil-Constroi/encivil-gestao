@@ -54,9 +54,10 @@ Deno.serve(async (req: Request) => {
   if (!tipoFonte) return idleResponse()
 
   // Procurar pedido autorizado com token válido e ainda não ativado
+  // pump_max_seconds: tempo configurado na viatura, copiado pela RPC na autorização
   const { data, error } = await supabase
     .from('comb_abastecimentos_pendentes')
-    .select('id')
+    .select('id, pump_max_seconds')
     .eq('tipo_fonte', tipoFonte)
     .eq('estado', 'AUTORIZADO')
     .not('pump_auth_token', 'is', null)
@@ -86,8 +87,9 @@ Deno.serve(async (req: Request) => {
   }
   if (count === 0) return idleResponse()  // outro poll ganhou a corrida
 
-  console.log('[pump-status] Bomba ativada — registo:', data.id)
-  return new Response(JSON.stringify({ status: 'authorized', seconds: 180 }), {
+  const seconds = (data as { pump_max_seconds?: number }).pump_max_seconds ?? 180
+  console.log('[pump-status] Bomba ativada — registo:', data.id, '— segundos:', seconds)
+  return new Response(JSON.stringify({ status: 'authorized', seconds }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
