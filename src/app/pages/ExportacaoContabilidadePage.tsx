@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Download, Package, Fuel, HardHat, BarChart2, FileDown, CheckCircle2, AlertTriangle, Loader2,
 } from 'lucide-react'
-import { exportarCsv } from '@/app/lib/exportCsv'
+import { exportarXlsx } from '@/app/lib/exportXlsx'
 import { useObras } from '@/features/obras/hooks/useObras'
 import {
   exportarMateriais, exportarCombustivel, exportarAutos, exportarPLObras,
@@ -134,7 +134,7 @@ export function ExportacaoContabilidadePage() {
         setStatus(s => ({ ...s, [id]: 'error' }))
         return
       }
-      exportarCsv(rows, nomeFicheiro(def.prefixo, filtros))
+      await exportarXlsx(rows, nomeFicheiro(def.prefixo, filtros), def.title)
       setStatus(s => ({ ...s, [id]: 'done' }))
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido'

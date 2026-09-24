@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, Minus, Download, Pencil, X, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { exportarCsv } from '@/app/lib/exportCsv'
+import { exportarXlsx } from '@/app/lib/exportXlsx'
 import { useObra } from '@/features/obras/hooks/useObras'
 import { useCustoConsolidado, useActualizarOrcamentos } from '../useCustoObra'
 import { DashboardRentabilidade } from './DashboardRentabilidade'
@@ -168,9 +168,9 @@ export function CustosObraPage() {
   const VarIcon  = totalOrc == null ? Minus : excede ? TrendingDown : TrendingUp
 
   // ── Export CSV ─────────────────────────────────────────────────────────────
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!custo) return
-    exportarCsv(
+    await exportarXlsx(
       CATS.map(c => ({
         Categoria:  c.label,
         Real:       custo[c.key as CatKey],
@@ -179,7 +179,8 @@ export function CustosObraPage() {
           ? custo[c.key as CatKey] - (custo.orcamentos![c.key as CatKey] ?? 0)
           : '',
       })),
-      `custos-obra-${obra.name.replace(/\s+/g, '-').toLowerCase()}-${periodo}`
+      `custos-obra-${obra.name.replace(/\s+/g, '-').toLowerCase()}-${periodo}`,
+      'Custos por Obra',
     )
   }
 

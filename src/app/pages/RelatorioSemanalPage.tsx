@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileBarChart, Share2, Printer, TrendingDown, TrendingUp, Fuel, Wrench, AlertTriangle, RefreshCw, Download } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { fmtEuro, fmtNumber } from '../lib/format'
-import { exportarCsv } from '../lib/exportCsv'
+import { exportarXlsx } from '../lib/exportXlsx'
 
 type Dados = {
   semanaLabel:   string
@@ -122,9 +122,9 @@ export function RelatorioSemanalPage() {
 
   useEffect(() => { void carregar(semana) }, [semana, carregar])
 
-  const exportarCSV = () => {
+  const exportarCSV = async () => {
     if (!dados) return
-    exportarCsv([{
+    await exportarXlsx([{
       'Semana':                  dados.semanaLabel,
       'Entradas armazém':        dados.entradas,
       'Saídas armazém':          dados.saidas,
@@ -134,7 +134,7 @@ export function RelatorioSemanalPage() {
       'Ferramentas em atraso':   dados.ferramAtrasadas,
       'Produtos sem stock':      dados.stockCritico,
       'Produtos stock baixo':    dados.stockBaixo,
-    }], 'relatorio_semanal')
+    }], 'relatorio_semanal', 'Relatório Semanal')
   }
 
   const partilharWhatsApp = () => {

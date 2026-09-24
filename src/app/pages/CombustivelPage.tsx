@@ -11,7 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { EmptyState } from '../components/EmptyState';
 import { SkeletonList } from '../components/Skeletons';
 import { fmtEuro, fmtNumber } from '../lib/format';
-import { exportarCsv } from '../lib/exportCsv';
+import { exportarXlsx } from '../lib/exportXlsx';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
 import { useAbastecimentos, useVeiculos } from '@/features/combustivel/hooks/useCombustivel';
 import { usePendentes } from '@/features/combustivel/hooks/usePendentes';
@@ -111,7 +111,7 @@ export function CombustivelPage() {
         Obra: e.obraName ?? '',
         Observações: e.notes ?? '',
       }))
-      exportarCsv(rows, 'combustivel')
+      await exportarXlsx(rows, 'combustivel', 'Combustível')
       toast.success(`${rows.length} abastecimento${rows.length !== 1 ? 's' : ''} exportados`)
     } catch {
       toast.error('Erro ao exportar')

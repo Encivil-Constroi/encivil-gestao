@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Shield, ChevronLeft, ChevronRight, Download, ChevronDown, ChevronRight as Expand } from 'lucide-react'
 import { useAsync } from '../lib/useAsync'
-import { exportarCsv } from '../lib/exportCsv'
+import { exportarXlsx } from '../lib/exportXlsx'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 
@@ -147,7 +147,7 @@ export function AuditoriaPage() {
         'Alvo (ID)':  r.target_id ?? '',
         'Detalhes':   r.details ? JSON.stringify(r.details as Record<string, unknown>) : '',
       }))
-      exportarCsv(csvRows, 'auditoria')
+      await exportarXlsx(csvRows, 'auditoria', 'Auditoria')
       toast.success(`${csvRows.length} entradas exportadas`)
     } catch {
       toast.error('Erro ao exportar')

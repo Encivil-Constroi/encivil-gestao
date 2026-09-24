@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
 import { EmptyState } from '../components/EmptyState';
 import { getUnitLabel } from '../data/mockData';
-import { exportarCsv } from '../lib/exportCsv';
+import { exportarXlsx } from '../lib/exportXlsx';
 import type { MovementType } from '../types';
 import { useMovimentosPaginados } from '@/features/movimentos/hooks/useMovimentos';
 import { type FiltrosMovimentos, PAGE_SIZE, exportarMovimentos } from '@/features/movimentos/services/movimentosService';
@@ -78,7 +78,7 @@ export function HistoryPage() {
         Destino: m.destination ?? '',
         Observações: m.notes ?? '',
       }))
-      exportarCsv(rows, 'historico_movimentos')
+      await exportarXlsx(rows, 'historico_movimentos', 'Histórico')
       toast.success(`${all.length} movimento${all.length !== 1 ? 's' : ''} exportados`)
     } catch {
       toast.error('Erro ao exportar')
