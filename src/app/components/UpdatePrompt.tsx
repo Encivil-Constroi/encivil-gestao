@@ -73,9 +73,19 @@ export function UpdatePrompt() {
       return
     }
 
-    toast.loading('Nova versão — a atualizar…', { duration: 2500 })
-    const t = setTimeout(apply, 2500)
-    return () => clearTimeout(t)
+    // toast.loading não respeita duration em Sonner — usa toast normal com botão.
+    // Clique imediato ou auto-apply após 4s.
+    let applied = false
+    const safeApply = () => { if (!applied) { applied = true; toast.dismiss(toastId); apply() } }
+
+    const toastId = toast('Nova versão disponível', {
+      description: 'Clica para recarregar com as melhorias mais recentes.',
+      action: { label: 'Atualizar', onClick: safeApply },
+      duration: Infinity,
+    })
+
+    const t = setTimeout(safeApply, 4_000)
+    return () => { clearTimeout(t); toast.dismiss(toastId) }
   }, [needRefresh, updateServiceWorker])
 
   return null
