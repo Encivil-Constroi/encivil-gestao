@@ -35,6 +35,8 @@ type MenuItem = {
   // Pré-carrega o chunk da página ao passar o rato — a navegação fica
   // instantânea mesmo na primeira visita.
   prefetch?: () => void;
+  // Módulo temporariamente oculto — código intacto, só não aparece no menu.
+  hidden?: boolean;
 };
 type MenuSection = { title?: string; items: MenuItem[] };
 
@@ -53,7 +55,7 @@ const menuSections: MenuSection[] = [
       { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus,
         prefetch: () => { void import('@/app/pages/NewMovementPage') } },
       { path: '/picagens',       label: 'Picagens',       icon: Fingerprint,
-        prefetch: () => { void import('@/features/picagens') } },
+        prefetch: () => { void import('@/features/picagens') }, hidden: true },
       { path: '/historico',      label: 'Histórico',      icon: History,
         prefetch: () => { void import('@/app/pages/HistoryPage') } },
       { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench,
@@ -79,13 +81,13 @@ const menuSections: MenuSection[] = [
       { path: '/colaboradores', label: 'Colaboradores', icon: Users,   gestorOnly: true,
         prefetch: () => { void import('@/features/colaboradores/components/ColaboradoresPage') } },
       { path: '/rh',            label: 'RH',            icon: CalendarDays, gestorOnly: true,
-        prefetch: () => { void import('@/features/horarios') } },
+        prefetch: () => { void import('@/features/horarios') }, hidden: true },
       { path: '/epis',          label: 'EPIs',          icon: Shield,       gestorOnly: true,
-        prefetch: () => { void import('@/features/epis') } },
+        prefetch: () => { void import('@/features/epis') }, hidden: true },
       { path: '/formacoes',     label: 'Formações',     icon: GraduationCap, gestorOnly: true,
-        prefetch: () => { void import('@/features/epis') } },
+        prefetch: () => { void import('@/features/epis') }, hidden: true },
       { path: '/seguranca',     label: 'Ficha Seg.',    icon: UserCheck,    gestorOnly: true,
-        prefetch: () => { void import('@/features/epis') } },
+        prefetch: () => { void import('@/features/epis') }, hidden: true },
     ],
   },
   {
@@ -94,7 +96,7 @@ const menuSections: MenuSection[] = [
       { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart,
         prefetch: () => { void import('@/app/pages/ReportsPage') } },
       { path: '/faturas',                 label: 'Faturas',       icon: Receipt,   gestorOnly: true,
-        prefetch: () => { void import('@/features/faturas') } },
+        prefetch: () => { void import('@/features/faturas') }, hidden: true },
       { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true,
         prefetch: () => { void import('@/app/pages/ExportacaoContabilidadePage') } },
     ],
@@ -128,6 +130,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     .map(section => ({
       ...section,
       items: section.items.filter(item => {
+        if (item.hidden)                              return false;
         if (item.adminOnly  && !isAdmin)              return false;
         if (item.gestorOnly && !isAdmin && !isGestor) return false;
         return true;
