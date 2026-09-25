@@ -1,0 +1,216 @@
+<title>Melhorias Futuras ENCIVIL</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg:        #0f172a;
+    --surface:   #1e293b;
+    --surface2:  #273347;
+    --border:    #2d3f55;
+    --text:      #f1f5f9;
+    --muted:     #7a8faa;
+    --amber:     #f59e0b;
+    --amber-dim: rgba(245,158,11,0.12);
+    --green:     #22c55e;
+    --green-dim: rgba(34,197,94,0.1);
+    --blue:      #60a5fa;
+    --blue-dim:  rgba(96,165,250,0.12);
+    --grey:      #475569;
+    --grey-dim:  rgba(71,85,105,0.25);
+    --mono:      'IBM Plex Mono', ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:        #f0f4f8;
+      --surface:   #ffffff;
+      --surface2:  #f8fafc;
+      --border:    #dde4ef;
+      --text:      #0f172a;
+      --muted:     #5a6a80;
+      --amber:     #d97706;
+      --amber-dim: rgba(217,119,6,0.08);
+      --green:     #16a34a;
+      --green-dim: rgba(22,163,74,0.08);
+      --blue:      #2563eb;
+      --blue-dim:  rgba(37,99,235,0.08);
+      --grey:      #94a3b8;
+      --grey-dim:  rgba(148,163,184,0.15);
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:        #f0f4f8;
+    --surface:   #ffffff;
+    --surface2:  #f8fafc;
+    --border:    #dde4ef;
+    --text:      #0f172a;
+    --muted:     #5a6a80;
+    --amber:     #d97706;
+    --amber-dim: rgba(217,119,6,0.08);
+    --green:     #16a34a;
+    --green-dim: rgba(22,163,74,0.08);
+    --blue:      #2563eb;
+    --blue-dim:  rgba(37,99,235,0.08);
+    --grey:      #94a3b8;
+    --grey-dim:  rgba(148,163,184,0.15);
+    color-scheme: light;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 28px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 720px;
+  }
+
+  header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 26px; }
+  .logo-mark {
+    width: 36px; height: 36px; flex-shrink: 0;
+    background: var(--amber); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 500; color: #0f172a; font-size: 15px;
+  }
+  h1 { margin: 0; font-size: 20px; font-weight: 600; text-wrap: balance; }
+  .sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+  h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin: 30px 0 10px;
+  }
+
+  .now {
+    background: var(--green-dim); border: 1px solid var(--green);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .now h3 { margin: 0 0 4px; font-size: 15px; }
+  .now p { margin: 0 0 10px; color: var(--muted); }
+  .steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+  .steps code, .card code {
+    font-family: var(--mono); font-size: 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere;
+  }
+
+  .list { display: grid; gap: 10px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .card-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .num { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+  .card h3 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; min-width: 200px; }
+  .tag {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .t-soft  { background: var(--blue-dim);  color: var(--blue); }
+  .t-hw    { background: var(--amber-dim); color: var(--amber); }
+  .t-ready { background: var(--green-dim); color: var(--green); }
+  .card p { margin: 8px 0 0; color: var(--muted); }
+  .card p strong { color: var(--text); font-weight: 500; }
+
+  .formula {
+    margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 12.5px; overflow-x: auto;
+  }
+  .needs { margin: 10px 0 0; padding-left: 18px; color: var(--muted); }
+  .needs li::marker { color: var(--amber); }
+
+  footer { margin-top: 30px; color: var(--muted); font-size: 12px; }
+
+  @media (max-width: 420px) { body { padding-inline: 16px; } }
+</style>
+
+<header>
+  <div class="logo-mark">E</div>
+  <div>
+    <h1>Melhorias Futuras</h1>
+    <p class="sub">Ideias guardadas para depois. Para ativar uma: dizer ao Claude “implementar melhoria nº X”.</p>
+  </div>
+</header>
+
+<h2>Primeiro momento — em curso</h2>
+<div class="now">
+  <h3>Travar e destravar a bomba do Polo 2 pela app</h3>
+  <p>Código pronto e publicado (commit d194f07). Falta a parte manual:</p>
+  <ol class="steps">
+    <li>Aplicar no SQL Editor as migrations <code>20260924000000</code>, <code>20260924010000</code>, <code>20260925000000</code></li>
+    <li>Deploy: <code>npx supabase functions deploy pump-status --no-verify-jwt</code></li>
+    <li>Criar o segredo <code>PUMP_POLO2_SECRET</code> e colá-lo no script do Shelly</li>
+    <li>Testar com lâmpada: <code>supabase\scripts\test-shelly.ps1</code></li>
+    <li>Eletricista liga o canal 1 do Shelly ao circuito de comando do contactor</li>
+  </ol>
+</div>
+
+<h2>Depósito Polo 2 — nível</h2>
+<div class="list">
+  <article class="card">
+    <div class="card-head">
+      <span class="num">01</span>
+      <h3>Nível do depósito pelo contador TOTAL do K33</h3>
+      <span class="tag t-soft">Só software</span>
+    </div>
+    <p>O K33 conta tudo o que <strong>sai</strong>. Basta registar o que <strong>entra</strong> em cada enchimento. A foto do medidor que o motorista já tira mostra o TOTAL (ex.: 016557) — a IA passa a ler também esse número, e o nível atualiza-se sozinho a cada abastecimento.</p>
+    <div class="formula">Nível = litros após último enchimento − (TOTAL atual − TOTAL no enchimento)</div>
+    <ul class="needs">
+      <li>Capacidade do depósito (litros)</li>
+      <li>Quantos litros tem no dia de arranque</li>
+      <li>Nível mínimo para alerta de encomenda</li>
+      <li>Guardar a origem (Polo 2 / carrinha / posto) nos abastecimentos aprovados</li>
+    </ul>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="num">02</span>
+      <h3>Conferência de divergências</h3>
+      <span class="tag t-soft">Só software</span>
+    </div>
+    <p>Comparar os litros que o contador TOTAL diz que saíram com os litros registados na app no mesmo período. Uma diferença grande indica leitura errada, abastecimento sem pedido ou desvio — aparece como alerta ao chefe.</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="num">03</span>
+      <h3>Alarme de reserva pela luz LIVELLO</h3>
+      <span class="tag t-ready">Código pronto</span>
+    </div>
+    <p>A app já sabe mostrar “Depósito em reserva”. Falta o eletricista ligar o sinal da luz LIVELLO do quadro à entrada <strong>S1</strong> do Shelly (confirmar se é 230V; se não, usar relé de interface).</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="num">04</span>
+      <h3>Notificação push de reserva e bomba offline</h3>
+      <span class="tag t-soft">Só software</span>
+    </div>
+    <p>Avisar o telemóvel do chefe quando o depósito descer abaixo do mínimo ou quando o Shelly deixar de comunicar por mais de alguns minutos.</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="num">05</span>
+      <h3>Contador com saída de impulsos</h3>
+      <span class="tag t-hw">Hardware novo</span>
+    </div>
+    <p>Trocar o K33 mecânico por um contador PIUSI com saída de impulsos. Os litros de cada abastecimento passam a ser medidos automaticamente — deixa de ser precisa a foto do medidor.</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="num">06</span>
+      <h3>Sensor de nível contínuo no depósito</h3>
+      <span class="tag t-hw">Hardware novo</span>
+    </div>
+    <p>Sensor ultrassónico ou de pressão para ler os litros reais dentro do depósito a qualquer momento. Exige outro dispositivo, porque o Shelly Pro 3 não lê sinais analógicos.</p>
+  </article>
+</div>
+
+<footer>Última atualização: 25/09/2026 · Ficheiro: docs/melhorias-futuras.html</footer>
