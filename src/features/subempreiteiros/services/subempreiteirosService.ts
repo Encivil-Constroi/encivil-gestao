@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
 import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Subcontractor, SubcontractItem, ContractType } from '@/app/types'
 
@@ -75,8 +76,8 @@ export async function listarSubempreiteiros(obraId?: string): Promise<Subcontrac
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase.from('subempreiteiros') as any)
     .select(SELECT)
-    .order('created_at', { ascending: false })
     .eq('ativo', true)
+    .order('created_at', { ascending: false })
   if (obraId) query = query.eq('obra_id', obraId)
   const { data, error } = await query
   if (error) throw error
@@ -216,9 +217,7 @@ export async function eliminarSubempreiteiro(id: string): Promise<void> {
 }
 
 export async function arquivarSubempreiteiro(id: string): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.rpc as any)('arquivar_subempreiteiro', { p_id: id })
-  if (error) throw error
+  await rpcSemTipos('arquivar_subempreiteiro', { p_id: id })
 }
 
 export async function validarSubempreiteiro(id: string): Promise<Subcontractor> {

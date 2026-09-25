@@ -16,6 +16,7 @@ import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/la
 import { useAbastecimentos, useVeiculos } from '@/features/combustivel/hooks/useCombustivel';
 import { usePendentes } from '@/features/combustivel/hooks/usePendentes';
 import type { TipoFonte } from '@/features/combustivel/hooks/usePendentes';
+import { BombaPolo2Card } from '@/features/combustivel/components/BombaPolo2Card';
 import { useRole } from '@/features/auth/useRole';
 import type { FuelEntry } from '@/app/types';
 
@@ -538,6 +539,8 @@ export function CombustivelPage() {
       )}
 
       {/* ── Pendentes ──────────────────────────────────── */}
+      {/* Fora do ternário de loading: o polling de pendentes não pode desmontar o corte de emergência */}
+      {tab === 'pendentes' && podeCombustivel && <BombaPolo2Card />}
       {tab === 'pendentes' && (
         pLoading ? (
           <SkeletonList rows={3} cols={3} />

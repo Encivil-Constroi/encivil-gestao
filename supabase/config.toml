@@ -375,6 +375,10 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# O Shelly autentica-se com x-pump-secret; as chaves sb_publishable_* não são JWT
+[functions.pump-status]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

@@ -6,6 +6,9 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useFormGuard } from '@/app/lib/useFormGuard'
+import { useAsync } from '@/app/lib/useAsync'
+import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel/services/bombaService'
+import { usePararBomba } from '@/features/combustivel/hooks/useBombaPolo2'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura
@@ -58,8 +61,13 @@ export function AbastecimentoPublicPage() {
   const [pollTimedOut,   setPollTimedOut]   = useState(false)
   const [pumpTimedOut,   setPumpTimedOut]   = useState(false)
   const [pumpMaxSeconds, setPumpMaxSeconds] = useState(180)
+  const [pumpActivatedAt, setPumpActivatedAt] = useState<string | null>(null)
   const [litrosManual,   setLitrosManual]   = useState('')
   const [custoManual,    setCustoManual]    = useState('')
+
+  const { data: estadoBomba } = useAsync(fetchEstadoBomba, [], {
+    enabled: passo === 'FORM' && tipo === 'POLO2',
+  })
 
   const fotoRef              = useRef<HTMLInputElement>(null)
   const pollRef              = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -112,23 +120,24 @@ export function AbastecimentoPublicPage() {
         setPollTimedOut(true)
         return
       }
-      const { data, error: pollErr } = await supabase
-        .from('comb_abastecimentos_pendentes')
-        // pump_max_seconds: lido após autorização (copiado da viatura pela RPC)
-        .select('estado, pump_max_seconds')
-        .eq('id', pendId)
-        .single()
-      if (pollErr) {
-        console.warn('poll error:', pollErr.message)
+      let row
+      try {
+        row = await fetchEstadoPedidoBomba(pendId)
+      } catch (e) {
+        console.warn('poll error:', e)
         return
       }
-      const row = data as { estado?: string; pump_max_seconds?: number } | null
       if (row?.estado === 'AUTORIZADO') {
         stopPoll()
         if (tipoRef.current === 'POLO2') {
-          // Guardar tempo configurado na viatura para mostrar no passo BOMBA
-          setPumpMaxSeconds(row.pump_max_seconds ?? 180)
-          setPasso('BOMBA')
+          setPumpMaxSeconds(row.pumpMaxSeconds)
+          // Sessão restaurada depois de a bomba já ter arrancado: saltar a espera
+          if (row.pumpActivatedAt) {
+            setPumpActivatedAt(row.pumpActivatedAt)
+            setPasso('FOTO')
+          } else {
+            setPasso('BOMBA')
+          }
         } else {
           setPasso('FOTO')
         }
@@ -153,12 +162,10 @@ export function AbastecimentoPublicPage() {
         setPumpTimedOut(true)
         return
       }
-      const { data, error } = await supabase
-        .from('comb_abastecimentos_pendentes')
-        .select('pump_activated_at')  // só o campo necessário — não expõe tokens nem dados pessoais
-        .eq('id', pendId)
-        .single()
-      if (error) {
+      let row
+      try {
+        row = await fetchEstadoPedidoBomba(pendId)
+      } catch {
         pumpNetworkErrsRef.current++
         if (pumpNetworkErrsRef.current >= 3) {
           setErr('Sem ligação. A tentar reconectar…')
@@ -167,9 +174,9 @@ export function AbastecimentoPublicPage() {
       }
       pumpNetworkErrsRef.current = 0
       setErr('')
-      const row = data as { pump_activated_at?: string | null } | null
-      if (row?.pump_activated_at) {
+      if (row?.pumpActivatedAt) {
         stopPumpPoll()
+        setPumpActivatedAt(row.pumpActivatedAt)
         setPasso('FOTO')
       }
     }, 2_000)
@@ -208,9 +215,12 @@ export function AbastecimentoPublicPage() {
     if (!nome.trim()) { setErr('Indique o seu nome.'); return }
 
     setSaving(true)
-    const { data, error } = await supabase
+    // ID gerado no cliente: anon não tem SELECT na tabela, logo INSERT … RETURNING falharia
+    const novoId = crypto.randomUUID()
+    const { error } = await supabase
       .from('comb_abastecimentos_pendentes')
       .insert({
+        id:               novoId,
         veiculo_id:       vehicleId!,
         veiculo_nome:     vehicleName,
         funcionario_nome: nome.trim(),
@@ -219,20 +229,18 @@ export function AbastecimentoPublicPage() {
         estado:           'AGUARDA_AUTORIZACAO',
         contador:         km ? parseFloat(km) : null,
       })
-      .select('id')
-      .single()
     setSaving(false)
 
-    if (error || !data) { setErr('Erro ao enviar. Verifica a ligação.'); return }
+    if (error) { setErr('Erro ao enviar. Verifica a ligação.'); return }
 
-    setPendId(data.id)
+    setPendId(novoId)
     setPollTimedOut(false)
     setPasso('AGUARDAR')
 
     // Persistir sessão — se o browser fechar durante AGUARDAR/BOMBA/FOTO, o motorista
     // pode reabrir o QR e retomar o fluxo sem perder o registo na BD
     try {
-      sessionStorage.setItem('encivil_fuel', JSON.stringify({ pendId: data.id, tipo, vehicleId }))
+      sessionStorage.setItem('encivil_fuel', JSON.stringify({ pendId: novoId, tipo, vehicleId }))
     } catch {}
 
     supabase.functions.invoke('send-push', {
@@ -451,6 +459,16 @@ export function AbastecimentoPublicPage() {
                   className={ic} placeholder="Ex: 125430" min="0" step="1" />
               </div>
 
+              {tipo === 'POLO2' && estadoBomba && !estadoBomba.online && (
+                <ErrBox msg="A bomba do Polo 2 está sem ligação neste momento. Contacta o responsável antes de pedir." />
+              )}
+              {tipo === 'POLO2' && estadoBomba?.online && estadoBomba.nivelAlarme && (
+                <div className="flex items-center gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Depósito do Polo 2 em reserva — avisa o responsável.
+                </div>
+              )}
+
               {err && <ErrBox msg={err} />}
 
               <button type="submit" disabled={saving}
@@ -576,6 +594,10 @@ export function AbastecimentoPublicPage() {
                   {tipo === 'POSTO_RUA'&& 'Abastece no posto e tira foto ao talão.'}
                 </p>
               </div>
+
+              {tipo === 'POLO2' && pumpActivatedAt && pendId && (
+                <BombaAtiva ativadaEm={pumpActivatedAt} maxSegundos={pumpMaxSeconds} pedidoId={pendId} />
+              )}
 
               {/* Seletor de foto */}
               <div>
@@ -703,7 +725,7 @@ export function AbastecimentoPublicPage() {
                   setPendId(null); setFoto(null); setFotoPreview(null)
                   setUploadedFotoUrl(''); setLitros(null); setCusto(null)
                   setConfianca(null); setGeminiError(false); setErr('')
-                  setLitrosManual(''); setCustoManual('')
+                  setLitrosManual(''); setCustoManual(''); setPumpActivatedAt(null)
                 }}
                 className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-transform">
                 Novo Abastecimento
@@ -734,6 +756,69 @@ export function AbastecimentoPublicPage() {
 
         </div>
       </div>
+    </div>
+  )
+}
+
+function BombaAtiva({ ativadaEm, maxSegundos, pedidoId }: {
+  ativadaEm:   string
+  maxSegundos: number
+  pedidoId:    string
+}) {
+  const [agora, setAgora] = useState(() => Date.now())
+  const [parada, setParada] = useState(false)
+  const [falhou, setFalhou] = useState(false)
+  const { parar, loading } = usePararBomba()
+
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), 1_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const restante = Math.max(0, Math.round((new Date(ativadaEm).getTime() + maxSegundos * 1_000 - agora) / 1_000))
+  const ativa    = restante > 0 && !parada
+  const pct      = Math.min(100, (restante / maxSegundos) * 100)
+  const mmss     = `${Math.floor(restante / 60)}:${String(restante % 60).padStart(2, '0')}`
+
+  const handleParar = async () => {
+    setFalhou(false)
+    if (await parar(pedidoId)) setParada(true)
+    else setFalhou(true)
+  }
+
+  if (!ativa) {
+    return (
+      <div className="p-4 bg-gray-100 border border-gray-200 rounded-2xl text-sm text-gray-600 text-center">
+        {parada ? 'Pedido de paragem enviado — a bomba desliga em segundos.' : 'Tempo da bomba terminado.'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
+          <Droplets className="w-4 h-4 animate-pulse" />
+          Bomba liberada
+        </div>
+        <span className="text-2xl font-bold tabular-nums text-blue-900">{mmss}</span>
+      </div>
+      <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+        <div className="h-full bg-blue-500 rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-blue-700">
+        Se a bomba não arrancar sozinha, carrega no botão verde (I) do quadro.
+      </p>
+      <button type="button" onClick={handleParar} disabled={loading}
+        className="w-full py-3.5 bg-red-600 text-white rounded-xl font-bold text-base active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2">
+        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        Terminei — desligar bomba
+      </button>
+      {falhou && (
+        <p className="text-xs text-red-700 font-medium text-center">
+          Não foi possível desligar pela app. Usa o botão vermelho EMERGENZA no quadro.
+        </p>
+      )}
     </div>
   )
 }

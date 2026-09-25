@@ -108,9 +108,17 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('filtra por obra quando obraId fornecido', async () => {
-    b.eq.mockResolvedValueOnce({ data: [], error: null })
+    b.eq
+      .mockReturnValueOnce(b)                              // .eq('ativo', true)
+      .mockResolvedValueOnce({ data: [], error: null })    // .eq('obra_id')
     await listarSubempreiteiros('obra-1')
     expect(b.eq).toHaveBeenCalledWith('obra_id', 'obra-1')
+  })
+
+  it('exclui contratações arquivadas', async () => {
+    b.order.mockResolvedValueOnce({ data: [], error: null })
+    await listarSubempreiteiros()
+    expect(b.eq).toHaveBeenCalledWith('ativo', true)
   })
 
   it('sem obraId usa .order() como chamada final (sem .eq())', async () => {
@@ -220,8 +228,8 @@ describe('listarSubempreiteirosComExecutado', () => {
       data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })],
       error: null,
     })
-    // autos query → b.eq resolve (depois de b.in chain)
-    b.eq.mockResolvedValueOnce({
+    // 1º eq = filtro ativo (encadeia); 2º eq = autos query (resolve)
+    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({
       data: [
         { subempreiteiro_id: 's1', valor_periodo: 10000, estado: 'validado' },
         { subempreiteiro_id: 's1', valor_periodo: 5000,  estado: 'validado' },
@@ -238,7 +246,7 @@ describe('listarSubempreiteirosComExecutado', () => {
 
   it('executed=0 para subempreiteiros sem autos validados', async () => {
     b.order.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
-    b.eq.mockResolvedValueOnce({ data: [], error: null })
+    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({ data: [], error: null })
     const [sub] = await listarSubempreiteirosComExecutado()
     expect(sub.executed).toBe(0)
   })
@@ -246,6 +254,7 @@ describe('listarSubempreiteirosComExecutado', () => {
   it('filtra por obraId (usa .eq no final de listarSubempreiteiros)', async () => {
     // listarSubempreiteiros(obraId) → order chains + eq resolves for sub list
     b.eq
+      .mockReturnValueOnce(b)                                          // listarSubempreiteiros .eq('ativo')
       .mockResolvedValueOnce({ data: [makeSubRow()], error: null })   // listarSubempreiteiros .eq('obra_id')
       .mockResolvedValueOnce({ data: [], error: null })                // autos .eq('estado')
 
