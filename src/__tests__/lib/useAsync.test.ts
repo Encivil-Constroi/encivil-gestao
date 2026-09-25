@@ -1,6 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { useAsync } from '@/app/lib/useAsync'
+import { useAsync, invalidateCache } from '@/app/lib/useAsync'
 
 describe('useAsync', () => {
   it('faz fetch e retorna os dados', async () => {
@@ -55,5 +55,29 @@ describe('useAsync', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(fn).toHaveBeenCalledTimes(2)
     expect(result.current.data).toBe('fresh')
+  })
+
+  it('invalidateCache recarrega hooks montados com cacheKey correspondente, sem loading', async () => {
+    const fn = vi.fn().mockResolvedValueOnce(['antigo']).mockResolvedValueOnce(['novo'])
+    const { result } = renderHook(() => useAsync(fn, [], { cacheKey: 'teste-lista-mes' }))
+    await waitFor(() => expect(result.current.data).toEqual(['antigo']))
+
+    const estadosLoading: boolean[] = []
+    act(() => { invalidateCache('teste-lista-*') })
+    estadosLoading.push(result.current.loading)
+
+    await waitFor(() => expect(result.current.data).toEqual(['novo']))
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(estadosLoading).toEqual([false])
+  })
+
+  it('invalidateCache ignora hooks com cacheKey diferente', async () => {
+    const fn = vi.fn().mockResolvedValue('x')
+    const { result } = renderHook(() => useAsync(fn, [], { cacheKey: 'outra-chave' }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => { invalidateCache('teste-*') })
+
+    expect(fn).toHaveBeenCalledTimes(1)
   })
 })

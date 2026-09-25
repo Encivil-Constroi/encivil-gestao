@@ -7,19 +7,21 @@ import { parseSupabaseError } from './parseSupabaseError'
 // reload completo da página. Invalidado por mutações via invalidateCache().
 const _cache = new Map<string, { data: unknown; ts: number }>()
 
-/** Remove entradas de cache pelas chaves indicadas.
- *  Chaves terminadas em '*' invalidam por prefixo (ex: 'abastecimentos-*'). */
+// Hooks montados com cacheKey — sem isto, invalidar só apagava o cache e uma
+// lista já no ecrã continuava a mostrar dados antigos até recarregar a página
+const _ouvintes = new Set<(keys: string[]) => void>()
+
+function corresponde(cacheKey: string, keys: string[]): boolean {
+  return keys.some(k => k.endsWith('*') ? cacheKey.startsWith(k.slice(0, -1)) : cacheKey === k)
+}
+
+/** Remove entradas de cache pelas chaves indicadas e recarrega os hooks montados
+ *  que as usam. Chaves terminadas em '*' invalidam por prefixo (ex: 'abastecimentos-*'). */
 export function invalidateCache(...keys: string[]): void {
-  for (const k of keys) {
-    if (k.endsWith('*')) {
-      const prefix = k.slice(0, -1)
-      for (const ck of _cache.keys()) {
-        if (ck.startsWith(prefix)) _cache.delete(ck)
-      }
-    } else {
-      _cache.delete(k)
-    }
+  for (const ck of [..._cache.keys()]) {
+    if (corresponde(ck, keys)) _cache.delete(ck)
   }
+  for (const ouvinte of [..._ouvintes]) ouvinte(keys)
 }
 
 /**
@@ -70,8 +72,12 @@ export function useAsync<T>(
   const asyncFnRef = useRef(asyncFn)
   asyncFnRef.current = asyncFn
 
+  const temDadosRef = useRef(data !== null)
+
+  // silencioso: refresh em segundo plano (invalidação) — mantém os dados atuais
+  // no ecrã em vez de os trocar por um skeleton
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const run = useCallback(async () => {
+  const run = useCallback(async (silencioso = false) => {
     if (!enabled) { setLoading(false); return }
     const gen = ++genRef.current
 
@@ -79,18 +85,19 @@ export function useAsync<T>(
     if (cacheKey) {
       const hit = _cache.get(cacheKey)
       if (hit && Date.now() - hit.ts < cacheTtl) {
-        if (genRef.current === gen) { setData(hit.data as T); setLoading(false) }
+        if (genRef.current === gen) { setData(hit.data as T); temDadosRef.current = true; setLoading(false) }
         return
       }
     }
 
-    setLoading(true)
+    if (!(silencioso && temDadosRef.current)) setLoading(true)
     setError(null)
     try {
       const result = await asyncFnRef.current()
       if (genRef.current !== gen) return
       if (cacheKey) _cache.set(cacheKey, { data: result, ts: Date.now() })
       setData(result)
+      temDadosRef.current = true
     } catch (e) {
       if (genRef.current !== gen) return
       setError(parseSupabaseError(e, errorMsg))
@@ -106,5 +113,15 @@ export function useAsync<T>(
     return () => { genRef.current++ }
   }, [run])
 
-  return { data, loading, error, reload: run }
+  useEffect(() => {
+    if (!cacheKey || !enabled) return
+    const ouvinte = (keys: string[]) => { if (corresponde(cacheKey, keys)) void run(true) }
+    _ouvintes.add(ouvinte)
+    return () => { _ouvintes.delete(ouvinte) }
+  }, [cacheKey, enabled, run])
+
+  // Sem argumentos: onClick={reload} passaria o evento como "silencioso"
+  const reload = useCallback(() => { void run() }, [run])
+
+  return { data, loading, error, reload }
 }

@@ -71,38 +71,34 @@ export function usePendentes() {
   )
   const items = data ?? []
 
-  // Polling automático a cada 15s — garante que novos pedidos aparecem sem reload manual
+  // Polling de 15s só dos pendentes; invalidateCache recarrega o hook em segundo plano
   useEffect(() => {
-    const id = setInterval(() => { invalidateCache(...INV); reload() }, 15_000)
+    const id = setInterval(() => invalidateCache('abastecimentos-pendentes'), 15_000)
     return () => clearInterval(id)
-  }, [reload])
+  }, [])
 
-  // Ação 1: autorizar pedido (AGUARDA_AUTORIZACAO → AUTORIZADO)
+  // Ações invalidam também 'abastecimentos-*': a lista da aba Abastecimentos,
+  // montada na mesma página, atualiza sem refresh
   const autorizar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('autorizar_abastecimento', { p_id: id })
     if (err) return false
     invalidateCache(...INV)
-    reload()
     return true
-  }, [reload])
+  }, [])
 
-  // Ação 2: rejeitar pedido (qualquer estado → REJEITADO)
   const rejeitar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('rejeitar_abastecimento', { p_id: id })
     if (err) return false
     invalidateCache(...INV)
-    reload()
     return true
-  }, [reload])
+  }, [])
 
-  // Ação 3: aprovação final (AGUARDA_APROVACAO → entra na tabela principal)
   const aprovar = useCallback(async (id: string): Promise<boolean> => {
     const { error: err } = await supabase.rpc('aprovar_abastecimento_pendente', { p_id: id })
     if (err) return false
     invalidateCache(...INV)
-    reload()
     return true
-  }, [reload])
+  }, [])
 
   const pedidosAutorizacao = items.filter(i => i.estado === 'AGUARDA_AUTORIZACAO')
   const aguardaAprovacao   = items.filter(i => i.estado === 'AGUARDA_APROVACAO')

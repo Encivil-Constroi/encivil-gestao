@@ -29,9 +29,11 @@ export function useVeiculo(id: string | undefined) {
 }
 
 export function useGuardarVeiculo() {
-  const criador    = useMutation(criarVeiculo)
+  const inv = { invalidates: ['veiculos-*', 'veiculo-*'] }
+  const criador    = useMutation(criarVeiculo, 'Erro ao guardar', inv)
   const atualizador = useMutation(
-    (id: string, input: AtualizarVeiculo) => atualizarVeiculo(id, input)
+    (id: string, input: AtualizarVeiculo) => atualizarVeiculo(id, input),
+    'Erro ao guardar', inv
   )
   return {
     criar:    criador.mutate,

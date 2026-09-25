@@ -28,7 +28,8 @@ export function useCustoConsolidado(obraId: string | undefined, dataIni: string,
 export function useActualizarOrcamentos() {
   const { mutate, loading, error } = useMutation(
     (obraId: string, orcamentos: OrcamentosObra) => actualizarOrcamentosObra(obraId, orcamentos),
-    'Erro ao actualizar orçamentos'
+    'Erro ao actualizar orçamentos',
+    { invalidates: ['custo-obra-*'] }
   )
   return { actualizar: mutate, loading, error }
 }
