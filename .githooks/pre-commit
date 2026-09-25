@@ -6,7 +6,9 @@
 #
 # Para ignorar pontualmente (usar com cuidado): git commit --no-verify
 
-ALLOWLIST_PATTERNS="sb_publishable_"
+# Linhas SQL GRANT/REVOKE referem o papel service_role por nome, não contêm chaves
+# (o grep -n prefixa "N:", daí o ^[0-9]+:)
+ALLOWLIST_PATTERNS="sb_publishable_|^[0-9]+:[[:space:]]*(GRANT|REVOKE)[[:space:]]"
 
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -36,7 +38,7 @@ if [ -n "$STAGED_FILES" ]; then
         continue
         ;;
     esac
-    MATCHES=$(git show ":$FILE" 2>/dev/null | grep -nE "$SECRET_PATTERNS" | grep -v "$ALLOWLIST_PATTERNS")
+    MATCHES=$(git show ":$FILE" 2>/dev/null | grep -nE "$SECRET_PATTERNS" | grep -vE "$ALLOWLIST_PATTERNS")
     if [ -n "$MATCHES" ]; then
       echo ""
       echo "${RED}ERRO: Possível secret detetado em: $FILE${NC}"
