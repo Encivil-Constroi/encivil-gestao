@@ -50,8 +50,17 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.exec(`TRUNCATE public.pump_sessoes, public.pump_comandos, public.pump_heartbeat,
-                          public.comb_abastecimentos_pendentes, public.comb_abastecimentos`)
+                          public.comb_abastecimentos_pendentes, public.comb_abastecimentos;
+                 UPDATE public.pump_config SET bloqueada = false, motivo = NULL, horario_inicio = NULL, horario_fim = NULL`)
 })
+
+const regras = (bloqueada, motivo, inicio = null, fim = null) =>
+  comoGestor(tx => tx.query('SELECT public.definir_regras_bomba($1, $2, $3::time, $4::time)', [bloqueada, motivo, inicio, fim]))
+const estadoBomba = async () =>
+  (await anon(tx => tx.query(`SELECT * FROM public.estado_bomba('POLO2')`))).rows[0]
+// Horas (HH:MI) relativas à hora atual de Portugal
+const horaLisboa = async deslocMin =>
+  (await db.query(`SELECT to_char((now() AT TIME ZONE 'Europe/Lisbon') + make_interval(mins => $1), 'HH24:MI') AS h`, [deslocMin])).rows[0].h
 
 describe('fluxo normal', () => {
   it('autorizar → liga pelo tempo da viatura → sessão regista quem e o quê', async () => {
@@ -138,9 +147,149 @@ describe('fila (dois motoristas)', () => {
   })
 
   it('relé ligado à mão (sem sessão) não recebe autorização por cima', async () => {
-    await autorizar(await pedir())
+    const p = await pedir(); await autorizar(p)
     expect(await poll(true)).toEqual({ status: 'idle' })
+    const [s] = await sessoes()
+    expect(s).toMatchObject({ origem: 'MANUAL', pedido_id: null })
+    expect((await estadoPedido(p)).bomba_ocupada).toBe(true)
+  })
+})
+
+describe('uso fora da app', () => {
+  it('relé ligado sem pedido fica registado como sessão MANUAL e fecha ao desligar', async () => {
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    let lista = await sessoes()
+    expect(lista).toHaveLength(1)
+    expect(lista[0]).toMatchObject({ origem: 'MANUAL', fim_em: null, segundos_autorizados: 3600 })
+
+    await poll(false)
+    lista = await sessoes()
+    expect(lista[0].fim_em).not.toBeNull()
+    expect(lista[0].motivo_fim).toBe('INTERROMPIDO')
+  })
+
+  it('depois do uso manual, o pedido em espera liga', async () => {
+    await poll(true)
+    const p = await pedir(); await autorizar(p)
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    expect(await poll(false)).toMatchObject({ status: 'authorized' })
+    expect((await sessoes())[1]).toMatchObject({ origem: 'APP', pedido_id: p })
+  })
+
+  it('corte de emergência fecha a sessão manual', async () => {
+    await poll(true)
+    await comoGestor(tx => tx.query('SELECT public.parar_bomba()'))
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect((await sessoes())[0].motivo_fim).toBe('EMERGENCIA')
+  })
+})
+
+describe('confirmação de paragem (página do motorista)', () => {
+  it('"Terminei": só confirma depois de o Shelly reportar o relé desligado', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    expect(await estadoPedido(p)).toMatchObject({ sessao_ativa: true, desligada_confirmada: false })
+
+    await terminei(p)
+    await poll(true) // Shelly recebe "stop" — ainda reportou ligado neste poll
+    expect(await estadoPedido(p)).toMatchObject({ sessao_ativa: false, motivo_fim: 'TERMINEI', desligada_confirmada: false })
+
+    await poll(false) // poll seguinte: relé desligado
+    expect((await estadoPedido(p)).desligada_confirmada).toBe(true)
+  })
+
+  it('fim por tempo: confirma no próprio poll que vê o relé desligado', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await passarTempo(300)
+    await poll(false)
+    expect(await estadoPedido(p)).toMatchObject({ sessao_ativa: false, motivo_fim: 'TEMPO', desligada_confirmada: true })
+  })
+
+  it('relé desligado antes do tempo: confirma no mesmo poll (fim = hora do poll)', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await passarTempo(30)
+    await poll(false)
+    expect(await estadoPedido(p)).toMatchObject({ motivo_fim: 'INTERROMPIDO', desligada_confirmada: true })
+  })
+
+  it('Shelly offline depois do STOP: nunca confirma', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await terminei(p)
+    await poll(true)
+    expect((await estadoPedido(p)).desligada_confirmada).toBe(false)
+  })
+})
+
+describe('bloqueio e horário', () => {
+  it('bloqueada: autorizar recusa com o motivo', async () => {
+    await regras(true, 'Manutenção do filtro')
+    const p = await pedir()
+    await expect(autorizar(p)).rejects.toThrow('Manutenção do filtro')
+  })
+
+  it('bloqueada sem motivo usa mensagem padrão', async () => {
+    await regras(true, '   ')
+    await expect(autorizar(await pedir())).rejects.toThrow('Bomba bloqueada pelo responsável')
+  })
+
+  it('bloqueada depois de autorizar: não liga, o motorista vê o motivo; ao desbloquear liga', async () => {
+    const p = await pedir(); await autorizar(p)
+    await regras(true, 'Fim de semana')
+    expect(await poll(false)).toEqual({ status: 'idle' })
     expect(await sessoes()).toHaveLength(0)
+    expect((await estadoPedido(p)).bloqueio_motivo).toBe('Fim de semana')
+
+    await regras(false, null)
+    expect(await poll(false)).toMatchObject({ status: 'authorized' })
+  })
+
+  it('bloquear não corta quem já está a abastecer (isso é o corte de emergência)', async () => {
+    await autorizar(await pedir())
+    await poll(false)
+    await regras(true, 'x')
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    expect((await sessoes())[0].fim_em).toBeNull()
+  })
+
+  it('fora do horário: autorizar recusa com o horário na mensagem', async () => {
+    const ini = await horaLisboa(60), fim = await horaLisboa(120)
+    await regras(false, null, ini, fim)
+    await expect(autorizar(await pedir())).rejects.toThrow(`Fora do horário da bomba (${ini}–${fim})`)
+  })
+
+  it('dentro do horário: autoriza e liga', async () => {
+    await regras(false, null, await horaLisboa(-60), await horaLisboa(60))
+    await autorizar(await pedir())
+    expect(await poll(false)).toMatchObject({ status: 'authorized' })
+  })
+
+  it('janela que passa a meia-noite (início > fim) é respeitada', async () => {
+    // Cobre tudo exceto a hora entre -2h e -1h: agora está dentro
+    await regras(false, null, await horaLisboa(-60), await horaLisboa(-120))
+    const { rows } = await db.query(`SELECT public.bomba_bloqueio_motivo('POLO2') AS m`)
+    expect(rows[0].m).toBeNull()
+  })
+
+  it('estado_bomba devolve as regras mesmo antes do primeiro contacto do Shelly', async () => {
+    await regras(true, 'Obras no armazém', '07:00', '19:00')
+    expect(await estadoBomba()).toMatchObject({
+      last_seen_at: null, bloqueada: true, motivo: 'Obras no armazém',
+      horario_inicio: '07:00:00', horario_fim: '19:00:00', bloqueio_motivo: 'Obras no armazém',
+    })
+  })
+
+  it('validações do horário', async () => {
+    await expect(regras(false, null, '07:00', null)).rejects.toThrow(/início e de fim/)
+    await expect(regras(false, null, '07:00', '07:00')).rejects.toThrow(/não podem ser iguais/)
+  })
+
+  it('só quem gere combustível altera as regras', async () => {
+    await expect(anon(tx => tx.query(`SELECT public.definir_regras_bomba(true, 'x', NULL, NULL)`))).rejects.toThrow(/permission denied/)
+    await expect(comoLeitor(tx => tx.query(`SELECT public.definir_regras_bomba(true, 'x', NULL, NULL)`))).rejects.toThrow(/Sem permissão/)
   })
 })
 

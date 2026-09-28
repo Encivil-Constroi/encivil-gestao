@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useFormGuard } from '@/app/lib/useFormGuard'
 import { useAsync } from '@/app/lib/useAsync'
 import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel/services/bombaService'
-import { usePararBomba } from '@/features/combustivel/hooks/useBombaPolo2'
+import { BombaAtiva } from '@/features/combustivel/components/BombaAtiva'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura
@@ -61,6 +61,7 @@ export function AbastecimentoPublicPage() {
   const [pollTimedOut,   setPollTimedOut]   = useState(false)
   const [pumpTimedOut,   setPumpTimedOut]   = useState(false)
   const [emFila,         setEmFila]         = useState(false)
+  const [bloqueioEspera, setBloqueioEspera] = useState<string | null>(null)
   const [pumpMaxSeconds, setPumpMaxSeconds] = useState(180)
   const [pumpActivatedAt, setPumpActivatedAt] = useState<string | null>(null)
   const [litrosManual,   setLitrosManual]   = useState('')
@@ -158,6 +159,7 @@ export function AbastecimentoPublicPage() {
     pumpNetworkErrsRef.current = 0
     setPumpTimedOut(false)
     setEmFila(false)
+    setBloqueioEspera(null)
     setErr('')
     pumpPollRef.current = setInterval(async () => {
       pumpPollCountRef.current++
@@ -185,11 +187,18 @@ export function AbastecimentoPublicPage() {
         stopPumpPoll()
         setPumpActivatedAt(row.pumpActivatedAt)
         setPasso('FOTO')
+      } else if (row?.bloqueioMotivo) {
+        // Bloqueada depois de autorizar: não conta como demora — se desbloquearem, liga
+        pumpPollCountRef.current = 0
+        setEmFila(false)
+        setBloqueioEspera(row.bloqueioMotivo)
       } else if (row?.bombaOcupada) {
         pumpPollCountRef.current = 0
         setEmFila(true)
+        setBloqueioEspera(null)
       } else {
         setEmFila(false)
+        setBloqueioEspera(null)
       }
     }, 2_000)
     return stopPumpPoll
@@ -471,7 +480,10 @@ export function AbastecimentoPublicPage() {
                   className={ic} placeholder="Ex: 125430" min="0" step="1" />
               </div>
 
-              {tipo === 'POLO2' && estadoBomba && !estadoBomba.online && (
+              {tipo === 'POLO2' && estadoBomba?.bloqueioMotivo && (
+                <ErrBox msg={`Bomba do Polo 2 indisponível: ${estadoBomba.bloqueioMotivo}.`} />
+              )}
+              {tipo === 'POLO2' && estadoBomba && !estadoBomba.bloqueioMotivo && !estadoBomba.online && !estadoBomba.nuncaComunicou && (
                 <ErrBox msg="A bomba do Polo 2 está sem ligação neste momento. Contacta o responsável antes de pedir." />
               )}
               {tipo === 'POLO2' && estadoBomba?.online && estadoBomba.nivelAlarme && (
@@ -483,7 +495,7 @@ export function AbastecimentoPublicPage() {
 
               {err && <ErrBox msg={err} />}
 
-              <button type="submit" disabled={saving}
+              <button type="submit" disabled={saving || (tipo === 'POLO2' && !!estadoBomba?.bloqueioMotivo)}
                 className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2">
                 {saving && <Loader2 className="w-5 h-5 animate-spin" />}
                 Pedir Autorização
@@ -575,7 +587,15 @@ export function AbastecimentoPublicPage() {
                       <Loader2 className="w-4 h-4 text-white animate-spin" />
                     </div>
                   </div>
-                  {emFila ? (
+                  {bloqueioEspera ? (
+                    <div>
+                      <h1 className="text-xl font-bold text-gray-900">Bomba bloqueada</h1>
+                      <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                        {bloqueioEspera}.<br />
+                        Contacta o responsável — se a desbloquear, a bomba liga sozinha.
+                      </p>
+                    </div>
+                  ) : emFila ? (
                     <div>
                       <h1 className="text-xl font-bold text-gray-900">Bomba ocupada</h1>
                       <p className="text-sm text-gray-500 mt-2 leading-relaxed">
@@ -778,69 +798,6 @@ export function AbastecimentoPublicPage() {
 
         </div>
       </div>
-    </div>
-  )
-}
-
-function BombaAtiva({ ativadaEm, maxSegundos, pedidoId }: {
-  ativadaEm:   string
-  maxSegundos: number
-  pedidoId:    string
-}) {
-  const [agora, setAgora] = useState(() => Date.now())
-  const [parada, setParada] = useState(false)
-  const [falhou, setFalhou] = useState(false)
-  const { parar, loading } = usePararBomba()
-
-  useEffect(() => {
-    const t = setInterval(() => setAgora(Date.now()), 1_000)
-    return () => clearInterval(t)
-  }, [])
-
-  const restante = Math.max(0, Math.round((new Date(ativadaEm).getTime() + maxSegundos * 1_000 - agora) / 1_000))
-  const ativa    = restante > 0 && !parada
-  const pct      = Math.min(100, (restante / maxSegundos) * 100)
-  const mmss     = `${Math.floor(restante / 60)}:${String(restante % 60).padStart(2, '0')}`
-
-  const handleParar = async () => {
-    setFalhou(false)
-    if (await parar(pedidoId)) setParada(true)
-    else setFalhou(true)
-  }
-
-  if (!ativa) {
-    return (
-      <div className="p-4 bg-gray-100 border border-gray-200 rounded-2xl text-sm text-gray-600 text-center">
-        {parada ? 'Pedido de paragem enviado — a bomba desliga em segundos.' : 'Tempo da bomba terminado.'}
-      </div>
-    )
-  }
-
-  return (
-    <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
-          <Droplets className="w-4 h-4 animate-pulse" />
-          Bomba liberada
-        </div>
-        <span className="text-2xl font-bold tabular-nums text-blue-900">{mmss}</span>
-      </div>
-      <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-        <div className="h-full bg-blue-500 rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-xs text-blue-700">
-        Se a bomba não arrancar sozinha, carrega no botão verde (I) do quadro.
-      </p>
-      <button type="button" onClick={handleParar} disabled={loading}
-        className="w-full py-3.5 bg-red-600 text-white rounded-xl font-bold text-base active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2">
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-        Terminei — desligar bomba
-      </button>
-      {falhou && (
-        <p className="text-xs text-red-700 font-medium text-center">
-          Não foi possível desligar pela app. Usa o botão vermelho EMERGENZA no quadro.
-        </p>
-      )}
     </div>
   )
 }

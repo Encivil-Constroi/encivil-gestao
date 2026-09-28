@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAsync, invalidateCache } from '@/app/lib/useAsync'
+import { parseSupabaseError } from '@/app/lib/parseSupabaseError'
 
 export type EstadoPendente =
   | 'AGUARDA_AUTORIZACAO'
@@ -79,11 +80,12 @@ export function usePendentes() {
 
   // Ações invalidam também 'abastecimentos-*': a lista da aba Abastecimentos,
   // montada na mesma página, atualiza sem refresh
-  const autorizar = useCallback(async (id: string): Promise<boolean> => {
+  // Devolve a mensagem de erro (ex.: bomba bloqueada / fora do horário) ou null se autorizou
+  const autorizar = useCallback(async (id: string): Promise<string | null> => {
     const { error: err } = await supabase.rpc('autorizar_abastecimento', { p_id: id })
-    if (err) return false
+    if (err) return parseSupabaseError(err, 'Erro ao autorizar. Tenta novamente.')
     invalidateCache(...INV)
-    return true
+    return null
   }, [])
 
   const rejeitar = useCallback(async (id: string): Promise<boolean> => {

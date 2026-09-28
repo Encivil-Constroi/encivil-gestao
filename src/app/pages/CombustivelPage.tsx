@@ -171,8 +171,8 @@ export function CombustivelPage() {
   const handleAutorizar = async (id: string) => {
     setActionId(id);
     try {
-      const ok = await autorizar(id);
-      if (!ok) toast.error('Erro ao autorizar. Tenta novamente.');
+      const erro = await autorizar(id);
+      if (erro) toast.error(erro);
     } finally {
       setActionId(null);
     }

@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
 import { useAsync, invalidateCache } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
-import { fetchEstadoBomba, fetchSessoesBomba, pararBomba } from '../services/bombaService'
+import {
+  fetchEstadoBomba, fetchSessoesBomba, fetchEstadoPedidoBomba, pararBomba, definirRegrasBomba,
+  type RegrasBomba,
+} from '../services/bombaService'
 
 // Mesmo ritmo do polling do Shelly: mais rápido não traz dados novos
 const REFRESH_MS = 5_000
@@ -30,6 +33,30 @@ function useRefreshBomba(enabled: boolean) {
     const id = setInterval(() => invalidateCache('bomba-*'), REFRESH_MS)
     return () => clearInterval(id)
   }, [enabled])
+}
+
+// Página do motorista: estado da sessão deste pedido (ativa / desligada confirmada)
+export function useEstadoPedidoBomba(pedidoId: string) {
+  const chave = `bomba-pedido-${pedidoId}`
+  const { data } = useAsync(
+    () => fetchEstadoPedidoBomba(pedidoId), [pedidoId],
+    { errorMsg: 'Erro ao ler estado da bomba', cacheKey: chave, cacheTtl: 2_500 }
+  )
+  useEffect(() => {
+    const id = setInterval(() => invalidateCache(chave), 3_000)
+    return () => clearInterval(id)
+  }, [chave])
+  return data
+}
+
+export function useDefinirRegrasBomba() {
+  const { mutate, loading, error } = useMutation(
+    async (r: RegrasBomba): Promise<true> => { await definirRegrasBomba(r); return true },
+    'Erro ao guardar as regras da bomba',
+    { invalidates: ['bomba-*'] }
+  )
+  const definir = async (r: RegrasBomba) => (await mutate(r)) === true
+  return { definir, loading, error }
 }
 
 export function usePararBomba() {
