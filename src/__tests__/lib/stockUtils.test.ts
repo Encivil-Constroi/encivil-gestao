@@ -14,8 +14,9 @@ describe('calcStatus', () => {
     expect(calcStatus(3, 10)).toBe('baixo')
   })
 
-  it('normal quando stock é igual ao mínimo', () => {
-    expect(calcStatus(10, 10)).toBe('normal')
+  // RN-STOCKMIN-02 (docs/02-regras-de-negocio.md) e RPC produtos_em_alerta: <= é baixo
+  it('baixo quando stock é igual ao mínimo', () => {
+    expect(calcStatus(10, 10)).toBe('baixo')
   })
 
   it('normal quando stock supera o mínimo', () => {

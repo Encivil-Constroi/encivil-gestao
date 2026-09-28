@@ -60,6 +60,7 @@ export function AbastecimentoPublicPage() {
   const [err,            setErr]            = useState('')
   const [pollTimedOut,   setPollTimedOut]   = useState(false)
   const [pumpTimedOut,   setPumpTimedOut]   = useState(false)
+  const [emFila,         setEmFila]         = useState(false)
   const [pumpMaxSeconds, setPumpMaxSeconds] = useState(180)
   const [pumpActivatedAt, setPumpActivatedAt] = useState<string | null>(null)
   const [litrosManual,   setLitrosManual]   = useState('')
@@ -148,12 +149,15 @@ export function AbastecimentoPublicPage() {
   }, [passo, pendId, stopPoll])
 
   // ── Polling de pump_activated_at após autorização POLO2 ───────────────────
-  // Shelly tem até 5s para fazer o poll à Edge Function → esperamos até 30s (15 × 2s)
+  // Shelly tem até 5s para fazer o poll à Edge Function → esperamos até 30s (15 × 2s).
+  // Em fila (outro motorista a abastecer) o prazo não conta: a bomba liga sozinha
+  // quando ficar livre e a autorização não expira enquanto espera.
   useEffect(() => {
     if (passo !== 'BOMBA' || !pendId) return
     pumpPollCountRef.current = 0
     pumpNetworkErrsRef.current = 0
     setPumpTimedOut(false)
+    setEmFila(false)
     setErr('')
     pumpPollRef.current = setInterval(async () => {
       pumpPollCountRef.current++
@@ -174,10 +178,18 @@ export function AbastecimentoPublicPage() {
       }
       pumpNetworkErrsRef.current = 0
       setErr('')
-      if (row?.pumpActivatedAt) {
+      if (row?.estado === 'REJEITADO') {
+        stopPumpPoll()
+        setPasso('REJEITADO')
+      } else if (row?.pumpActivatedAt) {
         stopPumpPoll()
         setPumpActivatedAt(row.pumpActivatedAt)
         setPasso('FOTO')
+      } else if (row?.bombaOcupada) {
+        pumpPollCountRef.current = 0
+        setEmFila(true)
+      } else {
+        setEmFila(false)
       }
     }, 2_000)
     return stopPumpPoll
@@ -563,13 +575,23 @@ export function AbastecimentoPublicPage() {
                       <Loader2 className="w-4 h-4 text-white animate-spin" />
                     </div>
                   </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-gray-900">A abrir bomba…</h1>
-                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                      Pedido autorizado!<br />
-                      A bomba está a ser ativada — aguarda o clique.
-                    </p>
-                  </div>
+                  {emFila ? (
+                    <div>
+                      <h1 className="text-xl font-bold text-gray-900">Bomba ocupada</h1>
+                      <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                        Outro motorista está a abastecer.<br />
+                        És o próximo — a bomba liga sozinha quando ficar livre.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <h1 className="text-xl font-bold text-gray-900">A abrir bomba…</h1>
+                      <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                        Pedido autorizado!<br />
+                        A bomba está a ser ativada — aguarda o clique.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex items-center justify-center gap-2 text-xs text-blue-600 font-semibold bg-blue-50 border border-blue-100 rounded-full px-4 py-2 w-fit mx-auto">
                     <Droplets className="w-3.5 h-3.5" />
                     Polo 2 · Bomba ativa por {Math.round(pumpMaxSeconds / 60)} min

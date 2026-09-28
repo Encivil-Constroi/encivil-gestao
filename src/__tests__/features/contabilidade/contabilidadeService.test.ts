@@ -95,9 +95,9 @@ const fuelRow = {
   litros: 50,
   custo_total: 95.0,
   responsavel: 'João Silva',
-  localizacao: 'Posto BP',
+  local: 'Posto BP',
   observacoes: null,
-  comb_viaturas: { nome: 'Carrinha Ford', codigo: 'AA-00-BB' },
+  comb_veiculos: { nome: 'Carrinha Ford', codigo: 'AA-00-BB' },
   obras: { nome: 'Moradia Cascais' },
 }
 

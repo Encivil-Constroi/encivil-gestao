@@ -33,12 +33,15 @@ export type EstadoPedidoBomba = {
   estado:          string
   pumpActivatedAt: string | null
   pumpMaxSeconds:  number
+  // Autorizado mas à espera: outro motorista está a usar a bomba
+  bombaOcupada:    boolean
 }
 
 type EstadoPedidoRow = {
   estado:            string
   pump_activated_at: string | null
   pump_max_seconds:  number | null
+  bomba_ocupada:     boolean | null
 }
 
 // Usado pela página pública (anon): a tabela não tem SELECT para anon
@@ -50,7 +53,43 @@ export async function fetchEstadoPedidoBomba(pedidoId: string): Promise<EstadoPe
     estado:          r.estado,
     pumpActivatedAt: r.pump_activated_at,
     pumpMaxSeconds:  r.pump_max_seconds ?? 180,
+    bombaOcupada:    r.bomba_ocupada === true,
   }
+}
+
+export type MotivoFimSessao = 'TEMPO' | 'TERMINEI' | 'EMERGENCIA' | 'INTERROMPIDO'
+
+export type SessaoBomba = {
+  id:                  string
+  veiculoNome:         string | null
+  funcionarioNome:     string | null
+  segundosAutorizados: number
+  inicioEm:            string
+  fimEm:               string | null
+  motivoFim:           MotivoFimSessao | null
+}
+
+type SessaoBombaRow = {
+  id:                   string
+  veiculo_nome:         string | null
+  funcionario_nome:     string | null
+  segundos_autorizados: number
+  inicio_em:            string
+  fim_em:               string | null
+  motivo_fim:           MotivoFimSessao | null
+}
+
+export async function fetchSessoesBomba(limite = 5): Promise<SessaoBomba[]> {
+  const rows = await rpcSemTipos<SessaoBombaRow[] | null>('sessoes_bomba', { p_limite: limite })
+  return (rows ?? []).map(r => ({
+    id:                  r.id,
+    veiculoNome:         r.veiculo_nome,
+    funcionarioNome:     r.funcionario_nome,
+    segundosAutorizados: r.segundos_autorizados,
+    inicioEm:            r.inicio_em,
+    fimEm:               r.fim_em,
+    motivoFim:           r.motivo_fim,
+  }))
 }
 
 // Sem pedidoId = corte de emergência (exige admin/gestor/armazém)

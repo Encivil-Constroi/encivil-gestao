@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { Droplets, Power, WifiOff, AlertTriangle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useEstadoBomba, usePararBomba } from '../hooks/useBombaPolo2'
+import { useEstadoBomba, useSessoesBomba, usePararBomba } from '../hooks/useBombaPolo2'
+import type { MotivoFimSessao, SessaoBomba } from '../services/bombaService'
+
+const MOTIVO: Record<MotivoFimSessao, string> = {
+  TEMPO:        'tempo esgotado',
+  TERMINEI:     'terminou',
+  EMERGENCIA:   'corte de emergência',
+  INTERROMPIDO: 'interrompida',
+}
 
 function tempoDesde(seg: number) {
   if (seg < 60)   return `${seg}s`
@@ -10,17 +18,27 @@ function tempoDesde(seg: number) {
   return `${Math.floor(seg / 86_400)} dias`
 }
 
+const hhmm = (d: string | number) => new Date(d).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+
+function duracao(s: SessaoBomba) {
+  const seg = Math.max(0, Math.round((new Date(s.fimEm!).getTime() - new Date(s.inicioEm).getTime()) / 1000))
+  return seg < 60 ? `${seg}s` : `${Math.round(seg / 60)} min`
+}
+
 export function BombaPolo2Card() {
-  const { estado, loading, reload } = useEstadoBomba()
+  const { estado, loading } = useEstadoBomba()
+  const { sessoes } = useSessoesBomba()
   const { parar, loading: parando } = usePararBomba()
   const [confirmar, setConfirmar] = useState(false)
+
+  const ativa     = sessoes.find(s => s.fimEm === null)
+  const anteriores = sessoes.filter(s => s.fimEm !== null).slice(0, 3)
 
   const handleParar = async () => {
     const ok = await parar()
     setConfirmar(false)
     if (ok) {
       toast.success('Comando enviado — a bomba desliga em até 5 segundos.')
-      reload()
     } else {
       toast.error('Não foi possível enviar o comando. Use a EMERGENZA no quadro.')
     }
@@ -62,6 +80,14 @@ export function BombaPolo2Card() {
         }`} />
       </div>
 
+      {ativa && (
+        <p className="text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 rounded-lg px-2.5 py-1.5">
+          Em uso: <strong>{ativa.veiculoNome ?? 'viatura'}</strong>
+          {ativa.funcionarioNome && <> · {ativa.funcionarioNome}</>}
+          {' '}· até às {hhmm(new Date(ativa.inicioEm).getTime() + ativa.segundosAutorizados * 1000)}
+        </p>
+      )}
+
       {estado.online && estado.nivelAlarme && (
         <p className="flex items-center gap-2 text-xs font-medium text-warning bg-warning/10 border border-warning/30 rounded-lg px-2.5 py-1.5">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -96,6 +122,23 @@ export function BombaPolo2Card() {
             Desligar bomba agora
           </button>
         )
+      )}
+
+      {anteriores.length > 0 && (
+        <ul className="border-t border-border pt-2.5 space-y-1">
+          {anteriores.map(s => (
+            <li key={s.id} className="flex items-baseline gap-2 text-xs text-muted-foreground">
+              <span className="tabular-nums shrink-0">{hhmm(s.inicioEm)}</span>
+              <span className="truncate flex-1 min-w-0">
+                <span className="text-foreground">{s.veiculoNome ?? 'viatura'}</span>
+                {s.funcionarioNome && <> · {s.funcionarioNome}</>}
+              </span>
+              <span className={`shrink-0 tabular-nums ${s.motivoFim === 'EMERGENCIA' || s.motivoFim === 'INTERROMPIDO' ? 'text-warning' : ''}`}>
+                {duracao(s)} · {s.motivoFim ? MOTIVO[s.motivoFim] : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

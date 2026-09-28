@@ -37,6 +37,10 @@ if [ -n "$STAGED_FILES" ]; then
         # Edge Functions lêem secrets via Deno.env.get() — nenhum valor real presente.
         continue
         ;;
+      supabase/tests/*)
+        # Testes de banco em memória: criam e usam o papel service_role por nome, sem chaves.
+        continue
+        ;;
     esac
     MATCHES=$(git show ":$FILE" 2>/dev/null | grep -nE "$SECRET_PATTERNS" | grep -vE "$ALLOWLIST_PATTERNS")
     if [ -n "$MATCHES" ]; then

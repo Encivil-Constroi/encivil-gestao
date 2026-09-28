@@ -71,11 +71,9 @@ const makeRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-// listarAlertasAtivos usa .order('severidade').order('criado_em') — duas chamadas encadeadas
+// listarAlertasAtivos faz um só .order('criado_em'); a severidade é ordenada no cliente
 function mockAtivos(rows: ReturnType<typeof makeRow>[]) {
-  b.order
-    .mockReturnValueOnce(b)                                       // 1ª .order('severidade') — encadeia
-    .mockResolvedValueOnce({ data: rows, error: null })           // 2ª .order('criado_em') — resolve
+  b.order.mockResolvedValueOnce({ data: rows, error: null })
 }
 
 // ── listarAlertasAtivos ───────────────────────────────────────────────────────
@@ -135,9 +133,7 @@ describe('listarAlertasAtivos', () => {
   })
 
   it('propaga erro do Supabase', async () => {
-    b.order
-      .mockReturnValueOnce(b)
-      .mockResolvedValueOnce({ data: null, error: { message: 'permissão negada' } })
+    b.order.mockResolvedValueOnce({ data: null, error: { message: 'permissão negada' } })
 
     await expect(listarAlertasAtivos()).rejects.toMatchObject({ message: 'permissão negada' })
   })
