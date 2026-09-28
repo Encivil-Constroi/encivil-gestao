@@ -7,7 +7,9 @@
 //   1. Abrir http://<IP_DO_SHELLY>
 //   2. Settings → Authentication → ativar password (protege o segredo abaixo)
 //   3. Scripts → Add script → nome "encivil-bomba" → colar este ficheiro
-//   4. Substituir PUMP_SECRET pelo valor de PUMP_POLO2_SECRET
+//   4. Substituir os dois valores no CONFIG:
+//      SUBSTITUIR_PELA_CHAVE_PUBLICA     → VITE_SUPABASE_PUBLISHABLE_KEY (sb_publishable_…)
+//      SUBSTITUIR_PELO_PUMP_POLO2_SECRET → PUMP_POLO2_SECRET
 //      (Supabase Dashboard → Edge Functions → Secrets)
 //   5. Save → Start → ativar "Run on startup"
 //   6. Ver consola: deve aparecer "[ENCIVIL] monitorização iniciada"
@@ -37,11 +39,14 @@
 let CONFIG = {
   pump_id:     "polo2",
   api_url:     "https://wuruhxmbueeyhiqgvlxu.supabase.co/functions/v1/pump-status",
+  // Chave pública do projeto (sb_publishable_…): a gateway da Supabase recusa
+  // pedidos sem header apikey (401), mesmo com o segredo certo
+  api_key:     "SUBSTITUIR_PELA_CHAVE_PUBLICA",
   pump_secret: "SUBSTITUIR_PELO_PUMP_POLO2_SECRET",
   relay_id:    0,       // canal 1 do Shelly (O1) = id 0 na API
   nivel_input: 0,       // entrada S1 = id 0 na API
   poll_ms:     5000,
-  max_seg_hw:  3600,    // teto absoluto = máximo permitido em comb_veiculos.pump_max_seconds
+  max_seg_hw:  3600     // teto absoluto = máximo permitido em comb_veiculos.pump_max_seconds
 };
 
 let _checking = false;
@@ -55,8 +60,8 @@ function aplicarProtecoes() {
       initial_state:  "off",       // após falha de luz volta DESLIGADO
       auto_off:       true,
       auto_off_delay: CONFIG.max_seg_hw,
-      in_mode:        "detached",  // entrada S1 não mexe no relé (evita disparos por ruído)
-    },
+      in_mode:        "detached"   // entrada S1 não mexe no relé (evita disparos por ruído)
+    }
   }, function (res, err) {
     if (err !== 0) log("ERRO ao aplicar proteções (código " + err + ")");
     else log("Proteções ativas: arranque desligado, corte automático " + CONFIG.max_seg_hw + "s");
@@ -85,7 +90,7 @@ function ligar(seconds) {
   Shelly.call("Switch.Set", {
     id: CONFIG.relay_id,
     on: true,
-    toggle_after: seconds,
+    toggle_after: seconds
   }, function (res, err) {
     if (err !== 0) log("ERRO ao ligar relé (código " + err + ")");
     else log("Bomba LIGADA por " + seconds + "s");
@@ -97,13 +102,14 @@ function poll() {
   _checking = true;
 
   try {
-    Shelly.call("HTTP.GET", {
+    // HTTP.Request e não HTTP.GET: no firmware Gen2 só o Request envia headers
+    Shelly.call("HTTP.Request", {
+      method: "GET",
       url: CONFIG.api_url + "?pump_id=" + CONFIG.pump_id
          + "&on=" + (relayLigado() ? "1" : "0")
          + "&nivel=" + (nivelEmAlarme() ? "1" : "0"),
-      // Gen2: headers tem de ser objeto key-value, não array
-      headers: { "x-pump-secret": CONFIG.pump_secret },
-      timeout: 4,
+      headers: { "apikey": CONFIG.api_key, "x-pump-secret": CONFIG.pump_secret },
+      timeout: 4
     }, function (result, err_code) {
       _checking = false;
       if (err_code !== 0 || !result) return;
@@ -130,7 +136,7 @@ function poll() {
   } catch (e) {
     // Sem isto, uma exceção deixava _checking=true e o polling parava para sempre
     _checking = false;
-    log("Erro crítico no HTTP.GET: " + e);
+    log("Erro crítico no pedido HTTP: " + e);
   }
 }
 

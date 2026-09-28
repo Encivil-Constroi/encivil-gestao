@@ -3,9 +3,10 @@
 // não é preciso abrir portas no router do armazém.
 //
 // GET /functions/v1/pump-status?pump_id=polo2&on=0|1&nivel=0|1
-// Header obrigatório: x-pump-secret: <PUMP_POLO2_SECRET>
-// Deploy OBRIGATÓRIO com --no-verify-jwt (ver supabase/config.toml): as chaves
-// sb_publishable_* não são JWT e o gateway rejeitaria o Shelly com 401.
+// Headers obrigatórios:
+//   apikey: <sb_publishable_…>          — sem ele a gateway responde 401 antes de chegar aqui
+//   x-pump-secret: <PUMP_POLO2_SECRET>  — a autenticação real do Shelly
+// Verify JWT desligado (supabase/config.toml): sb_publishable_* não é um JWT.
 //
 // Respostas:
 //   { "status": "idle" }                        → nada a fazer

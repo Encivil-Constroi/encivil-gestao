@@ -13,8 +13,18 @@ param(
   [Parameter(Mandatory = $true)][string]$Ip,
   [string]$Password = "",
   [string]$PumpSecret = "",
+  [string]$ApiKey = "",
   [string]$FunctionUrl = "https://wuruhxmbueeyhiqgvlxu.supabase.co/functions/v1/pump-status"
 )
+
+# Chave publica (sb_publishable_) lida do .env.local do projeto se nao for passada
+if (-not $ApiKey) {
+  $envFile = Join-Path $PSScriptRoot "..\..\.env.local"
+  if (Test-Path $envFile) {
+    $m = Select-String -Path $envFile -Pattern '^\s*VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"]+)"?' | Select-Object -First 1
+    if ($m) { $ApiKey = $m.Matches[0].Groups[1].Value.Trim() }
+  }
+}
 
 $ErrorActionPreference = "Stop"
 $script:falhas = 0
@@ -75,15 +85,15 @@ try {
 }
 
 Passo "5. Edge Function pump-status (cloud)"
-if (-not $PumpSecret) {
-  Info "Ignorado - passar -PumpSecret para testar"
+if (-not $PumpSecret -or -not $ApiKey) {
+  Info "Ignorado - passar -PumpSecret (e -ApiKey se nao houver .env.local) para testar"
 } else {
-  $raw = & curl.exe -s --max-time 10 -w "`n%{http_code}" -H "x-pump-secret: $PumpSecret" "$($FunctionUrl)?pump_id=polo2&on=0"
+  $raw = & curl.exe -s --max-time 10 -w "`n%{http_code}" -H "apikey: $ApiKey" -H "x-pump-secret: $PumpSecret" "$($FunctionUrl)?pump_id=polo2&on=0"
   $linhas = $raw -split "`n"
   $code = $linhas[-1]
   $body = ($linhas[0..($linhas.Length - 2)] -join "`n")
   if ($code -eq "401") {
-    Falha "401 - funcao publicada COM verificacao JWT. Redeploy: npx supabase functions deploy pump-status --no-verify-jwt"
+    Falha "401 - chave publica (apikey) errada. Tem de ser a VITE_SUPABASE_PUBLISHABLE_KEY (sb_publishable_...)"
   } elseif ($code -ne "200") {
     Falha "HTTP $code - $body"
   } else {
