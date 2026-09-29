@@ -15,7 +15,9 @@ const ANON_KEY          = Deno.env.get('SUPABASE_ANON_KEY')!
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
 
 // Modelo gratuito: gemini-2.0-flash — 15 RPM, 1 M tokens/dia sem custo
-const GEMINI_MODEL = 'gemini-2.0-flash'
+// Alias mantido pela Google a apontar para o Flash atual (o gemini-2.0-flash foi
+// descontinuado). Segredo GEMINI_MODEL permite fixar outro sem mexer no código.
+const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
 const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 
 const CORS_HEADERS = {

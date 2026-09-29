@@ -15,7 +15,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const GEMINI_MODEL      = 'gemini-2.0-flash'
+// Alias mantido pela Google a apontar para o Flash atual (o gemini-2.0-flash foi
+// descontinuado). Segredo GEMINI_MODEL permite fixar outro sem mexer no código.
+const GEMINI_MODEL      = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
 const GEMINI_URL        = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 
 const PREFIXO_FOTOS = `${SUPABASE_URL}/storage/v1/object/public/combustivel-taloes/`
@@ -40,7 +42,11 @@ const CORS = {
 const JSON_H = { ...CORS, 'Content-Type': 'application/json' }
 
 function ok(data: unknown)         { return new Response(JSON.stringify(data),          { status: 200, headers: JSON_H }) }
-function err(msg: string, s = 400) { return new Response(JSON.stringify({ erro: msg }), { status: s,   headers: JSON_H }) }
+// Toda a recusa fica nos Logs da função — sem isto uma falha era invisível
+function err(msg: string, s = 400, detalhe = '') {
+  console.error(`[ler-foto] ${s} ${msg}${detalhe ? ` — ${detalhe}` : ''}`)
+  return new Response(JSON.stringify({ erro: msg }), { status: s, headers: JSON_H })
+}
 
 function toBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -139,8 +145,9 @@ Deno.serve(async (req) => {
   })
 
   if (!geminiRes.ok) {
-    if (geminiRes.status === 429) return err('Limite Gemini atingido. Tenta novamente.', 429)
-    return err(`Erro Gemini (${geminiRes.status})`, 502)
+    const detalhe = `modelo ${GEMINI_MODEL}: ${(await geminiRes.text()).slice(0, 300)}`
+    if (geminiRes.status === 429) return err('Limite Gemini atingido. Tenta novamente.', 429, detalhe)
+    return err(`Erro Gemini (${geminiRes.status})`, 502, detalhe)
   }
 
   const geminiData = await geminiRes.json() as {

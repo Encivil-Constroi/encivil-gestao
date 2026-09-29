@@ -56,6 +56,12 @@ Encontrado durante o passo: o CORS desta função só permitia `content-type`; o
 falhava e a leitura por IA nunca corria no telemóvel (caía sempre no manual).
 Corrigido. Fotos HEIC passam a ir com o MIME certo.
 
+Encontrado no teste real (foto de talão → "não foi possível processar"): com o CORS
+corrigido a função passou a correr e falhou na Gemini — o modelo `gemini-2.0-flash`
+está descontinuado. As duas funções de IA passam a usar o alias `gemini-flash-latest`
+(segredo `GEMINI_MODEL` para fixar outro) e a `ler-foto-abastecimento` regista a causa
+de cada recusa nos Logs (antes falhava em silêncio).
+
 ### 1.5 Verificação da etapa
 - [x] Testes de banco (36): anon bloqueado em cada função; papéis legítimos continuam a funcionar; política de upload (válido / não autorizado / viatura trocada / inexistente / extensão / `..` / outro bucket); listagem bloqueada; inventário das SECURITY DEFINER executáveis por anon; search_path em todas
 - [x] Integração frontend × banco: o caminho gerado pelo site passa na política (7 tipos MIME, incluindo vazio)
