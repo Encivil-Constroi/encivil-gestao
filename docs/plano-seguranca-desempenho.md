@@ -77,6 +77,11 @@ Também encontrado no teste real: 503 "high demand" da Google → novas tentativ
 automáticas com modelo de reserva (9 testes Deno), e `maxOutputTokens` 256 → 4096
 (os Flash atuais contam o raciocínio neste limite).
 
+### Correções pedidas depois da etapa 1 (2026-09-29, concluídas e validadas pelo utilizador)
+- Fotos dos abastecimentos visíveis depois de aprovados (miniatura na lista, foto na
+  página do abastecimento, coluna no Excel) — a foto era gravada mas nunca lida
+- Rejeitar na aprovação final (`AGUARDA_APROVACAO`) — migration `20260929010000`
+
 ---
 
 ## Etapa 2 — Desempenho
