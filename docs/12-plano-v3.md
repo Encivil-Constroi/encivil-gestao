@@ -1064,37 +1064,73 @@ src/features/livro-obra/
 
 ## Fase 9 — Frota: Manutenção, Checklists e Responsabilização `[ ]`
 
-**Origem:** pedido do Carlos (mecânico responsável pelos ligeiros), 2026-09-29 — ver conversa e decisões em anexo no histórico do projeto.
+**Origem:** pedido do Carlos (mecânico responsável pelos ligeiros), 2026-09-29.
 **Depende de:** F1 (motor de alertas) e F0 (colaboradores) — já concluídas, reaproveitadas quase por inteiro.
 
-### Por que este desenho
+### Por que este desenho (revisto em 2026-09-29 — ver histórico da conversa)
 
-A F1 já deixou pronto o essencial da parte "prever": `comb_veiculos` tem os
-campos de manutenção preventiva (próxima revisão km/data, seguro, IPO) e o
-motor `avaliar_regras_alerta()` já gera alertas ATENCAO/URGENTE para os 4
-tipos, usando o km capturado a cada abastecimento. Esta fase cobre só o que
-falta — **registar o que já foi feito** (não só o que falta fazer),
-**responsabilizar por condutor**, e **entregar os alertas às duas pessoas
-certas**, não a todos os subscritos.
+A primeira versão deste plano assumia uma lista fixa de itens (revisão, seguro,
+IPO — os 4 tipos que a F1 já trata com colunas fixas em `comb_veiculos`). O
+Carlos trouxe uma lista muito mais completa (inspeção rápida semanal, revisão
+periódica por km/tempo, itens de longo prazo como a correia de distribuição, e
+as obrigações legais portuguesas — IPO, seguro, IUC/selo, tacógrafo,
+extintor...) e pediu explicitamente **autonomia total para personalizar**,
+porque cada carrinha pode ter itens diferentes (nem todas têm AdBlue, nem
+todas estão sujeitas a tacógrafo).
+
+Uma coluna fixa em `comb_veiculos` por item (como a F1 fez para revisão/
+seguro/IPO) não escala para isto — dezenas de colunas, e continuaria a
+precisar de mim (migration) sempre que o Carlos quisesse acompanhar mais um
+item. Em vez disso: **um catálogo de itens que o Carlos gere sozinho**, e uma
+tabela de configuração por viatura que diz quais itens se aplicam a cada
+carrinha e com que prazo. Nenhum item novo precisa de código ou migration —
+só um registo no catálogo.
+
+Os 4 campos que já existem em `comb_veiculos` (próxima revisão km/data,
+seguro, IPO) continuam a existir e a funcionar exatamente como hoje — esta
+fase não os apaga, só deixa de ser a única forma de acompanhar manutenção
+(ver "Migração dos dados existentes" abaixo).
 
 Módulo novo `src/features/frota/`, isolado dos módulos existentes — não
-edita `combustivel/`, só lê `comb_veiculos` através do seu próprio service
-(consulta direta à tabela, não importa código de `combustivel/`). O único
-ponto de contacto com código existente é um link novo a partir de
+edita `combustivel/`, só lê `comb_veiculos` através do seu próprio service. O
+único ponto de contacto com código existente é um link novo a partir de
 `VeiculoFormPage` para a ficha (1 linha).
 
-### Decisões já tomadas (2026-09-29)
+### Decisões tomadas (2026-09-29)
 
 - **Acesso do Carlos:** papel novo `mecanico`, isolado — não herda acesso a
   armazém/ferramentas/stock.
 - **Ficha da viatura:** botão "Imprimir" (`window.print()`), mesmo padrão de
   `GuiaPrintView`/`ToolLoanTermPrint` — sem biblioteca de PDF nova.
-- **Checklist:** lista fixa para começar (ver proposta de itens abaixo — **por
-  confirmar com o Carlos**; fica fácil de ajustar antes de aplicar a migration).
-- **Registar manutenção atualiza a próxima revisão automaticamente**, usando
-  `intervalo_revisao_km`/`intervalo_revisao_meses` já existentes em
-  `comb_veiculos` (ex.: troca de óleo a 42.000 km com intervalo de 10.000 km
-  → `proxima_revisao_km` passa a 52.000 sozinho).
+- **Checklist e manutenção: totalmente personalizável pelo Carlos**, por
+  catálogo + configuração por viatura (ver abaixo) — não uma lista fixa.
+- **Alertas só por push, exclusivo à app** — sem e-mail (Resend não está
+  configurado). Só chegam a quem estiver na lista de destinatários de frota
+  (não a todos os subscritos, como hoje acontece no combustível).
+- **Registar manutenção atualiza a próxima revisão desse item
+  automaticamente**, a partir do intervalo configurado (km e/ou meses).
+
+### Modelo de dados — catálogo configurável
+
+```
+frota_itens_catalogo          ← o Carlos cria/edita/desativa itens aqui, sem código
+  (chave, rótulo, categoria, natureza, unidade, intervalos e limiares por omissão)
+        │
+        │ 1 item do catálogo pode aplicar-se a 0..N viaturas
+        ▼
+frota_veiculo_itens            ← "este item aplica-se a esta viatura, com este prazo"
+  (veiculo_id, item_id, ativo, intervalo/limiares próprios ou herdados do catálogo,
+   próxima km/data, última km/data)
+        │
+        ├─→ alertas (motor genérico, 1 regra só: tipo 'FROTA_ITEM')
+        └─→ veiculo_manutencoes (histórico do que já foi feito nesse item)
+```
+
+Itens de **natureza `CHECKLIST`** (ex.: nível de óleo, luzes, pneus — inspeção
+visual, sem prazo) aparecem no formulário de checklist, agrupados por
+categoria. Itens de **natureza `MANUTENCAO`** (ex.: troca de óleo, correia de
+distribuição, seguro — têm prazo em km/meses) geram alertas e aparecem no
+formulário de "registar manutenção".
 
 ### Migration
 
@@ -1105,7 +1141,7 @@ ponto de contacto com código existente é um link novo a partir de
 ALTER TYPE public.role_utilizador ADD VALUE IF NOT EXISTS 'mecanico';
 
 -- 2. Módulo 'frota' na função central de permissões (substitui a função
---    inteira — é como as migrations anteriores já fazem, não há ALTER incremental)
+--    inteira — GRANT/CREATE OR REPLACE, não há ALTER incremental em funções)
 CREATE OR REPLACE FUNCTION public.pode_escrever(modulo TEXT)
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
@@ -1120,32 +1156,77 @@ AS $$
   END, false)
 $$;
 
--- 3. Histórico do que já foi feito (não só o que falta)
-CREATE TABLE public.veiculo_manutencoes (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  veiculo_id    uuid NOT NULL REFERENCES public.comb_veiculos(id),
-  tipo          text NOT NULL,
-  -- 'OLEO' | 'TRAVOES' | 'PNEUS' | 'FILTROS' | 'REVISAO_GERAL' | 'OUTRO'
-  data          date NOT NULL DEFAULT CURRENT_DATE,
-  km_na_altura  numeric,
-  custo         numeric(10,2),
-  oficina       text,
-  observacoes   text,
-  -- Se marcado, avança proxima_revisao_km/data em comb_veiculos ao inserir
-  atualiza_proxima_revisao boolean NOT NULL DEFAULT true,
-  criado_por    uuid NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-  criado_em     timestamptz NOT NULL DEFAULT now()
+-- 3. Catálogo de itens — o Carlos gere isto pela UI, sem precisar de mim
+CREATE TABLE public.frota_itens_catalogo (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  chave          text NOT NULL UNIQUE,   -- slug estável, ex. 'oleo_motor', 'correia_distribuicao'
+  rotulo         text NOT NULL,
+  categoria      text NOT NULL,
+  -- 'INSPECAO_RAPIDA' | 'REVISAO_PERIODICA' | 'LONGO_PRAZO' | 'OBRIGACAO_LEGAL'
+  natureza       text NOT NULL,
+  -- 'CHECKLIST' (verificação visual, sem prazo) | 'MANUTENCAO' (tem prazo, gera alerta)
+  unidade        text,  -- 'KM' | 'MESES' | 'AMBOS' | NULL (itens só de checklist)
+  intervalo_km_padrao    numeric,
+  intervalo_meses_padrao numeric,
+  limiar_atencao_km      numeric,
+  limiar_urgente_km      numeric,
+  limiar_atencao_dias    numeric,
+  limiar_urgente_dias    numeric,
+  ordem          int NOT NULL DEFAULT 0,
+  ativo          boolean NOT NULL DEFAULT true,
+  criado_por     uuid REFERENCES auth.users(id) DEFAULT auth.uid(),
+  criado_em      timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT ck_item_categoria CHECK (categoria IN ('INSPECAO_RAPIDA','REVISAO_PERIODICA','LONGO_PRAZO','OBRIGACAO_LEGAL')),
+  CONSTRAINT ck_item_natureza  CHECK (natureza IN ('CHECKLIST','MANUTENCAO')),
+  CONSTRAINT ck_item_unidade   CHECK (unidade IS NULL OR unidade IN ('KM','MESES','AMBOS'))
 );
 
--- 4. Checklist de estado (itens fixos — ver proposta de lista abaixo)
+-- 4. Configuração por viatura — "este item aplica-se a esta viatura, com este prazo"
+CREATE TABLE public.frota_veiculo_itens (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  veiculo_id      uuid NOT NULL REFERENCES public.comb_veiculos(id),
+  item_id         uuid NOT NULL REFERENCES public.frota_itens_catalogo(id),
+  ativo           boolean NOT NULL DEFAULT true,
+  intervalo_km    numeric,  -- override; NULL = usa intervalo_km_padrao do catálogo
+  intervalo_meses numeric,
+  proxima_km      numeric,
+  proxima_data    date,
+  ultima_km       numeric,
+  ultima_data     date,
+  atualizado_em   timestamptz NOT NULL DEFAULT now(),
+
+  UNIQUE (veiculo_id, item_id)
+);
+
+-- 5. Histórico do que já foi feito (não só o que falta)
+CREATE TABLE public.veiculo_manutencoes (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  veiculo_id       uuid NOT NULL REFERENCES public.comb_veiculos(id),
+  item_id          uuid REFERENCES public.frota_itens_catalogo(id),  -- NULL = manutenção avulsa
+  descricao        text,  -- obrigatório se item_id for NULL
+  data             date NOT NULL DEFAULT CURRENT_DATE,
+  km_na_altura     numeric,
+  custo            numeric(10,2),
+  oficina          text,
+  observacoes      text,
+  atualiza_proxima boolean NOT NULL DEFAULT true,
+  criado_por       uuid NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
+  criado_em        timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT ck_manutencao_desc CHECK (item_id IS NOT NULL OR descricao IS NOT NULL)
+);
+
+-- 6. Checklist — snapshot dos itens no momento (o catálogo pode mudar depois
+--    e o histórico não deve mudar com ele)
 CREATE TABLE public.veiculo_checklists (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   veiculo_id    uuid NOT NULL REFERENCES public.comb_veiculos(id),
   data          date NOT NULL DEFAULT CURRENT_DATE,
   km_na_altura  numeric,
   itens         jsonb NOT NULL,
-  -- [{ item: 'oleo', estado: 'OK'|'ATENCAO'|'MAU', observacao: text }, ...]
-  estado_geral  text NOT NULL,  -- 'OK' | 'ATENCAO' | 'MAU' — pior item vence
+  -- [{ item_id, chave, rotulo, categoria, estado: 'OK'|'ATENCAO'|'MAU', observacao }, ...]
+  estado_geral  text NOT NULL,  -- pior item entre os verificados
   foto_keys     text[] NOT NULL DEFAULT '{}',  -- bucket 'frota-checklists'
   criado_por    uuid NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
   criado_em     timestamptz NOT NULL DEFAULT now(),
@@ -1153,7 +1234,7 @@ CREATE TABLE public.veiculo_checklists (
   CONSTRAINT ck_checklist_estado CHECK (estado_geral IN ('OK', 'ATENCAO', 'MAU'))
 );
 
--- 5. Condutor responsável por período — histórico, não um campo simples
+-- 7. Condutor responsável por período — histórico, não um campo simples
 --    ("cada carrinha fica com 1 pessoa" mas pode mudar ao longo do tempo)
 CREATE TABLE public.veiculo_atribuicoes (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1165,21 +1246,30 @@ CREATE TABLE public.veiculo_atribuicoes (
   criado_em      timestamptz NOT NULL DEFAULT now()
 );
 
--- Só uma atribuição em aberto (ate IS NULL) por viatura de cada vez
 CREATE UNIQUE INDEX ux_veiculo_atribuicao_aberta
   ON public.veiculo_atribuicoes (veiculo_id) WHERE ate IS NULL;
 
--- 6. Quem recebe push imediato de alertas de frota — pessoas específicas,
---    não um papel (o chefe pode não ser o único admin/gestor do sistema)
+-- 8. Quem recebe push de alertas de frota — pessoas específicas (chefe +
+--    Carlos), não um papel inteiro (pode haver outros admins/gestores)
 CREATE TABLE public.frota_alerta_destinatarios (
   user_id     uuid PRIMARY KEY REFERENCES auth.users(id),
   criado_em   timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.frota_itens_catalogo       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.frota_veiculo_itens        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.veiculo_manutencoes        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.veiculo_checklists         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.veiculo_atribuicoes        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.frota_alerta_destinatarios ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "frota_catalogo_select" ON public.frota_itens_catalogo FOR SELECT TO authenticated USING (true);
+CREATE POLICY "frota_catalogo_write"  ON public.frota_itens_catalogo FOR ALL TO authenticated
+  USING (public.pode_escrever('frota'));
+
+CREATE POLICY "frota_veiculo_itens_select" ON public.frota_veiculo_itens FOR SELECT TO authenticated USING (true);
+CREATE POLICY "frota_veiculo_itens_write"  ON public.frota_veiculo_itens FOR ALL TO authenticated
+  USING (public.pode_escrever('frota'));
 
 CREATE POLICY "manutencoes_select" ON public.veiculo_manutencoes FOR SELECT TO authenticated USING (true);
 CREATE POLICY "manutencoes_write"  ON public.veiculo_manutencoes FOR INSERT TO authenticated
@@ -1197,139 +1287,293 @@ CREATE POLICY "frota_destinatarios_select" ON public.frota_alerta_destinatarios 
 CREATE POLICY "frota_destinatarios_write"  ON public.frota_alerta_destinatarios FOR ALL TO authenticated
   USING (public.auth_role() IN ('admin', 'gestor'));
 
-GRANT SELECT, INSERT              ON TABLE public.veiculo_manutencoes        TO authenticated;
-GRANT SELECT, INSERT              ON TABLE public.veiculo_checklists         TO authenticated;
-GRANT SELECT, INSERT, UPDATE      ON TABLE public.veiculo_atribuicoes        TO authenticated;
-GRANT SELECT, INSERT, DELETE      ON TABLE public.frota_alerta_destinatarios TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.frota_itens_catalogo       TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.frota_veiculo_itens        TO authenticated;
+GRANT SELECT, INSERT                 ON TABLE public.veiculo_manutencoes        TO authenticated;
+GRANT SELECT, INSERT                 ON TABLE public.veiculo_checklists         TO authenticated;
+GRANT SELECT, INSERT, UPDATE         ON TABLE public.veiculo_atribuicoes        TO authenticated;
+GRANT SELECT, INSERT, DELETE         ON TABLE public.frota_alerta_destinatarios TO authenticated;
 GRANT EXECUTE ON FUNCTION public.pode_escrever(TEXT) TO authenticated;
 
--- 7. RPC: registar manutenção e avançar a próxima revisão atomicamente
+-- 9. RPC: registar manutenção de um item e avançar o próximo prazo, atomicamente
 CREATE OR REPLACE FUNCTION public.registar_manutencao(
-  p_veiculo_id uuid, p_tipo text, p_data date, p_km numeric,
+  p_veiculo_id uuid, p_item_id uuid, p_descricao text, p_data date, p_km numeric,
   p_custo numeric, p_oficina text, p_observacoes text, p_atualiza boolean
 ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_id uuid; v_veiculo RECORD;
+DECLARE v_id uuid; v_item RECORD; v_intervalo_km numeric; v_intervalo_meses numeric;
 BEGIN
   IF NOT public.pode_escrever('frota') THEN
     RAISE EXCEPTION 'Sem permissão para registar manutenção';
   END IF;
 
   INSERT INTO public.veiculo_manutencoes
-    (veiculo_id, tipo, data, km_na_altura, custo, oficina, observacoes, atualiza_proxima_revisao)
-  VALUES (p_veiculo_id, p_tipo, p_data, p_km, p_custo, p_oficina, p_observacoes, p_atualiza)
+    (veiculo_id, item_id, descricao, data, km_na_altura, custo, oficina, observacoes, atualiza_proxima)
+  VALUES (p_veiculo_id, p_item_id, p_descricao, p_data, p_km, p_custo, p_oficina, p_observacoes, p_atualiza)
   RETURNING id INTO v_id;
 
-  IF p_atualiza THEN
-    SELECT * INTO v_veiculo FROM public.comb_veiculos WHERE id = p_veiculo_id;
-    UPDATE public.comb_veiculos SET
-      proxima_revisao_km   = CASE WHEN v_veiculo.intervalo_revisao_km IS NOT NULL AND p_km IS NOT NULL
-                                   THEN p_km + v_veiculo.intervalo_revisao_km ELSE proxima_revisao_km END,
-      proxima_revisao_data = CASE WHEN v_veiculo.intervalo_revisao_meses IS NOT NULL
-                                   THEN p_data + (v_veiculo.intervalo_revisao_meses || ' months')::interval
-                                   ELSE proxima_revisao_data END
-    WHERE id = p_veiculo_id;
+  IF p_atualiza AND p_item_id IS NOT NULL THEN
+    SELECT c.intervalo_km_padrao, c.intervalo_meses_padrao
+      INTO v_intervalo_km, v_intervalo_meses
+    FROM public.frota_itens_catalogo c WHERE c.id = p_item_id;
+
+    INSERT INTO public.frota_veiculo_itens (veiculo_id, item_id, ultima_km, ultima_data, proxima_km, proxima_data)
+    VALUES (
+      p_veiculo_id, p_item_id, p_km, p_data,
+      CASE WHEN v_intervalo_km    IS NOT NULL AND p_km IS NOT NULL THEN p_km + v_intervalo_km ELSE NULL END,
+      CASE WHEN v_intervalo_meses IS NOT NULL THEN p_data + (v_intervalo_meses || ' months')::interval ELSE NULL END
+    )
+    ON CONFLICT (veiculo_id, item_id) DO UPDATE SET
+      ultima_km     = EXCLUDED.ultima_km,
+      ultima_data   = EXCLUDED.ultima_data,
+      -- só avança o prazo se este veículo não tiver um intervalo próprio definido
+      proxima_km    = COALESCE(
+                         CASE WHEN public.frota_veiculo_itens.intervalo_km IS NOT NULL AND p_km IS NOT NULL
+                              THEN p_km + public.frota_veiculo_itens.intervalo_km END,
+                         EXCLUDED.proxima_km),
+      proxima_data  = COALESCE(
+                         CASE WHEN public.frota_veiculo_itens.intervalo_meses IS NOT NULL
+                              THEN p_data + (public.frota_veiculo_itens.intervalo_meses || ' months')::interval END,
+                         EXCLUDED.proxima_data),
+      atualizado_em = now();
   END IF;
 
   RETURN v_id;
 END; $$;
 
-GRANT EXECUTE ON FUNCTION public.registar_manutencao(uuid,text,date,numeric,numeric,text,text,boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.registar_manutencao(uuid,uuid,text,date,numeric,numeric,text,text,boolean) TO authenticated;
 
--- 8. Bucket para fotos do checklist — mesmo padrão de combustivel-taloes
---    (política de upload valida o caminho, ver migration 20260929000000)
+-- 10. Motor de alertas — nova regra genérica 'FROTA_ITEM', um branch em
+--     avaliar_regras_alerta() que percorre frota_veiculo_itens (não colunas
+--     fixas). Os 4 alertas antigos (REVISAO_KM/DATA, SEGURO, IPO) continuam a
+--     funcionar como hoje até serem migrados (ver secção seguinte).
+INSERT INTO public.regras_alerta (tipo, entidade_alvo, campo_ref, destinatarios)
+VALUES ('FROTA_ITEM', 'frota_item', 'frota_veiculo_itens.proxima_km / proxima_data', ARRAY['admin','gestor','mecanico'])
+ON CONFLICT DO NOTHING;
+
+-- Acrescentar a avaliar_regras_alerta() (CREATE OR REPLACE, ver migration da
+-- F1 para o corpo completo a preservar) um bloco novo:
+--
+-- ELSIF r.tipo = 'FROTA_ITEM' THEN
+--   FOR v IN
+--     SELECT fvi.id, fvi.proxima_km, fvi.proxima_data,
+--            COALESCE(fvi.intervalo_km, c.intervalo_km_padrao)       AS intervalo_km,
+--            COALESCE(c.limiar_atencao_km,   2000) AS limiar_atencao_km,
+--            COALESCE(c.limiar_urgente_km,    500) AS limiar_urgente_km,
+--            COALESCE(c.limiar_atencao_dias,   30) AS limiar_atencao_dias,
+--            COALESCE(c.limiar_urgente_dias,    7) AS limiar_urgente_dias,
+--            cv.contador_atual   -- ver nota abaixo
+--     FROM public.frota_veiculo_itens fvi
+--     JOIN public.frota_itens_catalogo c ON c.id = fvi.item_id
+--     JOIN public.comb_veiculos cv       ON cv.id = fvi.veiculo_id
+--     WHERE fvi.ativo AND c.ativo AND c.natureza = 'MANUTENCAO' AND cv.ativo
+--   LOOP
+--     -- calcular faltam_km (proxima_km - km atual) e/ou faltam_dias
+--     -- (proxima_data - CURRENT_DATE); severidade = pior dos dois quando os
+--     -- dois existirem; PERFORM _upsert_alerta(regra_frota_item_id, v.id, sev, ...)
+--   END LOOP;
+--
+-- Nota: "km atual" da viatura passa a precisar de ser uma consulta reutilizável
+-- (hoje está inline em cada branch da F1: MAX(contador) de comb_abastecimentos)
+-- — vale a pena extrair para uma função auxiliar `km_atual_veiculo(uuid)` nesta
+-- migration, usada tanto pelo branch novo como, opcionalmente, a refatorar nos
+-- branches antigos.
+
+-- 11. Bucket para fotos do checklist — mesmo padrão de combustivel-taloes
+--     (política de upload valida o caminho, ver migration 20260929000000)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('frota-checklists', 'frota-checklists', true, 10485760,
         ARRAY['image/jpeg','image/png','image/webp','image/heic','image/heif'])
 ON CONFLICT DO NOTHING;
+
+-- 12. alertas_detalhados: estender o CASE existente (ver F1) com o caso novo
+-- CASE r.entidade_alvo
+--   WHEN 'viatura'     THEN v.nome
+--   WHEN 'colaborador' THEN c.nome
+--   WHEN 'frota_item'  THEN cv2.nome || ' — ' || cat.rotulo
+--   ELSE NULL
+-- END AS entidade_nome
+-- (LEFT JOIN frota_veiculo_itens fi2 ON fi2.id = a.entidade_id AND r.entidade_alvo = 'frota_item'
+--  LEFT JOIN comb_veiculos cv2 ON cv2.id = fi2.veiculo_id
+--  LEFT JOIN frota_itens_catalogo cat ON cat.id = fi2.item_id)
+
+-- 13. Seed do catálogo — lista trazida pelo Carlos (confirmar antes de aplicar;
+--     fica fácil de editar depois de aplicado, isto é só o ponto de partida)
+INSERT INTO public.frota_itens_catalogo (chave, rotulo, categoria, natureza, unidade, intervalo_km_padrao, intervalo_meses_padrao) VALUES
+  -- Nível 1 — Inspeção rápida (semanal / antes de sair)
+  ('oleo_motor_nivel',      'Nível de óleo do motor',                     'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('liquido_refrigeracao',  'Líquido de refrigeração',                    'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('liquido_travoes_nivel', 'Líquido de travões (nível)',                 'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('liquido_lava_vidros',   'Líquido do lava-vidros',                     'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('pneus_visual',          'Pressão e estado visual dos pneus',          'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('luzes',                 'Luzes (médios, máximos, piscas, travão, marcha-atrás, nevoeiro)', 'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('limpa_para_brisas',     'Limpa-para-brisas e escovas',                'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('buzina',                'Buzina',                                     'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('avisos_painel',         'Avisos no painel (motor, ABS, airbag, pressão pneus)', 'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('fugas_visiveis',        'Fugas visíveis por baixo do veículo',        'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+  ('documentos_a_bordo',    'Documentos a bordo (DUA, seguro, carta)',    'INSPECAO_RAPIDA', 'CHECKLIST', NULL, NULL, NULL),
+
+  -- Nível 2 — Revisão periódica (oficina, por km/tempo)
+  ('oleo_motor_troca',      'Óleo do motor + filtro de óleo',   'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('filtro_ar',             'Filtro de ar',                     'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('filtro_combustivel',    'Filtro de combustível',            'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 30000, 24),
+  ('filtro_habitaculo',     'Filtro de habitáculo',             'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('travoes_pastilhas',     'Travões: pastilhas e discos (medir desgaste)', 'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('travoes_tambores',      'Travões: tambores/sapatas traseiras', 'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('liquido_travoes_troca', 'Líquido de travões (substituir)',  'REVISAO_PERIODICA', 'MANUTENCAO', 'MESES', NULL, 24),
+  ('pneus_manutencao',      'Pneus: desgaste, alinhamento, rotação', 'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('amortecedores',         'Amortecedores e suspensão',        'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('direcao',                'Direção: rótulas, terminais, caixa', 'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('bateria',                'Bateria: carga e terminais',       'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('correias_acessorios',    'Correias de acessórios',           'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('escape',                 'Escape: fugas e fixações',         'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('caixa_velocidades_oleo', 'Óleo da caixa de velocidades/diferencial', 'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+  ('chassis_ferrugem',       'Cintas/pára-choques/chassis: ferrugem e danos', 'REVISAO_PERIODICA', 'MANUTENCAO', 'AMBOS', 15000, 12),
+
+  -- Nível 3 — Longo prazo
+  ('correia_distribuicao', 'Correia de distribuição (ou corrente)', 'LONGO_PRAZO', 'MANUTENCAO', 'AMBOS', 180000, 84),
+  ('oleo_caixa_velocidades', 'Óleo da caixa de velocidades (longo prazo)', 'LONGO_PRAZO', 'MANUTENCAO', 'AMBOS', 60000, 48),
+  ('velas',                 'Velas / pré-aquecimento',           'LONGO_PRAZO', 'MANUTENCAO', 'AMBOS', 60000, 48),
+  ('fap_egr',                'Filtro de partículas (FAP/DPF) e válvula EGR', 'LONGO_PRAZO', 'MANUTENCAO', 'AMBOS', 120000, NULL),
+  ('adblue',                 'AdBlue (nível e qualidade)',        'LONGO_PRAZO', 'CHECKLIST', NULL, NULL, NULL),
+  ('ar_condicionado',        'Ar condicionado (recarga/desinfeção)', 'LONGO_PRAZO', 'MANUTENCAO', 'MESES', NULL, 24),
+
+  -- Obrigações legais
+  ('ipo',                    'Inspeção Periódica Obrigatória (IPO)', 'OBRIGACAO_LEGAL', 'MANUTENCAO', 'MESES', NULL, 12),
+  ('seguro',                 'Seguro (validade)',                 'OBRIGACAO_LEGAL', 'MANUTENCAO', 'MESES', NULL, 12),
+  ('iuc_selo',                'Selo/IUC (pago anualmente)',        'OBRIGACAO_LEGAL', 'MANUTENCAO', 'MESES', NULL, 12),
+  ('cartao_transportador',    'Cartão de transportador / licença',  'OBRIGACAO_LEGAL', 'MANUTENCAO', 'MESES', NULL, 12),
+  ('tacografo',               'Tacógrafo: calibração/inspeção',    'OBRIGACAO_LEGAL', 'MANUTENCAO', 'MESES', NULL, 24),
+  ('extintor_validade',       'Extintor (validade)',               'OBRIGACAO_LEGAL', 'MANUTENCAO', 'MESES', NULL, 12),
+  ('triangulo_colete',        'Triângulo de sinalização e colete refletor a bordo', 'OBRIGACAO_LEGAL', 'CHECKLIST', NULL, NULL, NULL)
+ON CONFLICT (chave) DO NOTHING;
 ```
 
-### Entrega do alerta às pessoas certas (não broadcast)
+Todos os itens entram **desativados por viatura por omissão** (não há linha
+em `frota_veiculo_itens` até o Carlos os ligar a uma viatura concreta) — o
+catálogo é só o menu de opções; nada gera alerta até ser aplicado a uma
+viatura com um prazo. `tacografo`/`cartao_transportador` só fazem sentido em
+carrinhas de mercadorias — o Carlos ativa-os só nessas.
 
-Hoje `send-push` manda para **todos** os subscritos — serve para "avisar
-quem estiver de plantão" no combustível, mas não serve para "só o chefe e o
-Carlos". Duas opções, a decidir ao implementar:
+### Migração dos dados existentes
 
-1. Estender `avaliar_regras_alerta()` (já corre via pg_cron) a chamar, via
-   `net.http_post()` — o mesmo mecanismo que já dispara `enviar-resumo-alertas`
-   às 07:00 — uma nova Edge Function `send-push-frota` que só envia aos
-   `user_id` em `frota_alerta_destinatarios`, só para alertas com
-   `entidade_alvo = 'viatura'` que acabaram de passar a ATIVO.
-2. Mais simples para já: reaproveitar o resumo diário por e-mail
-   (`enviar-resumo-alertas`) e só adicionar push depois, se o e-mail não for
-   suficiente na prática.
+Os 4 campos de `comb_veiculos` (`proxima_revisao_km`, `proxima_revisao_data`,
+`data_fim_seguro`, `data_proxima_ipo`) preenchidos hoje passam para
+`frota_veiculo_itens`, ligados aos itens `oleo_motor_troca`/`ipo`/`seguro` do
+catálogo, numa `INSERT ... SELECT` a fazer na mesma migration — nenhum dado
+se perde, nenhuma viatura fica sem os alertas que já tinha. As colunas
+antigas **não são apagadas** nesta fase (alteração estrutural sem necessidade
+imediata); ficam paradas, com uma nota a documentar que o valor vivo passou a
+estar em `frota_veiculo_itens`.
 
-Recomendo começar pela opção 2 (zero código novo de push) e medir se o
-Carlos e o chefe sentem falta da notificação imediata no telemóvel antes de
-construir a opção 1.
+### Alertas só por push — sem e-mail, dirigido às pessoas certas
 
-### Proposta de itens do checklist (a confirmar com o Carlos)
+O `send-push` do combustível manda notificação **sem corpo** (texto fixo,
+"toca para abrir a app") propositadamente, para não ter de lidar com a
+cifragem RFC 8291 do payload — e manda para **todos** os subscritos.
 
-| item | o que verificar |
-|---|---|
-| `oleo` | nível e aspeto do óleo do motor |
-| `travoes` | pastilhas/discos, líquido de travões |
-| `pneus` | pressão e desgaste (todos, incl. sobressalente) |
-| `luzes` | mínimos, máximos, piscas, travão, marcha-atrás |
-| `fluidos` | líquido de arrefecimento, limpa-vidros |
-| `limpeza_interior` | estado de limpeza do habitáculo |
-| `limpeza_exterior` | estado de limpeza da carroçaria |
-| `documentos` | seguro, IPO e documento único impresso/acessível no carro |
-| `equipamento_seguranca` | triângulo, colete, extintor, kit de primeiros socorros |
-| `danos` | riscos, amolgadelas ou danos novos desde o último checklist |
+Para a frota preciso de duas coisas diferentes: (1) só a quem está em
+`frota_alerta_destinatarios`, não a todos; (2) não preciso do texto detalhado
+dentro da notificação — o toque abre a app, que já mostra os alertas reais
+(`AlertasPage`, a estender com os alertas de frota). Por isso a proposta é
+**reaproveitar o mesmo padrão sem cifragem** (mais simples, menos risco),
+numa função nova e isolada:
+
+- Nova Edge Function `send-push-frota` (cópia adaptada de `send-push` — este
+  projeto não partilha código entre Edge Functions, cada uma é
+  autossuficiente) que só lê `push_subscriptions` cujo `user_id` esteja em
+  `frota_alerta_destinatarios`.
+- Chamada por `avaliar_regras_alerta()` via `net.http_post()` sempre que um
+  alerta `FROTA_ITEM` passar a ATIVO/URGENTE pela primeira vez — mesmo
+  mecanismo que já dispara `enviar-resumo-alertas` às 07:00 (`net.http_post`
+  agendado por pg_cron), só que despoletado pelo próprio motor de alertas em
+  vez de um horário fixo.
+
+Se mais tarde quiserem o texto do alerta dentro da notificação (sem abrir a
+app), fica documentado como melhoria futura — implica cifrar o payload
+(AES-128-GCM/ECDH por subscrição), trabalho a mais que não é preciso agora.
 
 ### Ficheiros a criar
 
 ```
 src/features/frota/
+  services/catalogoService.ts        ← CRUD do catálogo (Carlos gere sozinho)
+  services/veiculoItensService.ts    ← aplicar/configurar itens por viatura
   services/manutencoesService.ts
   services/checklistsService.ts
   services/atribuicoesService.ts
   services/frotaDestinatariosService.ts
+  hooks/useCatalogo.ts
+  hooks/useGuardarItemCatalogo.ts
+  hooks/useVeiculoItens.ts           ← itens aplicados a uma viatura + configuração
+  hooks/useAtivarItemNaViatura.ts
   hooks/useManutencoes.ts
   hooks/useRegistarManutencao.ts     ← useMutation com retorno (chama a RPC)
   hooks/useChecklists.ts
   hooks/useRegistarChecklist.ts
   hooks/useAtribuicaoAtual.ts
   hooks/useGuardarAtribuicao.ts
+  components/CatalogoFrotaPage.tsx   ← admin/gestor/mecânico: gerir o catálogo
+  components/ConfigurarVeiculoFrotaPage.tsx ← ligar itens do catálogo a esta viatura + prazos
   components/FichaVeiculoPage.tsx    ← leitura: dados + próximas datas + histórico + imprimir
   components/FichaVeiculoPrintView.tsx ← mesmo padrão de GuiaPrintView (@media print)
   components/RegistarManutencaoPage.tsx
-  components/ChecklistFormPage.tsx
+  components/ChecklistFormPage.tsx   ← itens agrupados por categoria (os 4 níveis)
   components/FrotaDestinatariosPage.tsx ← admin/gestor: escolher quem recebe alertas
   index.ts
 ```
 
 `VeiculoFormPage.tsx` ganha um link "Ver ficha" para `FichaVeiculoPage` — a
-única linha tocada fora do módulo novo. Rota nova:
-`{ path: 'frota/veiculo/:id', element: <L><FichaVeiculoPage /></L> }`, sem
-`RoleGuard` (segue o padrão de armazém/ferramentas: `useRole().podeEscrever('frota')`
-controla os botões, a RLS é a segurança real).
+única linha tocada fora do módulo novo. Rotas novas, sem `RoleGuard` (segue o
+padrão de armazém/ferramentas: `useRole().podeEscrever('frota')` controla os
+botões, a RLS é a segurança real):
+
+```
+frota/veiculo/:id            → FichaVeiculoPage
+frota/veiculo/:id/configurar → ConfigurarVeiculoFrotaPage
+frota/catalogo                → CatalogoFrotaPage
+frota/destinatarios           → FrotaDestinatariosPage
+```
 
 ### Regras de negócio críticas
 
-- `atualiza_proxima_revisao` é opcional por registo — nem toda manutenção
-  reinicia o intervalo (ex.: reparação pontual vs. revisão completa)
+- Um item do catálogo só gera alerta/aparece numa viatura depois de estar em
+  `frota_veiculo_itens` para essa viatura — o catálogo por si só não afeta nada
+- `atualiza_proxima` é opcional por registo de manutenção — nem toda
+  manutenção reinicia o intervalo (ex.: reparação pontual vs. revisão completa)
+- Intervalo por viatura tem prioridade sobre o intervalo por omissão do
+  catálogo — permite duas carrinhas com o mesmo item mas prazos diferentes
 - Só uma atribuição em aberto por viatura (`ux_veiculo_atribuicao_aberta`) —
-  atribuir a outra pessoa fecha a anterior (`ate = CURRENT_DATE`) na mesma
-  transação, nunca duas pessoas "responsáveis" ao mesmo tempo
-- `estado_geral` do checklist é sempre o pior item, nunca introduzido à mão
-  solto do array `itens` (calculado no frontend antes de gravar; considerar
-  mover para uma função SQL se for preciso confiar nisso sem o frontend)
+  atribuir a outra pessoa fecha a anterior na mesma transação
+- `estado_geral` do checklist é sempre o pior item, calculado no frontend
+  antes de gravar (considerar mover para uma função SQL se for preciso
+  confiar nisso sem depender do frontend)
 - Fotos do checklist seguem o mesmo padrão de validação de nome de ficheiro
   das fotos de combustível (função SQL que valida o caminho antes do upload)
+- Desativar um item no catálogo (`ativo = false`) não apaga o histórico nem
+  as configurações por viatura — só deixa de aparecer para escolher em novas
+  configurações e para de gerar alertas novos
 
 ### Critérios de conclusão
 
 - [ ] Migration + GRANTs + types regenerados
 - [ ] Teste (Postgres real, `supabase/tests/`): `mecanico` só escreve em
       `frota`, nada mais; `armazem` não escreve em `frota`
-- [ ] Teste: `registar_manutencao` com `atualiza_proxima_revisao=true` avança
-      corretamente km e data; com `false` não mexe em `comb_veiculos`
+- [ ] Teste: `registar_manutencao` com `atualiza=true` avança corretamente km
+      e data (usando o intervalo da viatura se existir, senão o do catálogo);
+      com `false` não mexe em `frota_veiculo_itens`
 - [ ] Teste: duas atribuições em aberto na mesma viatura é rejeitado (índice único)
+- [ ] Teste: motor de alertas gera `FROTA_ITEM` a partir de
+      `frota_veiculo_itens`, idempotente (correr 2× não duplica)
+- [ ] Teste: item desativado no catálogo não aparece nas opções novas mas o
+      histórico e alertas já criados continuam intactos
+- [ ] `send-push-frota` só envia a quem está em `frota_alerta_destinatarios`
+      (teste: subscrito fora da lista não recebe)
 - [ ] Ficha da viatura imprime corretamente (CSS `@media print`, mesmo padrão já testado)
-- [ ] Carlos consegue entrar, ver as viaturas, registar manutenção e
-      checklist — e **não** consegue ver/mexer em armazém, ferramentas ou obras
-- [ ] Lista de itens do checklist confirmada com o Carlos antes de aplicar a migration
+- [ ] Carlos consegue entrar, configurar itens numa viatura, registar
+      manutenção e checklist — e **não** consegue ver/mexer em armazém,
+      ferramentas ou obras
+- [ ] Seed do catálogo aplicado e revisto com o Carlos depois de estar no ar
+      (a lista inicial é um ponto de partida, não a palavra final)
 
 ---
 
