@@ -12,6 +12,7 @@ import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel
 import { BombaAtiva } from '@/features/combustivel/components/BombaAtiva'
 import { destinoFotoAbastecimento } from '@/features/combustivel/lib/fotoAbastecimento'
 import { mensagemErroPedido } from '@/features/combustivel/lib/erroPedido'
+import { reduzirFoto } from '@/features/combustivel/lib/reduzirFoto'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura
@@ -271,10 +272,11 @@ export function AbastecimentoPublicPage() {
     setSaving(true)
 
     // Upload da foto — erros aqui não activam o formulário manual (A1)
-    const { caminho: path, contentType } = destinoFotoAbastecimento(vehicleId!, pendId, foto.type)
+    const envio = await reduzirFoto(foto)
+    const { caminho: path, contentType } = destinoFotoAbastecimento(vehicleId!, pendId, envio.type)
     const { error: upErr } = await supabase.storage
       .from('combustivel-taloes')
-      .upload(path, foto, { contentType, upsert: false })
+      .upload(path, envio, { contentType, upsert: false })
     if (upErr) { setErr('Erro ao enviar foto. Tente novamente.'); setSaving(false); return }
 
     const { data: urlData } = supabase.storage.from('combustivel-taloes').getPublicUrl(path)
