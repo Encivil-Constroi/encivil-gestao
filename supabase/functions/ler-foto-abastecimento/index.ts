@@ -5,14 +5,36 @@
 //
 // Body: { foto_url: string, tipo_fonte: 'POLO2' | 'CARRINHA' | 'POSTO_RUA' }
 // Resposta: { litros: number | null, custo_total: number | null, confianca: 'alta' | 'media' | 'baixa' }
+//
+// Segurança: é chamada sem login (página do motorista). Só aceita fotos do bucket
+// combustivel-taloes cujo nome aponte para um pedido AUTORIZADO dessa viatura —
+// sem isto qualquer pessoa usava a chave da Gemini e o servidor como proxy (SSRF).
+
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
+const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
+const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const GEMINI_MODEL      = 'gemini-2.0-flash'
 const GEMINI_URL        = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 
+const PREFIXO_FOTOS = `${SUPABASE_URL}/storage/v1/object/public/combustivel-taloes/`
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+// Mesmo formato da política de upload (public.foto_abastecimento_valida)
+const NOME_FOTO = new RegExp(`^(${UUID})/[0-9]{4}-[0-9]{2}-[0-9]{2}_(${UUID})_[0-9]{1,16}\\.(jpg|png|webp|heic|heif)$`)
+const MAX_BYTES = 10 * 1024 * 1024  // limite do bucket
+
+const MIME_GEMINI: Record<string, string> = {
+  jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif',
+}
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+// supabase.functions.invoke envia authorization/apikey/x-client-info: sem os
+// declarar aqui o preflight do browser falhava e a leitura nunca chegava a correr
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 const JSON_H = { ...CORS, 'Content-Type': 'application/json' }
@@ -71,16 +93,32 @@ Deno.serve(async (req) => {
 
   if (!GOOGLE_AI_API_KEY) return err('GOOGLE_AI_API_KEY não configurada', 500)
 
-  // Descarregar a foto para base64
-  const imgRes = await fetch(foto_url).catch(() => null)
-  if (!imgRes?.ok) return err('Não foi possível descarregar a foto', 422)
+  if (typeof foto_url !== 'string' || !foto_url.startsWith(PREFIXO_FOTOS)) {
+    return err('foto_url inválida', 400)
+  }
+  const nome = NOME_FOTO.exec(foto_url.slice(PREFIXO_FOTOS.length))
+  if (!nome) return err('foto_url inválida', 400)
+  const [, veiculoId, pedidoId, ext] = nome
 
-  const buffer   = await imgRes.arrayBuffer()
+  const { data: pedido, error: pedErr } = await supabase
+    .from('comb_abastecimentos_pendentes')
+    .select('id')
+    .eq('id', pedidoId)
+    .eq('veiculo_id', veiculoId)
+    .eq('estado', 'AUTORIZADO')
+    .maybeSingle()
+  if (pedErr) return err('Erro ao validar o pedido', 500)
+  if (!pedido) return err('Pedido não autorizado', 403)
+
+  // redirect: 'error' — o URL foi validado; não seguir para outro destino
+  const imgRes = await fetch(foto_url, { redirect: 'error' }).catch(() => null)
+  if (!imgRes?.ok) return err('Não foi possível descarregar a foto', 422)
+  if (Number(imgRes.headers.get('content-length') ?? 0) > MAX_BYTES) return err('Foto demasiado grande', 413)
+
+  const buffer = await imgRes.arrayBuffer()
+  if (buffer.byteLength > MAX_BYTES) return err('Foto demasiado grande', 413)
   const base64   = toBase64(buffer)
-  const ct       = imgRes.headers.get('content-type') ?? 'image/jpeg'
-  const mimeType = ct.includes('png') ? 'image/png'
-                 : ct.includes('webp') ? 'image/webp'
-                 : 'image/jpeg'
+  const mimeType = MIME_GEMINI[ext]
 
   const geminiRes = await fetch(`${GEMINI_URL}?key=${GOOGLE_AI_API_KEY}`, {
     method:  'POST',

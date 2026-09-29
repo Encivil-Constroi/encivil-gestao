@@ -3,8 +3,11 @@
 // Push sem corpo evita a necessidade de encriptação RFC 8291 — o SW mostra
 // uma notificação fixa e o chefe abre a app para ver detalhes.
 //
-// Body: { title: string, body: string, url?: string }
-// Auth: JWT de utilizador autenticado (ou anon — chamado pela página pública)
+// Body: { pedido_id: string }
+// Auth: chamada sem login pela página do motorista. Só notifica para um pedido
+// em AGUARDA_AUTORIZACAO criado há < 10 min e ainda não notificado — marcado de
+// forma atómica, portanto no máximo 1 notificação por pedido (antes qualquer
+// pessoa podia disparar notificações sem limite para os telemóveis dos chefes).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -20,6 +23,9 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 const JSON_H = { ...CORS, 'Content-Type': 'application/json' }
+
+const UUID_RE   = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const JANELA_MS = 10 * 60_000
 
 function ok(data: unknown)         { return new Response(JSON.stringify(data),          { status: 200, headers: JSON_H }) }
 function err(msg: string, s = 400) { return new Response(JSON.stringify({ erro: msg }), { status: s,   headers: JSON_H }) }
@@ -105,11 +111,24 @@ Deno.serve(async (req) => {
   }
 
   const body = await req.json().catch(() => null)
-  if (!body?.title) return err('title obrigatório')
+  const pedidoId = typeof body?.pedido_id === 'string' ? body.pedido_id : ''
+  if (!UUID_RE.test(pedidoId)) return err('pedido_id obrigatório')
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  const { data: marcados, error: marcaErr } = await admin
+    .from('comb_abastecimentos_pendentes')
+    .update({ push_notificado_em: new Date().toISOString() })
+    .eq('id', pedidoId)
+    .eq('estado', 'AGUARDA_AUTORIZACAO')
+    .is('push_notificado_em', null)
+    .gt('criado_em', new Date(Date.now() - JANELA_MS).toISOString())
+    .select('id')
+
+  if (marcaErr) return err('Erro ao validar o pedido', 500)
+  if (!marcados?.length) return err('Pedido inválido ou já notificado', 403)
 
   const { data: subs, error: subsErr } = await admin
     .from('push_subscriptions')

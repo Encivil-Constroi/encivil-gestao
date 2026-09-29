@@ -42,6 +42,10 @@ const STUBS_SUPABASE = `
     name text, owner uuid, metadata jsonb, created_at timestamptz DEFAULT now()
   );
   ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+  -- Como na plataforma: privilégios de base abertos, o acesso real decide-se no RLS
+  GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO anon, authenticated, service_role;
+  GRANT SELECT ON storage.buckets TO anon, authenticated, service_role;
   CREATE FUNCTION storage.foldername(name text) RETURNS text[] LANGUAGE sql IMMUTABLE
     AS $$ SELECT string_to_array(name, '/') $$;
 

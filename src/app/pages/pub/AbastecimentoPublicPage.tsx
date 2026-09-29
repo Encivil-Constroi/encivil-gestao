@@ -9,6 +9,7 @@ import { useFormGuard } from '@/app/lib/useFormGuard'
 import { useAsync } from '@/app/lib/useAsync'
 import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel/services/bombaService'
 import { BombaAtiva } from '@/features/combustivel/components/BombaAtiva'
+import { destinoFotoAbastecimento } from '@/features/combustivel/lib/fotoAbastecimento'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura
@@ -264,12 +265,9 @@ export function AbastecimentoPublicPage() {
       sessionStorage.setItem('encivil_fuel', JSON.stringify({ pendId: novoId, tipo, vehicleId }))
     } catch {}
 
+    // O push não leva texto (o SW mostra uma notificação fixa); o pedido é a prova de legitimidade
     supabase.functions.invoke('send-push', {
-      body: {
-        title: `Pedido de abastecimento — ${vehicleName}`,
-        body:  `${nome.trim()} pede autorização (${TIPO_CONFIG[tipo!].label})`,
-        url:   '/combustivel',
-      },
+      body: { pedido_id: novoId },
     }).catch(() => {})
   })
 
@@ -283,11 +281,10 @@ export function AbastecimentoPublicPage() {
     setSaving(true)
 
     // Upload da foto — erros aqui não activam o formulário manual (A1)
-    const ext  = foto.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-    const path = `${vehicleId}/${todayStr()}_${pendId}.${ext}`
+    const { caminho: path, contentType } = destinoFotoAbastecimento(vehicleId!, pendId, foto.type)
     const { error: upErr } = await supabase.storage
       .from('combustivel-taloes')
-      .upload(path, foto, { contentType: foto.type, upsert: true })
+      .upload(path, foto, { contentType, upsert: false })
     if (upErr) { setErr('Erro ao enviar foto. Tente novamente.'); setSaving(false); return }
 
     const { data: urlData } = supabase.storage.from('combustivel-taloes').getPublicUrl(path)
