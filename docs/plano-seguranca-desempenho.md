@@ -128,6 +128,23 @@ A leitura por IA funcionou mas demorou: fotos de 3–6 MB sobem por 4G, são
 descarregadas pela função e analisadas pela Gemini. Reduzir no telemóvel para
 ~1600 px antes do envio. Medir antes/depois com o tempo de cada fase nos Logs.
 
+Feito (2026-09-29), em medição:
+- `ler-foto-abastecimento` escreve nos Logs uma linha por leitura:
+  `[ler-foto] tempos total=… pedido=… download=… (N KB) gemini=… modelo=… tentativas=…`
+- Página do motorista: `reduzirFoto` (1600 px no lado maior, JPEG 0,85) antes do upload.
+  `<img>` + canvas (respeita a orientação EXIF); em qualquer falha — HEIC que o
+  browser não lê, canvas sem contexto, resultado não mais pequeno — envia a original.
+  O caminho continua no formato da política (`.jpg` quando reduzida).
+- Publicação em 2 tempos para medir: (1) Edge Function com os tempos → foto real
+  = **antes**; (2) site com a redução → foto real = **depois**.
+- Verificação: 16 testes da redução + 2 de integração da página (ficheiro enviado,
+  caminho aceite pela política, tipo) + 3 Deno; mutações 9/9 no site e 3/3 na função.
+
+| Medição | total | download (KB) | gemini |
+|---|---|---|---|
+| Antes | | | |
+| Depois | | | |
+
 ### 2.3 Índice
 `comb_abastecimentos_pendentes(veiculo_id)` — usado no limite de pedidos a cada QR.
 

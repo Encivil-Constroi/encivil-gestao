@@ -9,7 +9,7 @@ Deno.env.set('GOOGLE_AI_API_KEY', 'chave-google')
 // Importar a função sem arrancar o servidor HTTP
 const servirOriginal = Deno.serve
 ;(Deno as unknown as { serve: unknown }).serve = () => ({})
-const { chamarGemini, TENTATIVAS } = await import('./index.ts')
+const { chamarGemini, TENTATIVAS, linhaTempos } = await import('./index.ts')
 ;(Deno as unknown as { serve: unknown }).serve = servirOriginal
 
 type Resposta = number | 'rede'
@@ -93,4 +93,24 @@ Deno.test('404 (modelo inexistente): salta as repetições desse modelo e vai à
   const r = await chamarGemini('{}', g)
   assertEquals(r.ok, true)
   assertEquals(g.chamadas.map(modelo), ['gemini-flash-latest', 'gemini-flash-lite-latest'])
+})
+
+Deno.test('conta as tentativas feitas (sucesso e falha)', async () => {
+  assertEquals((await chamarGemini('{}', geminiFalsa([200]))).tentativas, 1)
+  assertEquals((await chamarGemini('{}', geminiFalsa([503, 503, 200]))).tentativas, 3)
+  assertEquals((await chamarGemini('{}', geminiFalsa([503, 503, 503]))).tentativas, 3)
+  assertEquals((await chamarGemini('{}', geminiFalsa([400]))).tentativas, 1)
+})
+
+Deno.test('modelo inexistente saltado não conta como tentativa', async () => {
+  const r = await chamarGemini('{}', { ...geminiFalsa([404, 200]) })
+  assertEquals(r.ok, true)
+  assertEquals(r.tentativas, 2)
+})
+
+Deno.test('linha de tempos nos Logs', () => {
+  assertEquals(
+    linhaTempos({ pedidoMs: 40, downloadMs: 900, bytes: 3_145_728, geminiMs: 7_200, modelo: 'gemini-flash-latest', tentativas: 2, totalMs: 8_150 }),
+    '[ler-foto] tempos total=8150ms pedido=40ms download=900ms (3072 KB) gemini=7200ms modelo=gemini-flash-latest tentativas=2',
+  )
 })

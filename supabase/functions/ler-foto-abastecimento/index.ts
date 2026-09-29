@@ -31,8 +31,8 @@ export const TENTATIVAS = [
 const TRANSITORIOS = new Set([0, 429, 500, 502, 503, 504])  // 0 = sem resposta (rede)
 
 export type ResultadoGemini =
-  | { ok: true;  res: Response; modelo: string }
-  | { ok: false; status: number; detalhe: string }
+  | { ok: true;  res: Response; modelo: string; tentativas: number }
+  | { ok: false; status: number; detalhe: string; tentativas: number }
 
 export async function chamarGemini(
   corpo: string,
@@ -51,10 +51,12 @@ export async function chamarGemini(
   let status = 0
   const detalhes: string[] = []
   const inexistentes = new Set<string>()
+  let feitas = 0
 
   for (const t of tentativas) {
     if (inexistentes.has(t.modelo)) continue
     if (t.esperaMs) await dormir(t.esperaMs)
+    feitas++
 
     const res = await fetchFn(`${urlModelo(t.modelo)}?key=${chave}`, {
       method:  'POST',
@@ -62,7 +64,7 @@ export async function chamarGemini(
       body:    corpo,
     }).catch(() => null)
 
-    if (res?.ok) return { ok: true, res, modelo: t.modelo }
+    if (res?.ok) return { ok: true, res, modelo: t.modelo, tentativas: feitas }
 
     status = res?.status ?? 0
     detalhes.push(`${t.modelo} ${status}: ${res ? (await res.text()).slice(0, 200) : 'sem resposta'}`)
@@ -72,7 +74,18 @@ export async function chamarGemini(
     // Outros 4xx (pedido inválido, chave errada) não se resolvem a repetir
     if (!TRANSITORIOS.has(status)) break
   }
-  return { ok: false, status, detalhe: detalhes.join(' | ') }
+  return { ok: false, status, detalhe: detalhes.join(' | '), tentativas: feitas }
+}
+
+// Uma linha por leitura nos Logs, para medir onde vai o tempo (foto grande a
+// descarregar vs. Gemini lenta vs. novas tentativas)
+export function linhaTempos(t: {
+  pedidoMs: number; downloadMs: number; bytes: number; geminiMs: number
+  modelo: string; tentativas: number; totalMs: number
+}): string {
+  return `[ler-foto] tempos total=${t.totalMs}ms pedido=${t.pedidoMs}ms `
+    + `download=${t.downloadMs}ms (${Math.round(t.bytes / 1024)} KB) `
+    + `gemini=${t.geminiMs}ms modelo=${t.modelo} tentativas=${t.tentativas}`
 }
 
 const PREFIXO_FOTOS = `${SUPABASE_URL}/storage/v1/object/public/combustivel-taloes/`
@@ -142,6 +155,8 @@ function promptParaTipo(tipo: string): string {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST')    return err('Método não permitido', 405)
+  const t0 = performance.now()
+  const ms = (desde: number) => Math.round(performance.now() - desde)
 
   const body = await req.json().catch(() => null)
   if (!body?.foto_url || !body?.tipo_fonte) return err('foto_url e tipo_fonte obrigatórios')
@@ -161,6 +176,7 @@ Deno.serve(async (req) => {
   if (!nome) return err('foto_url inválida', 400)
   const [, veiculoId, pedidoId, ext] = nome
 
+  const tPedido = performance.now()
   const { data: pedido, error: pedErr } = await supabase
     .from('comb_abastecimentos_pendentes')
     .select('id')
@@ -170,17 +186,21 @@ Deno.serve(async (req) => {
     .maybeSingle()
   if (pedErr) return err('Erro ao validar o pedido', 500)
   if (!pedido) return err('Pedido não autorizado', 403)
+  const pedidoMs = ms(tPedido)
 
   // redirect: 'error' — o URL foi validado; não seguir para outro destino
+  const tDownload = performance.now()
   const imgRes = await fetch(foto_url, { redirect: 'error' }).catch(() => null)
   if (!imgRes?.ok) return err('Não foi possível descarregar a foto', 422)
   if (Number(imgRes.headers.get('content-length') ?? 0) > MAX_BYTES) return err('Foto demasiado grande', 413)
 
   const buffer = await imgRes.arrayBuffer()
   if (buffer.byteLength > MAX_BYTES) return err('Foto demasiado grande', 413)
+  const downloadMs = ms(tDownload)
   const base64   = toBase64(buffer)
   const mimeType = MIME_GEMINI[ext]
 
+  const tGemini = performance.now()
   const gemini = await chamarGemini(JSON.stringify({
     contents: [{
       parts: [
@@ -197,10 +217,21 @@ Deno.serve(async (req) => {
     },
   }))
 
+  const geminiMs = ms(tGemini)
+
   if (!gemini.ok) {
+    console.log(linhaTempos({
+      pedidoMs, downloadMs, bytes: buffer.byteLength, geminiMs,
+      modelo: 'falhou', tentativas: gemini.tentativas, totalMs: ms(t0),
+    }))
     if (gemini.status === 429) return err('Limite Gemini atingido. Tenta novamente.', 429, gemini.detalhe)
     return err(`Erro Gemini (${gemini.status})`, 502, gemini.detalhe)
   }
+
+  console.log(linhaTempos({
+    pedidoMs, downloadMs, bytes: buffer.byteLength, geminiMs,
+    modelo: gemini.modelo, tentativas: gemini.tentativas, totalMs: ms(t0),
+  }))
 
   const geminiData = await gemini.res.json() as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
