@@ -1062,7 +1062,7 @@ src/features/livro-obra/
 
 ---
 
-## Fase 9 — Frota: Manutenção, Checklists e Responsabilização `[IMPLEMENTADA — por publicar]`
+## Fase 9 — Frota: Manutenção, Checklists e Responsabilização `[EM PRODUÇÃO — 2026-09-29]`
 
 **Origem:** pedido do Carlos (mecânico responsável pelos ligeiros), 2026-09-29.
 
@@ -1102,6 +1102,16 @@ mecânico, armazém, leitura, gestor, admin, papel de serviço) + 16/16 mutaçõ
 decifragem do lado do recetor); 75 testes do site (lógica, páginas de checklist e
 manutenção, isolamento do mecânico, menu, notificação do service worker, prazos);
 18/18 mutações no site e na função. Suíte completa 637/637 (Node local e Node 24).
+
+### Verificado em produção (2026-09-29)
+
+- Migrations aplicadas: funções e tabelas novas existem e recusam acesso anónimo;
+  bucket `frota-checklists` criado; schema `privado` invisível pela API
+- `send-push-frota`: recusa sem segredo e com segredo errado (401) e método
+  errado (405); chamada pelo banco com o segredo verdadeiro → **200**
+- Site publicado, CI verde
+- Falta: criar o utilizador do mecânico, escolher os destinatários e ver a
+  primeira notificação chegar a um telemóvel
 
 ### Publicação (ordem que nunca deixa nada partido)
 
