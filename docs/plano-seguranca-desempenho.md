@@ -86,10 +86,20 @@ automáticas com modelo de reserva (9 testes Deno), e `maxOutputTokens` 256 → 
 
 ## Etapa 2 — Desempenho
 
-### 2.1 Divisão do bundle
-`manualChunks` passa a função que só captura os pacotes pedidos (recharts, qrcode…),
-sem arrastar dependências partilhadas (`clsx`) para o arranque.
-Medido: JS de arranque 991 KB → ~570 KB.
+### 2.1 Divisão do bundle — feito (2026-09-29)
+`manualChunks` passa a função (`src/build/vendorChunks.ts`) que identifica o pacote
+pelo último `node_modules/` e só captura os pacotes listados, sem arrastar
+dependências partilhadas para o arranque.
+
+Encontrado: na forma objeto o próprio **React** estava dentro de `vendor-charts`, por
+isso o recharts nunca podia sair do arranque. O React tem agora chunk próprio
+(`vendor-react`), sem imports circulares entrada ↔ vendor.
+
+Medido (soma dos `.js` referenciados em `dist/index.html`):
+JS de arranque **1 014 874 B → 591 901 B (−42 %)**. A página do motorista
+(`/pub/combustivel`) deixa de carregar `vendor-charts`.
+Verificação: 28 testes da função; mutações 5/5 apanhadas; mutação do build (voltar à
+forma objeto) regride para 1 014 874 B.
 
 ### 2.2 Polling só com a app visível
 Hook único `useIntervaloVisivel`: pausa com o separador oculto / ecrã bloqueado e
@@ -104,7 +114,7 @@ descarregadas pela função e analisadas pela Gemini. Reduzir no telemóvel para
 `comb_abastecimentos_pendentes(veiculo_id)` — usado no limite de pedidos a cada QR.
 
 ### 2.4 Verificação da etapa
-- [ ] Medição do JS de arranque antes/depois (build real)
+- [x] Medição do JS de arranque antes/depois (build real): 1 014 874 B → 591 901 B
 - [ ] Teste do `useIntervaloVisivel`
 - [ ] Suíte completa, typecheck, build, CI verde; site a funcionar em produção
 
@@ -122,5 +132,5 @@ Login do Supabase CLI com a conta dona da organização ENCIVIL →
 | Etapa | Estado |
 |---|---|
 | 1 — Segurança | **concluída** (2026-09-29) |
-| 2 — Desempenho | por fazer (inclui 2.2b: foto mais leve) |
+| 2 — Desempenho | em curso: 2.1 feito; faltam 2.2, 2.2b, 2.3 |
 | 3 — Processo | aguarda login do CLI |
