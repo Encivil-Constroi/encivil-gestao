@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS privado.frota_push (
   segredo  text    NOT NULL CHECK (length(segredo) >= 32)
 );
 REVOKE ALL ON TABLE privado.frota_push FROM PUBLIC, anon, authenticated;
+-- Sem políticas: ninguém da app lê. frota_push_autorizado() e o pg_cron correm
+-- como dono da tabela, que não está sujeito à RLS.
+ALTER TABLE privado.frota_push ENABLE ROW LEVEL SECURITY;
 
 -- 64 caracteres hex de gen_random_uuid() (gerador criptográfico do Postgres)
 INSERT INTO privado.frota_push (segredo)
