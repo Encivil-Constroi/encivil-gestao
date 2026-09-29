@@ -52,11 +52,16 @@ Arquitetura frontend-only (SPA + PWA) com backend gerido pelo Supabase. Sem serv
 | Autenticação | Supabase Auth | — |
 | Base de dados | Supabase PostgreSQL | 15+ |
 | Segurança | Supabase RLS | — |
-| Deploy | Vercel | — |
+| Deploy | Cloudflare Pages | — |
+
+> Nota (2026-09-29): o diagrama acima e a frase "sem code-splitting por rota"
+> refletem a decisão original da ADR-008. Essa decisão foi revertida em
+> 28/07/2026 (lazy loading está em uso desde então) — ver ADR-010. O deploy
+> também mudou de Vercel para Cloudflare Pages — ver `docs/09-implantacao.md`.
 
 ---
 
-## Organização do Código (atual — ver `PROJECT_STRUCTURE.md` para o detalhe completo)
+## Organização do Código (atual — ver a secção "Arquitetura" em `CLAUDE.md` para o detalhe completo)
 
 ```
 src/

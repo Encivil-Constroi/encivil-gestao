@@ -142,9 +142,11 @@ CREATE POLICY "audit_log_select_admin" ON audit_log FOR SELECT TO authenticated
 
 ---
 
-## Headers de Segurança HTTP (`vercel.json`)
+## Headers de Segurança HTTP (`public/_headers`)
 
-Aplicados a todas as rotas desde 2026-06-22:
+Aplicados a todas as rotas desde 2026-06-22 (originalmente em `vercel.json`;
+migrados para a convenção do Cloudflare Pages, `public/_headers`, quando o
+deploy saiu da Vercel — ver `docs/09-implantacao.md`):
 
 | Header | Valor | Protege contra |
 |---|---|---|

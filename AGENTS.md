@@ -1,16 +1,24 @@
 # AGENTS.md — Guia para Agents de IA
 
-Este ficheiro orienta Claude Agents, Codex e outros agents de IA a contribuir corretamente para o projeto **Controle Armazém ENCIVIL**.
+Este ficheiro orienta Codex e outros agents de IA que leem `AGENTS.md` por
+convenção a contribuir corretamente para o projeto **ENCIVIL Gestão**.
+**`CLAUDE.md`, na raiz do repositório, é a fonte principal** (carregado
+automaticamente pelo Claude Code) — este ficheiro existe para agents que não
+o leem por omissão. Em caso de conflito entre os dois, `CLAUDE.md` vence;
+por favor sinalizar a divergência em vez de escolher em silêncio.
 
 ---
 
 ## Antes de Qualquer Alteração
 
-1. **Ler `docs/00-source-of-truth.md`** — é a verdade principal do produto.
-2. **Ler a SPEC do módulo** que vai alterar (em `docs/specs/SPEC-*.md`).
-3. **Ler `docs/02-regras-de-negocio.md`** se a tarefa envolve stock ou movimentos.
-4. Verificar se a tarefa está no backlog (`TASKS.md`) e qual a prioridade.
+1. **Ler `CLAUDE.md`** — stack, arquitetura, padrões obrigatórios, regras "nunca fazer".
+2. **Ler `docs/00-source-of-truth.md`** — a verdade principal do produto.
+3. **Ler a SPEC do módulo** que vai alterar, se existir (em `docs/specs/SPEC-*.md`
+   — cobrem os módulos originais de armazém; módulos mais recentes não têm SPEC
+   dedicada, ver `docs/12-plano-v3.md`).
+4. **Ler `docs/02-regras-de-negocio.md`** se a tarefa envolve stock ou movimentos.
 5. **Se a tarefa é de expansão ERP (RH, picagens, alertas, faturas, custeio):** ler `docs/12-plano-v3.md` — contém schema SQL completo, ficheiros a criar e critérios de conclusão para cada fase.
+6. Histórico de tarefas anteriores (todas concluídas) em `docs/archive/` — não é o backlog ativo.
 
 ---
 
@@ -34,13 +42,13 @@ Este ficheiro orienta Claude Agents, Codex e outros agents de IA a contribuir co
 - ❌ Não criar sistema de ecommerce, pagamentos ou faturação (Secção 1 da spec v3.0 está excluída)
 - ❌ Não apagar registos de `movimentos_stock` — nem mesmo para "corrigir"
 - ❌ Não editar `stock_atual` diretamente — apenas via movimentos
-- ❌ Não colocar `service-role` key no frontend (Vite)
+- ❌ Não colocar a chave `sb_secret_...` no frontend (Vite) — só `sb_publishable_...` em `VITE_`
 - ❌ Não misturar regra de negócio dentro de componentes visuais
-- ❌ Não criar ecrãs ou funcionalidades de Fase 2/3 quando a tarefa é de MVP
-- ❌ Não alterar a estrutura da base de dados sem criar uma migration SQL
+- ❌ Não criar ecrãs ou funcionalidades fora da fase indicada quando a tarefa é de uma fase específica do plano v3
+- ❌ Não alterar a estrutura da base de dados sem criar uma migration SQL, com `GRANT` explícito (a exposição automática de novas tabelas está desligada — ver `CLAUDE.md`)
 - ❌ Não fazer `UPDATE profiles SET role = ...` direto — está bloqueado por GRANT a nível de coluna; usar sempre a RPC `promover_role()`
-- ❌ Não usar `lazy()`/code-splitting por rota em `routes.tsx` — foi removido deliberadamente (ADR-008, elimina "stale chunk" pós-deploy)
-- ❌ Não confiar só no frontend (`RoleGuard`, esconder botões) para restringir acesso — a defesa real é RLS/GRANT na DB; toda nova funcionalidade sensível precisa de policy ou RPC com verificação de role no servidor
+- ❌ Não usar `as any` para contornar tipos do Supabase — filtros ficam inline, nunca em helpers genéricos
+- ❌ Não confiar só no frontend (`RoleGuard`, esconder botões) para restringir acesso — a defesa real é RLS/GRANT na DB; toda nova funcionalidade sensível precisa de policy ou RPC com verificação de papel no servidor (`public.pode_escrever()`/`public.auth_role()`)
 
 ---
 
@@ -67,6 +75,10 @@ docs/
   03-modelo-de-dados.md   ← Ler para tarefas de BD
   04-arquitetura.md       ← Ler para novas features
   05-seguranca-e-acesso.md
+  06-ux-ui.md a 10-roadmap.md
+  12-plano-v3.md          ← Plano faseado da expansão ERP (RH, alertas, faturas, custeio…)
+  13-infraestrutura-e-contas.md ← Contas, segredos, assinaturas
+  plano-seguranca-desempenho.md ← Plano de correções em curso
   specs/
     SPEC-AUTH.md
     SPEC-DASHBOARD.md
@@ -75,10 +87,10 @@ docs/
     SPEC-HISTORICO.md
     SPEC-RELATORIOS.md
     SPEC-CONFIGURACOES.md
+    (módulos mais recentes não têm SPEC dedicada — ver docs/12-plano-v3.md)
   adrs/
-    ADR-001.md a ADR-008.md
-TASKS/                     ← Backlog ativo (SEGURANÇA / UX / PERFORMANCE, cada uma com backlog/ e done/)
-TASKS.md                   ← Obsoleto, só histórico — aponta para TASKS/
+    ADR-001.md a ADR-010.md
+  archive/                 ← Histórico superado (backlog inicial TASKS/, brief original)
 ```
 
 ---
@@ -144,8 +156,12 @@ Apenas em saídas. Opcional em entradas e ajustes.
 **Posso promover um utilizador a admin?**  
 Só via RPC `promover_role()`, autenticado como um admin existente. Nunca por `UPDATE` direto na tabela `profiles` — está bloqueado por GRANT a nível de coluna desde 2026-06-22.
 
-**Um gestor pode criar/editar produtos?**  
-Não. Só `admin`. RLS bloqueia mesmo que o frontend não escondesse o botão.
+**Quem pode criar/editar produtos?**  
+`admin`, `gestor` e `armazem` (módulo `armazem` em `public.pode_escrever()`).
+`medicoes` e `leitura` não. RLS bloqueia mesmo que o frontend não escondesse
+o botão — a matriz completa está em `CLAUDE.md`.
 
 **Devo usar `lazy()` para uma nova página?**  
-Não. O projeto usa bundle único deliberadamente (ver `docs/adrs/ADR-008.md`) — importar a página diretamente em `routes.tsx`.
+Sim — todas as rotas em `routes.tsx` são `lazy(() => import(...))` desde
+28/07/2026 (ver `docs/adrs/ADR-010.md`, que substituiu a ADR-008). Seguir o
+padrão das rotas vizinhas.

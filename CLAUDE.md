@@ -18,28 +18,35 @@ src/
   app/
     lib/          ← useAsync<T>, useMutation<TArgs,TResult>, stockUtils, exportCsv
     types.ts      ← tipos de domínio (Product, Movement, Tool, FuelEntry, etc.)
-    router.tsx    ← React Router v7
-  features/       ← módulos por domínio (um por funcionalidade)
+    routes.tsx    ← React Router v7 (bundle único, sem lazy por rota — ver ADR-010)
+  features/       ← módulos por domínio (um por funcionalidade); um módulo nunca
+                     importa de outro. Lista completa: `ls src/features`. Núcleo:
     auth/         ← useAuth, AuthGuard, RoleGuard, useRole
     produtos/     ← armazém (produtos + stock)
     movimentos/   ← movimentos de stock + offline queue (useOfflineQueue)
-    obras/        ← gestão de obras
+    obras/        ← gestão de obras (entidade central — ver ARCHITECTURE.md)
     subempreiteiros/ ← contratos + autos de medição
     ferramentas/  ← ferramentas + empréstimos (com termo de responsabilidade)
-    combustivel/  ← abastecimentos + viaturas + pendentes QR
+    combustivel/  ← abastecimentos + viaturas + bomba Polo 2 + pendentes QR
     dashboard/    ← overview + alertas stock
     custos/       ← custos agregados por obra
     configuracoes/ ← configurações globais
     notificacoes/ ← sistema de notificações
+                     + colaboradores, horarios, picagens, epis, faturas,
+                     livro-obra, autos, alertas, contabilidade, backup, search
+                     (expansão ERP v3 — ver docs/12-plano-v3.md)
   integrations/
     supabase/     ← client.ts + types.ts (GERADO — não editar manualmente)
   components/     ← UI shared (shadcn/ui + Radix)
 ```
 
-**RBAC — 3 papeis:**
-- `admin` — acesso total, pode eliminar permanentemente
-- `gestor` — gestão e aprovação; sem delete permanente
-- `operador` — registo (entradas/saídas/empréstimos); sem gestão
+**RBAC — 5 papeis** (enum `role_utilizador`; fonte da verdade: `public.pode_escrever(modulo)` no
+Postgres — a RLS é a segurança real, a UI é conforto):
+- `admin` — acesso total, incluindo eliminar permanentemente e aprovação final
+- `gestor` — gestão e aprovação na maioria dos módulos
+- `armazem` — regista em armazém/ferramentas/combustível; sem gestão
+- `medicoes` — regista em subempreitadas (contratos/autos); sem gestão
+- `leitura` — só consulta, em todos os módulos
 
 ---
 
