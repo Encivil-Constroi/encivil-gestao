@@ -1,6 +1,6 @@
 // Edge Function: ler-foto-abastecimento
 // Recebe URL de uma foto (medidor de Polo2/Carrinha ou talão de posto de rua)
-// e usa Gemini 2.0 Flash para extrair litros e custo total.
+// e usa a Gemini (Flash) para extrair litros e custo total.
 // Chamada pela página pública após o motorista tirar a foto.
 //
 // Body: { foto_url: string, tipo_fonte: 'POLO2' | 'CARRINHA' | 'POSTO_RUA' }
