@@ -69,9 +69,13 @@ de cada recusa nos Logs (antes falhava em silêncio).
 - [x] Migration idempotente (aplicada 2× sem erro)
 - [x] Edge Functions: `deno check` nas 6
 - [x] Suíte completa 407/407 (local + Node 24), typecheck 0 erros, build
-- [ ] Produção: sondagem anónima repetida → tudo bloqueado; listagem do bucket bloqueada; Edge Functions recusam abusos
-- [ ] Fluxo real do motorista (QR → push → foto → leitura IA) — precisa de um pedido real
-- [ ] CI verde
+- [x] Produção: sondagem anónima repetida → 26/26 (13 funções bloqueadas, página do motorista a funcionar, listagem e uploads inválidos recusados, Edge Functions recusam abusos)
+- [x] Fluxo real do motorista (QR → foto de talão → leitura IA): 10,21 L / 20,00 € corretos
+- [x] CI verde (inclui agora `check:edge` + `test:edge` das Edge Functions)
+
+Também encontrado no teste real: 503 "high demand" da Google → novas tentativas
+automáticas com modelo de reserva (9 testes Deno), e `maxOutputTokens` 256 → 4096
+(os Flash atuais contam o raciocínio neste limite).
 
 ---
 
@@ -85,6 +89,11 @@ Medido: JS de arranque 991 KB → ~570 KB.
 ### 2.2 Polling só com a app visível
 Hook único `useIntervaloVisivel`: pausa com o separador oculto / ecrã bloqueado e
 atualiza logo ao voltar. Aplicado a pendentes, bomba e notificações.
+
+### 2.2b Foto do abastecimento mais leve
+A leitura por IA funcionou mas demorou: fotos de 3–6 MB sobem por 4G, são
+descarregadas pela função e analisadas pela Gemini. Reduzir no telemóvel para
+~1600 px antes do envio. Medir antes/depois com o tempo de cada fase nos Logs.
 
 ### 2.3 Índice
 `comb_abastecimentos_pendentes(veiculo_id)` — usado no limite de pedidos a cada QR.
@@ -107,6 +116,6 @@ Login do Supabase CLI com a conta dona da organização ENCIVIL →
 ## Estado
 | Etapa | Estado |
 |---|---|
-| 1 — Segurança | em curso |
-| 2 — Desempenho | por fazer |
+| 1 — Segurança | **concluída** (2026-09-29) |
+| 2 — Desempenho | por fazer (inclui 2.2b: foto mais leve) |
 | 3 — Processo | aguarda login do CLI |
