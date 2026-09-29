@@ -30,6 +30,7 @@ F0 (Colaboradores)
   └── F6 (Faturas)          ← requer F0 (fornecedores já existem em subempreiteiros)
       └── F7 (Custeio)      ← requer F2 + F6
           └── F8 (Livro de Obra) ← requer F7
+  └── F9 (Frota: manutenção/checklists) ← requer F0 + F1
 ```
 
 ---
@@ -1058,6 +1059,277 @@ src/features/livro-obra/
 - [ ] Teste: registo sem foto é válido (`foto_keys = []`)
 - [ ] Export PDF do livro de obra via `window.print()` com CSS @media print
 - [ ] QR code na guia (reutilizar componente QR existente do módulo de combustível)
+
+---
+
+## Fase 9 — Frota: Manutenção, Checklists e Responsabilização `[ ]`
+
+**Origem:** pedido do Carlos (mecânico responsável pelos ligeiros), 2026-09-29 — ver conversa e decisões em anexo no histórico do projeto.
+**Depende de:** F1 (motor de alertas) e F0 (colaboradores) — já concluídas, reaproveitadas quase por inteiro.
+
+### Por que este desenho
+
+A F1 já deixou pronto o essencial da parte "prever": `comb_veiculos` tem os
+campos de manutenção preventiva (próxima revisão km/data, seguro, IPO) e o
+motor `avaliar_regras_alerta()` já gera alertas ATENCAO/URGENTE para os 4
+tipos, usando o km capturado a cada abastecimento. Esta fase cobre só o que
+falta — **registar o que já foi feito** (não só o que falta fazer),
+**responsabilizar por condutor**, e **entregar os alertas às duas pessoas
+certas**, não a todos os subscritos.
+
+Módulo novo `src/features/frota/`, isolado dos módulos existentes — não
+edita `combustivel/`, só lê `comb_veiculos` através do seu próprio service
+(consulta direta à tabela, não importa código de `combustivel/`). O único
+ponto de contacto com código existente é um link novo a partir de
+`VeiculoFormPage` para a ficha (1 linha).
+
+### Decisões já tomadas (2026-09-29)
+
+- **Acesso do Carlos:** papel novo `mecanico`, isolado — não herda acesso a
+  armazém/ferramentas/stock.
+- **Ficha da viatura:** botão "Imprimir" (`window.print()`), mesmo padrão de
+  `GuiaPrintView`/`ToolLoanTermPrint` — sem biblioteca de PDF nova.
+- **Checklist:** lista fixa para começar (ver proposta de itens abaixo — **por
+  confirmar com o Carlos**; fica fácil de ajustar antes de aplicar a migration).
+- **Registar manutenção atualiza a próxima revisão automaticamente**, usando
+  `intervalo_revisao_km`/`intervalo_revisao_meses` já existentes em
+  `comb_veiculos` (ex.: troca de óleo a 42.000 km com intervalo de 10.000 km
+  → `proxima_revisao_km` passa a 52.000 sozinho).
+
+### Migration
+
+```sql
+-- supabase/migrations/YYYYMMDDHHMMSS_fase9_frota.sql
+
+-- 1. Papel novo — isolado, sem acesso a outros módulos
+ALTER TYPE public.role_utilizador ADD VALUE IF NOT EXISTS 'mecanico';
+
+-- 2. Módulo 'frota' na função central de permissões (substitui a função
+--    inteira — é como as migrations anteriores já fazem, não há ALTER incremental)
+CREATE OR REPLACE FUNCTION public.pode_escrever(modulo TEXT)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT COALESCE(CASE modulo
+    WHEN 'armazem'        THEN public.auth_role() IN ('admin', 'gestor', 'armazem')
+    WHEN 'ferramentas'    THEN public.auth_role() IN ('admin', 'gestor', 'armazem')
+    WHEN 'combustivel'    THEN public.auth_role() IN ('admin', 'gestor', 'armazem')
+    WHEN 'obras'          THEN public.auth_role() IN ('admin', 'gestor')
+    WHEN 'subempreitadas' THEN public.auth_role() IN ('admin', 'gestor', 'medicoes')
+    WHEN 'frota'          THEN public.auth_role() IN ('admin', 'gestor', 'mecanico')
+    ELSE false
+  END, false)
+$$;
+
+-- 3. Histórico do que já foi feito (não só o que falta)
+CREATE TABLE public.veiculo_manutencoes (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  veiculo_id    uuid NOT NULL REFERENCES public.comb_veiculos(id),
+  tipo          text NOT NULL,
+  -- 'OLEO' | 'TRAVOES' | 'PNEUS' | 'FILTROS' | 'REVISAO_GERAL' | 'OUTRO'
+  data          date NOT NULL DEFAULT CURRENT_DATE,
+  km_na_altura  numeric,
+  custo         numeric(10,2),
+  oficina       text,
+  observacoes   text,
+  -- Se marcado, avança proxima_revisao_km/data em comb_veiculos ao inserir
+  atualiza_proxima_revisao boolean NOT NULL DEFAULT true,
+  criado_por    uuid NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
+  criado_em     timestamptz NOT NULL DEFAULT now()
+);
+
+-- 4. Checklist de estado (itens fixos — ver proposta de lista abaixo)
+CREATE TABLE public.veiculo_checklists (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  veiculo_id    uuid NOT NULL REFERENCES public.comb_veiculos(id),
+  data          date NOT NULL DEFAULT CURRENT_DATE,
+  km_na_altura  numeric,
+  itens         jsonb NOT NULL,
+  -- [{ item: 'oleo', estado: 'OK'|'ATENCAO'|'MAU', observacao: text }, ...]
+  estado_geral  text NOT NULL,  -- 'OK' | 'ATENCAO' | 'MAU' — pior item vence
+  foto_keys     text[] NOT NULL DEFAULT '{}',  -- bucket 'frota-checklists'
+  criado_por    uuid NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
+  criado_em     timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT ck_checklist_estado CHECK (estado_geral IN ('OK', 'ATENCAO', 'MAU'))
+);
+
+-- 5. Condutor responsável por período — histórico, não um campo simples
+--    ("cada carrinha fica com 1 pessoa" mas pode mudar ao longo do tempo)
+CREATE TABLE public.veiculo_atribuicoes (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  veiculo_id     uuid NOT NULL REFERENCES public.comb_veiculos(id),
+  colaborador_id uuid NOT NULL REFERENCES public.colaboradores(id),
+  desde          date NOT NULL DEFAULT CURRENT_DATE,
+  ate            date,  -- NULL = atribuição atual
+  criado_por     uuid NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
+  criado_em      timestamptz NOT NULL DEFAULT now()
+);
+
+-- Só uma atribuição em aberto (ate IS NULL) por viatura de cada vez
+CREATE UNIQUE INDEX ux_veiculo_atribuicao_aberta
+  ON public.veiculo_atribuicoes (veiculo_id) WHERE ate IS NULL;
+
+-- 6. Quem recebe push imediato de alertas de frota — pessoas específicas,
+--    não um papel (o chefe pode não ser o único admin/gestor do sistema)
+CREATE TABLE public.frota_alerta_destinatarios (
+  user_id     uuid PRIMARY KEY REFERENCES auth.users(id),
+  criado_em   timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.veiculo_manutencoes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.veiculo_checklists         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.veiculo_atribuicoes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.frota_alerta_destinatarios ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "manutencoes_select" ON public.veiculo_manutencoes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "manutencoes_write"  ON public.veiculo_manutencoes FOR INSERT TO authenticated
+  WITH CHECK (public.pode_escrever('frota'));
+
+CREATE POLICY "checklists_select" ON public.veiculo_checklists FOR SELECT TO authenticated USING (true);
+CREATE POLICY "checklists_write"  ON public.veiculo_checklists FOR INSERT TO authenticated
+  WITH CHECK (public.pode_escrever('frota'));
+
+CREATE POLICY "atribuicoes_select" ON public.veiculo_atribuicoes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "atribuicoes_write"  ON public.veiculo_atribuicoes FOR ALL TO authenticated
+  USING (public.pode_escrever('frota'));
+
+CREATE POLICY "frota_destinatarios_select" ON public.frota_alerta_destinatarios FOR SELECT TO authenticated USING (true);
+CREATE POLICY "frota_destinatarios_write"  ON public.frota_alerta_destinatarios FOR ALL TO authenticated
+  USING (public.auth_role() IN ('admin', 'gestor'));
+
+GRANT SELECT, INSERT              ON TABLE public.veiculo_manutencoes        TO authenticated;
+GRANT SELECT, INSERT              ON TABLE public.veiculo_checklists         TO authenticated;
+GRANT SELECT, INSERT, UPDATE      ON TABLE public.veiculo_atribuicoes        TO authenticated;
+GRANT SELECT, INSERT, DELETE      ON TABLE public.frota_alerta_destinatarios TO authenticated;
+GRANT EXECUTE ON FUNCTION public.pode_escrever(TEXT) TO authenticated;
+
+-- 7. RPC: registar manutenção e avançar a próxima revisão atomicamente
+CREATE OR REPLACE FUNCTION public.registar_manutencao(
+  p_veiculo_id uuid, p_tipo text, p_data date, p_km numeric,
+  p_custo numeric, p_oficina text, p_observacoes text, p_atualiza boolean
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_id uuid; v_veiculo RECORD;
+BEGIN
+  IF NOT public.pode_escrever('frota') THEN
+    RAISE EXCEPTION 'Sem permissão para registar manutenção';
+  END IF;
+
+  INSERT INTO public.veiculo_manutencoes
+    (veiculo_id, tipo, data, km_na_altura, custo, oficina, observacoes, atualiza_proxima_revisao)
+  VALUES (p_veiculo_id, p_tipo, p_data, p_km, p_custo, p_oficina, p_observacoes, p_atualiza)
+  RETURNING id INTO v_id;
+
+  IF p_atualiza THEN
+    SELECT * INTO v_veiculo FROM public.comb_veiculos WHERE id = p_veiculo_id;
+    UPDATE public.comb_veiculos SET
+      proxima_revisao_km   = CASE WHEN v_veiculo.intervalo_revisao_km IS NOT NULL AND p_km IS NOT NULL
+                                   THEN p_km + v_veiculo.intervalo_revisao_km ELSE proxima_revisao_km END,
+      proxima_revisao_data = CASE WHEN v_veiculo.intervalo_revisao_meses IS NOT NULL
+                                   THEN p_data + (v_veiculo.intervalo_revisao_meses || ' months')::interval
+                                   ELSE proxima_revisao_data END
+    WHERE id = p_veiculo_id;
+  END IF;
+
+  RETURN v_id;
+END; $$;
+
+GRANT EXECUTE ON FUNCTION public.registar_manutencao(uuid,text,date,numeric,numeric,text,text,boolean) TO authenticated;
+
+-- 8. Bucket para fotos do checklist — mesmo padrão de combustivel-taloes
+--    (política de upload valida o caminho, ver migration 20260929000000)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('frota-checklists', 'frota-checklists', true, 10485760,
+        ARRAY['image/jpeg','image/png','image/webp','image/heic','image/heif'])
+ON CONFLICT DO NOTHING;
+```
+
+### Entrega do alerta às pessoas certas (não broadcast)
+
+Hoje `send-push` manda para **todos** os subscritos — serve para "avisar
+quem estiver de plantão" no combustível, mas não serve para "só o chefe e o
+Carlos". Duas opções, a decidir ao implementar:
+
+1. Estender `avaliar_regras_alerta()` (já corre via pg_cron) a chamar, via
+   `net.http_post()` — o mesmo mecanismo que já dispara `enviar-resumo-alertas`
+   às 07:00 — uma nova Edge Function `send-push-frota` que só envia aos
+   `user_id` em `frota_alerta_destinatarios`, só para alertas com
+   `entidade_alvo = 'viatura'` que acabaram de passar a ATIVO.
+2. Mais simples para já: reaproveitar o resumo diário por e-mail
+   (`enviar-resumo-alertas`) e só adicionar push depois, se o e-mail não for
+   suficiente na prática.
+
+Recomendo começar pela opção 2 (zero código novo de push) e medir se o
+Carlos e o chefe sentem falta da notificação imediata no telemóvel antes de
+construir a opção 1.
+
+### Proposta de itens do checklist (a confirmar com o Carlos)
+
+| item | o que verificar |
+|---|---|
+| `oleo` | nível e aspeto do óleo do motor |
+| `travoes` | pastilhas/discos, líquido de travões |
+| `pneus` | pressão e desgaste (todos, incl. sobressalente) |
+| `luzes` | mínimos, máximos, piscas, travão, marcha-atrás |
+| `fluidos` | líquido de arrefecimento, limpa-vidros |
+| `limpeza_interior` | estado de limpeza do habitáculo |
+| `limpeza_exterior` | estado de limpeza da carroçaria |
+| `documentos` | seguro, IPO e documento único impresso/acessível no carro |
+| `equipamento_seguranca` | triângulo, colete, extintor, kit de primeiros socorros |
+| `danos` | riscos, amolgadelas ou danos novos desde o último checklist |
+
+### Ficheiros a criar
+
+```
+src/features/frota/
+  services/manutencoesService.ts
+  services/checklistsService.ts
+  services/atribuicoesService.ts
+  services/frotaDestinatariosService.ts
+  hooks/useManutencoes.ts
+  hooks/useRegistarManutencao.ts     ← useMutation com retorno (chama a RPC)
+  hooks/useChecklists.ts
+  hooks/useRegistarChecklist.ts
+  hooks/useAtribuicaoAtual.ts
+  hooks/useGuardarAtribuicao.ts
+  components/FichaVeiculoPage.tsx    ← leitura: dados + próximas datas + histórico + imprimir
+  components/FichaVeiculoPrintView.tsx ← mesmo padrão de GuiaPrintView (@media print)
+  components/RegistarManutencaoPage.tsx
+  components/ChecklistFormPage.tsx
+  components/FrotaDestinatariosPage.tsx ← admin/gestor: escolher quem recebe alertas
+  index.ts
+```
+
+`VeiculoFormPage.tsx` ganha um link "Ver ficha" para `FichaVeiculoPage` — a
+única linha tocada fora do módulo novo. Rota nova:
+`{ path: 'frota/veiculo/:id', element: <L><FichaVeiculoPage /></L> }`, sem
+`RoleGuard` (segue o padrão de armazém/ferramentas: `useRole().podeEscrever('frota')`
+controla os botões, a RLS é a segurança real).
+
+### Regras de negócio críticas
+
+- `atualiza_proxima_revisao` é opcional por registo — nem toda manutenção
+  reinicia o intervalo (ex.: reparação pontual vs. revisão completa)
+- Só uma atribuição em aberto por viatura (`ux_veiculo_atribuicao_aberta`) —
+  atribuir a outra pessoa fecha a anterior (`ate = CURRENT_DATE`) na mesma
+  transação, nunca duas pessoas "responsáveis" ao mesmo tempo
+- `estado_geral` do checklist é sempre o pior item, nunca introduzido à mão
+  solto do array `itens` (calculado no frontend antes de gravar; considerar
+  mover para uma função SQL se for preciso confiar nisso sem o frontend)
+- Fotos do checklist seguem o mesmo padrão de validação de nome de ficheiro
+  das fotos de combustível (função SQL que valida o caminho antes do upload)
+
+### Critérios de conclusão
+
+- [ ] Migration + GRANTs + types regenerados
+- [ ] Teste (Postgres real, `supabase/tests/`): `mecanico` só escreve em
+      `frota`, nada mais; `armazem` não escreve em `frota`
+- [ ] Teste: `registar_manutencao` com `atualiza_proxima_revisao=true` avança
+      corretamente km e data; com `false` não mexe em `comb_veiculos`
+- [ ] Teste: duas atribuições em aberto na mesma viatura é rejeitado (índice único)
+- [ ] Ficha da viatura imprime corretamente (CSS `@media print`, mesmo padrão já testado)
+- [ ] Carlos consegue entrar, ver as viaturas, registar manutenção e
+      checklist — e **não** consegue ver/mexer em armazém, ferramentas ou obras
+- [ ] Lista de itens do checklist confirmada com o Carlos antes de aplicar a migration
 
 ---
 
