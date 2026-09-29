@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 import {
   Fuel, CheckCircle2, AlertTriangle, Camera, X,
@@ -7,6 +7,7 @@ import {
 import { supabase } from '@/integrations/supabase/client'
 import { useFormGuard } from '@/app/lib/useFormGuard'
 import { useAsync } from '@/app/lib/useAsync'
+import { useIntervaloVisivel } from '@/app/lib/useIntervaloVisivel'
 import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel/services/bombaService'
 import { BombaAtiva } from '@/features/combustivel/components/BombaAtiva'
 import { destinoFotoAbastecimento } from '@/features/combustivel/lib/fotoAbastecimento'
@@ -73,9 +74,7 @@ export function AbastecimentoPublicPage() {
   })
 
   const fotoRef              = useRef<HTMLInputElement>(null)
-  const pollRef              = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollCountRef         = useRef(0)
-  const pumpPollRef          = useRef<ReturnType<typeof setInterval> | null>(null)
   const pumpPollCountRef     = useRef(0)
   const pumpNetworkErrsRef   = useRef(0)
   // Ref estável de `tipo` — evita que mudanças de estado reiniciem os polling effects
@@ -105,50 +104,42 @@ export function AbastecimentoPublicPage() {
   }, [vehicleId])
 
   // ── Polling do estado após pedido de autorização ──────────────────────────
-  const stopPoll = useCallback(() => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-  }, [])
-
-  const stopPumpPoll = useCallback(() => {
-    if (pumpPollRef.current) { clearInterval(pumpPollRef.current); pumpPollRef.current = null }
-  }, [])
-
+  // Pausa com o ecrã bloqueado (a contagem dos 10 min também) e consulta logo ao
+  // voltar: quem bloqueia o telemóvel à espera vê a autorização ao desbloquear.
   useEffect(() => {
-    if (passo !== 'AGUARDAR' || !pendId) return
-    pollCountRef.current = 0
-    pollRef.current = setInterval(async () => {
-      pollCountRef.current++
-      if (pollCountRef.current > MAX_POLL) {
-        stopPoll()
-        setPollTimedOut(true)
-        return
-      }
-      let row
-      try {
-        row = await fetchEstadoPedidoBomba(pendId)
-      } catch (e) {
-        console.warn('poll error:', e)
-        return
-      }
-      if (row?.estado === 'AUTORIZADO') {
-        stopPoll()
-        if (tipoRef.current === 'POLO2') {
-          setPumpMaxSeconds(row.pumpMaxSeconds)
-          // Sessão restaurada depois de a bomba já ter arrancado: saltar a espera
-          if (row.pumpActivatedAt) {
-            setPumpActivatedAt(row.pumpActivatedAt)
-            setPasso('FOTO')
-          } else {
-            setPasso('BOMBA')
-          }
-        } else {
+    if (passo === 'AGUARDAR') pollCountRef.current = 0
+  }, [passo, pendId])
+
+  useIntervaloVisivel(async () => {
+    if (!pendId) return
+    pollCountRef.current++
+    if (pollCountRef.current > MAX_POLL) {
+      setPollTimedOut(true)
+      return
+    }
+    let row
+    try {
+      row = await fetchEstadoPedidoBomba(pendId)
+    } catch (e) {
+      console.warn('poll error:', e)
+      return
+    }
+    if (row?.estado === 'AUTORIZADO') {
+      if (tipoRef.current === 'POLO2') {
+        setPumpMaxSeconds(row.pumpMaxSeconds)
+        // Sessão restaurada depois de a bomba já ter arrancado: saltar a espera
+        if (row.pumpActivatedAt) {
+          setPumpActivatedAt(row.pumpActivatedAt)
           setPasso('FOTO')
+        } else {
+          setPasso('BOMBA')
         }
+      } else {
+        setPasso('FOTO')
       }
-      if (row?.estado === 'REJEITADO') { stopPoll(); setPasso('REJEITADO') }
-    }, 3_000)
-    return stopPoll
-  }, [passo, pendId, stopPoll])
+    }
+    if (row?.estado === 'REJEITADO') setPasso('REJEITADO')
+  }, 3_000, passo === 'AGUARDAR' && !!pendId && !pollTimedOut)
 
   // ── Polling de pump_activated_at após autorização POLO2 ───────────────────
   // Shelly tem até 5s para fazer o poll à Edge Function → esperamos até 30s (15 × 2s).
@@ -162,48 +153,46 @@ export function AbastecimentoPublicPage() {
     setEmFila(false)
     setBloqueioEspera(null)
     setErr('')
-    pumpPollRef.current = setInterval(async () => {
-      pumpPollCountRef.current++
-      if (pumpPollCountRef.current > 15) { // 15 × 2s = 30s
-        stopPumpPoll()
-        setPumpTimedOut(true)
-        return
+  }, [passo, pendId])
+
+  useIntervaloVisivel(async () => {
+    if (!pendId) return
+    pumpPollCountRef.current++
+    if (pumpPollCountRef.current > 15) { // 15 × 2s = 30s
+      setPumpTimedOut(true)
+      return
+    }
+    let row
+    try {
+      row = await fetchEstadoPedidoBomba(pendId)
+    } catch {
+      pumpNetworkErrsRef.current++
+      if (pumpNetworkErrsRef.current >= 3) {
+        setErr('Sem ligação. A tentar reconectar…')
       }
-      let row
-      try {
-        row = await fetchEstadoPedidoBomba(pendId)
-      } catch {
-        pumpNetworkErrsRef.current++
-        if (pumpNetworkErrsRef.current >= 3) {
-          setErr('Sem ligação. A tentar reconectar…')
-        }
-        return
-      }
-      pumpNetworkErrsRef.current = 0
-      setErr('')
-      if (row?.estado === 'REJEITADO') {
-        stopPumpPoll()
-        setPasso('REJEITADO')
-      } else if (row?.pumpActivatedAt) {
-        stopPumpPoll()
-        setPumpActivatedAt(row.pumpActivatedAt)
-        setPasso('FOTO')
-      } else if (row?.bloqueioMotivo) {
-        // Bloqueada depois de autorizar: não conta como demora — se desbloquearem, liga
-        pumpPollCountRef.current = 0
-        setEmFila(false)
-        setBloqueioEspera(row.bloqueioMotivo)
-      } else if (row?.bombaOcupada) {
-        pumpPollCountRef.current = 0
-        setEmFila(true)
-        setBloqueioEspera(null)
-      } else {
-        setEmFila(false)
-        setBloqueioEspera(null)
-      }
-    }, 2_000)
-    return stopPumpPoll
-  }, [passo, pendId, stopPumpPoll])
+      return
+    }
+    pumpNetworkErrsRef.current = 0
+    setErr('')
+    if (row?.estado === 'REJEITADO') {
+      setPasso('REJEITADO')
+    } else if (row?.pumpActivatedAt) {
+      setPumpActivatedAt(row.pumpActivatedAt)
+      setPasso('FOTO')
+    } else if (row?.bloqueioMotivo) {
+      // Bloqueada depois de autorizar: não conta como demora — se desbloquearem, liga
+      pumpPollCountRef.current = 0
+      setEmFila(false)
+      setBloqueioEspera(row.bloqueioMotivo)
+    } else if (row?.bombaOcupada) {
+      pumpPollCountRef.current = 0
+      setEmFila(true)
+      setBloqueioEspera(null)
+    } else {
+      setEmFila(false)
+      setBloqueioEspera(null)
+    }
+  }, 2_000, passo === 'BOMBA' && !!pendId && !pumpTimedOut)
 
   // ── Foto ──────────────────────────────────────────────────────────────────
   function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -569,7 +558,7 @@ export function AbastecimentoPublicPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => { stopPumpPoll(); setPasso('FOTO') }}
+                    onClick={() => setPasso('FOTO')}
                     className="w-full py-4 bg-gray-800 text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform">
                     Prosseguir e Fotografar
                   </button>

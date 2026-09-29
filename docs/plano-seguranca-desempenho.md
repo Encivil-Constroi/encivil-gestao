@@ -101,9 +101,23 @@ JS de arranque **1 014 874 B → 591 901 B (−42 %)**. A página do motorista
 Verificação: 28 testes da função; mutações 5/5 apanhadas; mutação do build (voltar à
 forma objeto) regride para 1 014 874 B.
 
-### 2.2 Polling só com a app visível
-Hook único `useIntervaloVisivel`: pausa com o separador oculto / ecrã bloqueado e
-atualiza logo ao voltar. Aplicado a pendentes, bomba e notificações.
+### 2.2 Polling só com a app visível — feito (2026-09-29)
+Hook único `useIntervaloVisivel` (`src/app/lib/`): pausa com o separador oculto / ecrã
+bloqueado e consulta logo ao voltar. Aplicado a pendentes (15 s), estado da bomba
+(5 s), estado do pedido (3 s), notificações (60 s) e aos dois pollers da página do
+motorista (AGUARDAR 3 s × 200, BOMBA 2 s × 15). O relógio de 1 s da `BombaAtiva` é só
+local e fica como está.
+
+Efeitos a saber: na página do motorista a contagem dos 10 min / 30 s pausa com o ecrã
+bloqueado (ao desbloquear consulta logo e avança se já estiver autorizado). As
+notificações deixam de recarregar no `focus` da janela (repetia o pedido ao voltar
+ao separador); uma janela visível mas por trás de outra atualiza no ciclo de 60 s.
+
+Verificação: 8 testes do hook + 8 de integração da página do motorista (antes não
+tinha nenhum). Os mesmos testes contra a página antiga: 7/8 passam — só a pausa é
+comportamento novo. Mutações: 7/7 no hook e 7/7 na página (duas só apanhadas depois de
+reforçar os testes: temporizador pendurado após o timeout e contagem da bomba num
+segundo pedido).
 
 ### 2.2b Foto do abastecimento mais leve
 A leitura por IA funcionou mas demorou: fotos de 3–6 MB sobem por 4G, são
@@ -115,7 +129,7 @@ descarregadas pela função e analisadas pela Gemini. Reduzir no telemóvel para
 
 ### 2.4 Verificação da etapa
 - [x] Medição do JS de arranque antes/depois (build real): 1 014 874 B → 591 901 B
-- [ ] Teste do `useIntervaloVisivel`
+- [x] Teste do `useIntervaloVisivel` (8) + integração da página do motorista (8)
 - [ ] Suíte completa, typecheck, build, CI verde; site a funcionar em produção
 
 ---
@@ -132,5 +146,5 @@ Login do Supabase CLI com a conta dona da organização ENCIVIL →
 | Etapa | Estado |
 |---|---|
 | 1 — Segurança | **concluída** (2026-09-29) |
-| 2 — Desempenho | em curso: 2.1 feito; faltam 2.2, 2.2b, 2.3 |
+| 2 — Desempenho | em curso: 2.1 e 2.2 feitos; faltam 2.2b, 2.3 |
 | 3 — Processo | aguarda login do CLI |

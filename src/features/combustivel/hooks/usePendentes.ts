@@ -1,6 +1,7 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAsync, invalidateCache } from '@/app/lib/useAsync'
+import { useIntervaloVisivel } from '@/app/lib/useIntervaloVisivel'
 import { parseSupabaseError } from '@/app/lib/parseSupabaseError'
 
 export type EstadoPendente =
@@ -73,10 +74,7 @@ export function usePendentes() {
   const items = data ?? []
 
   // Polling de 15s só dos pendentes; invalidateCache recarrega o hook em segundo plano
-  useEffect(() => {
-    const id = setInterval(() => invalidateCache('abastecimentos-pendentes'), 15_000)
-    return () => clearInterval(id)
-  }, [])
+  useIntervaloVisivel(() => invalidateCache('abastecimentos-pendentes'), 15_000)
 
   // Ações invalidam também 'abastecimentos-*': a lista da aba Abastecimentos,
   // montada na mesma página, atualiza sem refresh

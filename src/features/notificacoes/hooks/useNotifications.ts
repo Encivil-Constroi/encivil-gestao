@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { getUnitLabel } from '@/app/data/mockData'
 import { useRole } from '@/features/auth/useRole'
+import { useIntervaloVisivel } from '@/app/lib/useIntervaloVisivel'
 
 export type NotificationKind = 'stock' | 'tool-overdue' | 'pending'
 export type NotificationSeverity = 'danger' | 'warning' | 'info'
@@ -128,16 +129,9 @@ export function useNotifications() {
     setLoading(false)
   }, [podeValidar, podeCombustivel])
 
-  useEffect(() => {
-    load()
-    const interval = setInterval(load, 60_000)
-    const onFocus = () => load()
-    window.addEventListener('focus', onFocus)
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [load])
+  useEffect(() => { load() }, [load])
+  // Voltar à app/separador já recarrega (useIntervaloVisivel); o 'focus' repetia o pedido
+  useIntervaloVisivel(load, 60_000)
 
   return { notifications: items, count: items.length, loading, error, reload: load }
 }

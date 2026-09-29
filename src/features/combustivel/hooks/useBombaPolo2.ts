@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { useAsync, invalidateCache } from '@/app/lib/useAsync'
+import { useIntervaloVisivel } from '@/app/lib/useIntervaloVisivel'
 import { useMutation } from '@/app/lib/useMutation'
 import {
   fetchEstadoBomba, fetchSessoesBomba, fetchEstadoPedidoBomba, pararBomba, definirRegrasBomba,
@@ -28,11 +28,7 @@ export function useSessoesBomba(enabled = true) {
 }
 
 function useRefreshBomba(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return
-    const id = setInterval(() => invalidateCache('bomba-*'), REFRESH_MS)
-    return () => clearInterval(id)
-  }, [enabled])
+  useIntervaloVisivel(() => invalidateCache('bomba-*'), REFRESH_MS, enabled)
 }
 
 // Página do motorista: estado da sessão deste pedido (ativa / desligada confirmada)
@@ -42,10 +38,7 @@ export function useEstadoPedidoBomba(pedidoId: string) {
     () => fetchEstadoPedidoBomba(pedidoId), [pedidoId],
     { errorMsg: 'Erro ao ler estado da bomba', cacheKey: chave, cacheTtl: 2_500 }
   )
-  useEffect(() => {
-    const id = setInterval(() => invalidateCache(chave), 3_000)
-    return () => clearInterval(id)
-  }, [chave])
+  useIntervaloVisivel(() => invalidateCache(chave), 3_000)
   return data
 }
 
