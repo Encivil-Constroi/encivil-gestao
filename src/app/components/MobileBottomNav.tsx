@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Package, Plus, History, FileBarChart } from 'lucide-react';
+import { LayoutDashboard, Package, Plus, History, FileBarChart, Truck, CircleHelp } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 
 const navItems = [
@@ -12,10 +12,37 @@ const navItems = [
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { podeArmazem } = useRole();
+  const { podeArmazem, isMecanico } = useRole();
 
   // Quem tem escrita no armazém pode registar movimentos (admin, gestor, armazém)
   const canRegisterMovement = podeArmazem;
+
+  // O mecânico só usa a Frota
+  if (isMecanico) {
+    const itens = [
+      { path: '/frota', label: 'Frota', icon: Truck },
+      { path: '/ajuda', label: 'Ajuda', icon: CircleHelp },
+    ];
+    return (
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
+           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex items-center justify-around h-16">
+          {itens.map(item => {
+            const Icon = item.icon;
+            const isActive = location.pathname.startsWith(item.path);
+            return (
+              <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center h-full min-w-[48px]">
+                <div className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"

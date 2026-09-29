@@ -5,6 +5,7 @@ import { useTodosAlertas, useReconhecerAlerta, useResolverAlerta, useAvaliarAler
 import { labelTipo } from '../services/alertasService'
 import type { Alerta, AlertaEstado } from '@/app/types'
 import { useRole } from '@/features/auth/useRole'
+import { textoPrazoAlerta } from '@/app/lib/prazoFrota'
 
 type Tab = AlertaEstado | 'TODOS'
 
@@ -63,10 +64,12 @@ function AlertaCard({
 
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span><strong className="text-foreground">Tipo:</strong> {labelTipo(alerta.regraTipo)}</span>
-        {alerta.valorAtual !== undefined && (
+        {alerta.regraTipo === 'FROTA_ITEM' ? (
+          <span><strong className="text-foreground">Prazo:</strong> {textoPrazoAlerta(alerta.valorAtual, alerta.valorLimiar)}</span>
+        ) : alerta.valorAtual !== undefined && (
           <span><strong className="text-foreground">Atual:</strong> {alerta.valorAtual.toLocaleString('pt-PT')}</span>
         )}
-        {alerta.valorLimiar !== undefined && (
+        {alerta.regraTipo !== 'FROTA_ITEM' && alerta.valorLimiar !== undefined && (
           <span><strong className="text-foreground">Limiar:</strong> {alerta.valorLimiar.toLocaleString('pt-PT')}</span>
         )}
         <span><strong className="text-foreground">Criado:</strong> {alerta.criadoEm.toLocaleDateString('pt-PT')}</span>

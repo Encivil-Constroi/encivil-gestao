@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 
-export type RoleUtilizador = 'admin' | 'gestor' | 'armazem' | 'medicoes' | 'leitura'
+export type { RoleUtilizador } from '../AuthContext'
+import type { RoleUtilizador } from '../AuthContext'
 
 export interface Utilizador {
   id: string

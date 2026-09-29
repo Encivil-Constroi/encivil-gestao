@@ -25,6 +25,8 @@ const CORS = {
 const JSON_H = { ...CORS, 'Content-Type': 'application/json' }
 
 const UUID_RE   = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+// Os mesmos papéis a quem o PushSetup oferece notificações de abastecimento
+const PAPEIS_QUE_AUTORIZAM = ['admin', 'gestor']
 const JANELA_MS = 10 * 60_000
 
 function ok(data: unknown)         { return new Response(JSON.stringify(data),          { status: 200, headers: JSON_H }) }
@@ -130,9 +132,19 @@ Deno.serve(async (req) => {
   if (marcaErr) return err('Erro ao validar o pedido', 500)
   if (!marcados?.length) return err('Pedido inválido ou já notificado', 403)
 
+  // Só quem autoriza abastecimentos: o mecânico também subscreve (alertas de
+  // frota) e não deve receber pedidos de combustível
+  const { data: chefes, error: chefesErr } = await admin
+    .from('profiles')
+    .select('id')
+    .in('role', PAPEIS_QUE_AUTORIZAM)
+  if (chefesErr) return err('Erro ao ler destinatários', 500)
+  if (!chefes?.length) return ok({ sent: 0 })
+
   const { data: subs, error: subsErr } = await admin
     .from('push_subscriptions')
     .select('endpoint')
+    .in('user_id', chefes.map(c => c.id))
 
   if (subsErr || !subs?.length) return ok({ sent: 0 })
 

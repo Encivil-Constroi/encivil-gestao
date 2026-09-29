@@ -92,6 +92,8 @@ export async function criarBanco({ ate } = {}) {
 export async function como(db, { papel, uid = null }, fn) {
   return db.transaction(async tx => {
     await tx.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [uid ?? ''])
+    // Como no token real: políticas antigas usam auth.role() = 'authenticated'
+    await tx.query(`SELECT set_config('request.jwt.claim.role', $1, true)`, [papel])
     await tx.exec(`SET LOCAL ROLE ${papel}`)
     return fn(tx)
   })

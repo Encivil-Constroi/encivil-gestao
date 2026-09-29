@@ -21,6 +21,7 @@ com stock em tempo real, histórico auditável e alertas automáticos.
 | `gestor` | Gestão e aprovação na maioria dos módulos |
 | `armazem` | Registar em armazém, ferramentas e combustível; sem gestão |
 | `medicoes` | Registar em subempreitadas (contratos/autos); sem gestão |
+| `mecanico` | Só a Frota: manutenções, checklists, prazos e condutores das viaturas |
 | `leitura` | Só consulta, em todos os módulos |
 
 O papel é definido na tabela `profiles` e aplicado via Row Level Security —
@@ -47,6 +48,7 @@ Postgres é a fonte real). Ver `docs/05-seguranca-e-acesso.md`.
 Armazém e stock · Obras (entidade central) · Subempreiteiros (contratos +
 autos de medição) · Ferramentas (empréstimos + termo de responsabilidade) ·
 Combustível (abastecimentos por QR, viaturas, bomba Polo 2 automatizada) ·
+Frota (manutenção, checklists, prazos legais e condutor responsável por viatura) ·
 Colaboradores, horários, faltas, picagem de ponto (GPS/geofence), EPIs e
 formações · Faturas de fornecedor (classificação por IA) · Custos
 consolidados e livro de obra digital · Alertas de manutenção · Dashboard e

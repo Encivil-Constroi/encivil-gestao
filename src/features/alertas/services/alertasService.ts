@@ -115,6 +115,7 @@ export function labelTipo(tipo: AlertaTipo | undefined): string {
     case 'VALIDADE_DOC': return 'Validade Doc.'
     case 'EPI_VALIDADE': return 'EPI'
     case 'FORMACAO_VALIDADE': return 'Formação'
+    case 'FROTA_ITEM':   return 'Frota'
     default: return tipo ?? '—'
   }
 }

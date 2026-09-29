@@ -64,6 +64,7 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
   - `RESEND_API_KEY`, `EMAIL_ALERTAS_DESTINATARIO`, `APP_URL` — envio de e-mail de alertas
   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — notificações push
   - `PUMP_POLO2_SECRET` — autenticação do dispositivo Shelly da bomba
+  - `FROTA_PUSH_SECRET` — autenticação do agendamento diário que envia os alertas da frota (Edge Function `send-push-frota`)
   - `EDGE_FUNCTION_SECRET` — chamadas entre funções
   - URL do projeto, chave anónima e a chave de papel de serviço — geridas automaticamente pelo próprio Supabase, não precisam de configuração manual
 - **Acesso ao CLI:** **ainda não configurado** com a conta da organização —

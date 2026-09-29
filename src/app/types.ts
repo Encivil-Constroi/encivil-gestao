@@ -257,7 +257,8 @@ export type AlertaTipo =
   | 'SUPLEMENTAR'
   | 'VALIDADE_DOC'
   | 'EPI_VALIDADE'
-  | 'FORMACAO_VALIDADE';
+  | 'FORMACAO_VALIDADE'
+  | 'FROTA_ITEM';
 
 export interface RegraAlerta {
   id: string;

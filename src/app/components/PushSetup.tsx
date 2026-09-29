@@ -35,8 +35,9 @@ export function PushSetup() {
   const tentouRef = useRef(false)
 
   useEffect(() => {
-    // Apenas para admin e gestor (quem autoriza abastecimentos)
-    if (role !== 'admin' && role !== 'gestor') return
+    // admin/gestor autorizam abastecimentos; o mecânico recebe os alertas da frota
+    // (quem recebe o quê decide-se no servidor: send-push e send-push-frota)
+    if (role !== 'admin' && role !== 'gestor' && role !== 'mecanico') return
     if (!VAPID_PUBLIC_KEY) return
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     if (tentouRef.current) return
@@ -53,7 +54,7 @@ export function PushSetup() {
 
     // 'default' → perguntar com um toast não intrusivo depois de 5s
     const t = setTimeout(() => {
-      toast('Ativar notificações de abastecimento?', {
+      toast(role === 'mecanico' ? 'Ativar notificações da frota (revisões, seguro, IPO)?' : 'Ativar notificações de abastecimento?', {
         duration: 10_000,
         action: {
           label: 'Ativar',

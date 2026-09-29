@@ -12,7 +12,7 @@ import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel
 import { BombaAtiva } from '@/features/combustivel/components/BombaAtiva'
 import { destinoFotoAbastecimento } from '@/features/combustivel/lib/fotoAbastecimento'
 import { mensagemErroPedido } from '@/features/combustivel/lib/erroPedido'
-import { reduzirFoto } from '@/features/combustivel/lib/reduzirFoto'
+import { reduzirFoto } from '@/app/lib/reduzirFoto'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura

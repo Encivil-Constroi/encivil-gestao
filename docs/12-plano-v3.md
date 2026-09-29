@@ -1062,9 +1062,57 @@ src/features/livro-obra/
 
 ---
 
-## Fase 9 — Frota: Manutenção, Checklists e Responsabilização `[ ]`
+## Fase 9 — Frota: Manutenção, Checklists e Responsabilização `[IMPLEMENTADA — por publicar]`
 
 **Origem:** pedido do Carlos (mecânico responsável pelos ligeiros), 2026-09-29.
+
+### Estado da implementação (2026-09-29)
+
+Implementada e testada; o desenho abaixo continua válido, com estas diferenças
+encontradas ao implementar:
+
+- **Notificações com texto** (`send-push-frota`): o service worker mostrava sempre
+  "Novo pedido de abastecimento" para qualquer push — uma push de frota sem
+  conteúdo apareceria com o texto errado. A função envia o texto cifrado conforme a
+  RFC 8291 (testado byte a byte contra o exemplo da norma); push sem conteúdo
+  continua a ser o combustível, como antes.
+- **`send-push` (combustível) filtrado por papel**: mandava para todas as
+  subscrições; como o mecânico passa a subscrever, passaria a receber pedidos de
+  combustível. Agora só admin/gestor — exatamente quem já os recebia.
+- Envio diário por agendamento no Dashboard (Integrations → Cron → Edge Function)
+  com o cabeçalho `x-frota-secret`; a função avalia a frota antes de enviar.
+- Abastecimento com contador reavalia na hora os prazos em km dessa viatura
+  (trigger protegido: um erro da frota nunca impede um abastecimento).
+- As 4 regras antigas (REVISAO_KM/DATA, SEGURO, IPO) ficam desligadas e os dados
+  das colunas de `comb_veiculos` passam para a frota; o formulário da viatura
+  aponta para a Frota em vez de editar essas colunas.
+- Catálogo sem apagar (só desativar) — o histórico nunca perde a referência.
+- Escolha de quem recebe as notificações: só admin (a lista de utilizadores só é
+  legível pelo admin — `profiles_select_own_or_admin`).
+- Mecânico: o site mostra-lhe só a Frota (menu, navegação móvel e redireção no
+  `MainLayout`); a leitura dos outros módulos no Postgres continua aberta a
+  qualquer autenticado, como para o papel `leitura` — escrever, só na frota.
+- `frota_resumo_viaturas()`: lista da frota numa só consulta.
+
+Verificação: 79 testes de banco num Postgres real (papéis reais: anónimo,
+mecânico, armazém, leitura, gestor, admin, papel de serviço) + 16/16 mutações no SQL;
+6 testes Deno da `send-push-frota` (incl. o exemplo da RFC 8291 byte a byte e a
+decifragem do lado do recetor); 75 testes do site (lógica, páginas de checklist e
+manutenção, isolamento do mecânico, menu, notificação do service worker, prazos);
+18/18 mutações no site e na função. Suíte completa 637/637 (Node local e Node 24).
+
+### Publicação (ordem que nunca deixa nada partido)
+
+1. SQL Editor: `20260929020000_fase9_papel_mecanico.sql`, **depois**
+   `20260929030000_fase9_frota.sql`.
+2. Edge Functions (Dashboard): `send-push` (filtro por papel),
+   `admin-utilizadores` (aceita o papel mecânico) e a nova `send-push-frota`.
+3. Segredo `FROTA_PUSH_SECRET` (valor aleatório) nos Secrets das Edge Functions.
+4. Agendamento: Integrations → Cron → novo job → Edge Function `send-push-frota`,
+   método POST, todos os dias às 08:00, cabeçalho `x-frota-secret: <o segredo>`.
+5. Site (push para `main`).
+6. Criar o utilizador do Carlos com o papel **Mecânico**; em Frota → Notificações
+   escolher quem recebe (chefe + Carlos); cada um aceita as notificações no telemóvel.
 **Depende de:** F1 (motor de alertas) e F0 (colaboradores) — já concluídas, reaproveitadas quase por inteiro.
 
 ### Por que este desenho (revisto em 2026-09-29 — ver histórico da conversa)

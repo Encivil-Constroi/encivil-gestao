@@ -9,6 +9,7 @@ import {
   CircleHelp,
   Wrench,
   Fuel,
+  Truck,
   Building2,
   HardHat,
   Users,
@@ -37,6 +38,8 @@ type MenuItem = {
   prefetch?: () => void;
   // Módulo temporariamente oculto — código intacto, só não aparece no menu.
   hidden?: boolean;
+  // Visível para o mecânico, que só vê a Frota (e a Ajuda)
+  mecanico?: boolean;
 };
 type MenuSection = { title?: string; items: MenuItem[] };
 
@@ -62,6 +65,8 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/app/pages/ToolsPage') } },
       { path: '/combustivel',    label: 'Combustível',    icon: Fuel,
         prefetch: () => { void import('@/app/pages/CombustivelPage') } },
+      { path: '/frota',          label: 'Frota',          icon: Truck, mecanico: true,
+        prefetch: () => { void import('@/features/frota') } },
       { path: '/alertas',        label: 'Alertas',        icon: Bell, gestorOnly: true,
         prefetch: () => { void import('@/features/alertas') } },
     ],
@@ -110,7 +115,7 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/app/pages/AuditoriaPage') } },
       { path: '/configuracoes',       label: 'Configurações', icon: Settings,  adminOnly: true,
         prefetch: () => { void import('@/app/pages/SettingsPage') } },
-      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp,
+      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp, mecanico: true,
         prefetch: () => { void import('@/app/pages/HelpPage') } },
     ],
   },
@@ -124,13 +129,14 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   useLockBodyScroll(mobileOpen);
   const location = useLocation();
-  const { isAdmin, isGestor } = useRole();
+  const { isAdmin, isGestor, isMecanico } = useRole();
 
   const visibleSections = menuSections
     .map(section => ({
       ...section,
       items: section.items.filter(item => {
         if (item.hidden)                              return false;
+        if (isMecanico)                               return !!item.mecanico;
         if (item.adminOnly  && !isAdmin)              return false;
         if (item.gestorOnly && !isAdmin && !isGestor) return false;
         return true;

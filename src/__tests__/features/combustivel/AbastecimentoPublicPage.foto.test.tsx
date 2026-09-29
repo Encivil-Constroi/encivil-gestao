@@ -30,7 +30,7 @@ vi.mock('@/features/combustivel/services/bombaService', () => ({
   fetchEstadoBomba: vi.fn(async () => null),
   fetchEstadoPedidoBomba: vi.fn(async () => ({ estado: 'AUTORIZADO', pumpActivatedAt: null, pumpMaxSeconds: 180 })),
 }))
-vi.mock('@/features/combustivel/lib/reduzirFoto', () => ({
+vi.mock('@/app/lib/reduzirFoto', () => ({
   reduzirFoto: (f: File) => { mocks.reduzir(f); return Promise.resolve(mocks.reduzida ?? f) },
 }))
 

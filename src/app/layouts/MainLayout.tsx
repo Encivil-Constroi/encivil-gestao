@@ -1,14 +1,24 @@
 import { useState } from 'react';
-import { Outlet, useLocation, ScrollRestoration } from 'react-router';
+import { Navigate, Outlet, useLocation, ScrollRestoration } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { OfflineSyncBanner } from '../components/OfflineSyncBanner';
 import { PushSetup } from '../components/PushSetup';
+import { useRole } from '@/features/auth/useRole';
+
+// O mecânico só trabalha na Frota: qualquer outro endereço leva-o para lá.
+// É conforto de navegação — o que ele pode escrever decide-se na RLS.
+const ROTAS_MECANICO = /^\/(frota|ajuda)(\/|$)/;
 
 export function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { isMecanico } = useRole();
+
+  if (isMecanico && !ROTAS_MECANICO.test(location.pathname)) {
+    return <Navigate to="/frota" replace />;
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

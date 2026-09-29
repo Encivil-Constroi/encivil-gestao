@@ -11,6 +11,7 @@ import { GlobalSearch } from './GlobalSearch'
 const ROLE_LABELS: Record<string, string> = {
   admin:   'Administrador',
   gestor:  'Encarregado',
+  mecanico: 'Mecânico',
 }
 
 interface HeaderProps {

@@ -16,6 +16,7 @@ const ROLES: { value: RoleUtilizador; label: string; desc: string }[] = [
   { value: 'gestor',   label: 'Gestor',        desc: 'Gestão e aprovação; sem eliminar permanente' },
   { value: 'armazem',  label: 'Armazém',       desc: 'Movimentos de stock, ferramentas e combustível' },
   { value: 'medicoes', label: 'Medições',      desc: 'Autos de medição de subempreiteiros' },
+  { value: 'mecanico', label: 'Mecânico',      desc: 'Frota: manutenções, checklists e prazos das viaturas' },
   { value: 'leitura',  label: 'Leitura',       desc: 'Apenas visualização, sem edições' },
 ]
 
@@ -24,6 +25,7 @@ const ROLE_BADGE: Record<RoleUtilizador, string> = {
   gestor:   'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-300',
   armazem:  'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-300',
   medicoes: 'bg-teal-100   text-teal-700   dark:bg-teal-900/30   dark:text-teal-300',
+  mecanico: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
   leitura:  'bg-gray-100   text-gray-600   dark:bg-gray-800       dark:text-gray-400',
 }
 

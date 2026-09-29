@@ -151,6 +151,14 @@ const ClassificarFaturaPage = lazy(() => import('@/features/faturas').then(m => 
 const CustosObraPage        = lazy(() => import('@/features/custos').then(m => ({ default: m.CustosObraPage })));
 const LivroObraPage         = lazy(() => import('@/features/livro-obra').then(m => ({ default: m.LivroObraPage })));
 const GuiasTransportePage   = lazy(() => import('@/features/livro-obra').then(m => ({ default: m.GuiasTransportePage })));
+const FrotaPage             = lazy(() => import('@/features/frota').then(m => ({ default: m.FrotaPage })));
+const FichaViaturaPage      = lazy(() => import('@/features/frota').then(m => ({ default: m.FichaViaturaPage })));
+const FichaViaturaPrintPage = lazy(() => import('@/features/frota').then(m => ({ default: m.FichaViaturaPrintPage })));
+const ConfigurarItensPage   = lazy(() => import('@/features/frota').then(m => ({ default: m.ConfigurarItensPage })));
+const RegistarManutencaoPage = lazy(() => import('@/features/frota').then(m => ({ default: m.RegistarManutencaoPage })));
+const ChecklistPage         = lazy(() => import('@/features/frota').then(m => ({ default: m.ChecklistPage })));
+const CatalogoFrotaPage     = lazy(() => import('@/features/frota').then(m => ({ default: m.CatalogoPage })));
+const DestinatariosFrotaPage = lazy(() => import('@/features/frota').then(m => ({ default: m.DestinatariosPage })));
 
 export const router = createBrowserRouter([
   {
@@ -185,6 +193,11 @@ export const router = createBrowserRouter([
       {
         path: '/obras/:id/relatorio',
         element: <L><ObraRelatorioPage /></L>,
+        errorElement: <RouteErrorPage />,
+      },
+      {
+        path: '/frota/viatura/:id/imprimir',
+        element: <L><FichaViaturaPrintPage /></L>,
         errorElement: <RouteErrorPage />,
       },
       {
@@ -230,6 +243,13 @@ export const router = createBrowserRouter([
           { path: 'combustivel/abastecimento/:id/editar', element: <L><AbastecimentoFormPage /></L> },
           { path: 'combustivel/veiculo',               element: <L><VeiculoFormPage /></L> },
           { path: 'combustivel/veiculo/:id/editar',    element: <L><VeiculoFormPage /></L> },
+          { path: 'frota',                             element: <L><FrotaPage /></L> },
+          { path: 'frota/catalogo',                    element: <L><CatalogoFrotaPage /></L> },
+          { path: 'frota/notificacoes',                element: <L><RoleGuard require="admin"><DestinatariosFrotaPage /></RoleGuard></L> },
+          { path: 'frota/viatura/:id',                 element: <L><FichaViaturaPage /></L> },
+          { path: 'frota/viatura/:id/configurar',      element: <L><ConfigurarItensPage /></L> },
+          { path: 'frota/viatura/:id/manutencao',      element: <L><RegistarManutencaoPage /></L> },
+          { path: 'frota/viatura/:id/checklist',       element: <L><ChecklistPage /></L> },
           { path: 'novo-movimento', element: <L><NewMovementPage /></L> },
           { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },

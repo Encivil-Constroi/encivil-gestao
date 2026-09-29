@@ -4,6 +4,7 @@ import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import { notificacaoDoPush } from './app/lib/notificacaoPush'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>
@@ -59,17 +60,14 @@ registerRoute(
 )
 
 // ── Push notifications ────────────────────────────────────────────────────────
-// Payload is data-less (send-push Edge Function sends no body to avoid
-// the complexity of RFC 8291 AES-128-GCM encryption). Fixed notification text is
-// enough — the boss opens the app to see details.
-self.addEventListener('push', () => {
-  self.registration.showNotification('ENCIVIL · Combustível', {
-    body:  'Novo pedido de abastecimento aguarda autorização.',
-    icon:  '/pwa-192x192.png',
-    badge: '/pwa-64x64.png',
-    tag:   'abastecimento',
-    data:  { url: '/combustivel' },
-  })
+// Sem conteúdo = pedido de combustível (send-push, texto fixo); com conteúdo =
+// alerta de frota (send-push-frota, cifrado conforme a RFC 8291 — o browser
+// entrega-o já decifrado). Ver src/app/lib/notificacaoPush.ts.
+self.addEventListener('push', (event: PushEvent) => {
+  let conteudo: string | null = null
+  try { conteudo = event.data?.text() ?? null } catch { conteudo = null }
+  const { titulo, opcoes } = notificacaoDoPush(conteudo)
+  event.waitUntil(self.registration.showNotification(titulo, opcoes))
 })
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {

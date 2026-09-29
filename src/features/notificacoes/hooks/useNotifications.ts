@@ -17,7 +17,7 @@ export type AppNotification = {
 }
 
 export function useNotifications() {
-  const { podeValidar, podeCombustivel } = useRole()
+  const { podeValidar, podeCombustivel, isMecanico } = useRole()
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -25,6 +25,8 @@ export function useNotifications() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(false)
+    // Stock, ferramentas e aprovações não são da área do mecânico (os prazos da frota vivem na Frota)
+    if (isMecanico) { setItems([]); setLoading(false); return }
     const today = new Date().toISOString().split('T')[0]
 
     const [produtosRes, atrasoRes, subsPend, autosPend, combustPend] = await Promise.all([
@@ -127,7 +129,7 @@ export function useNotifications() {
 
     setItems(notifs)
     setLoading(false)
-  }, [podeValidar, podeCombustivel])
+  }, [podeValidar, podeCombustivel, isMecanico])
 
   useEffect(() => { load() }, [load])
   // Voltar à app/separador já recarrega (useIntervaloVisivel); o 'focus' repetia o pedido

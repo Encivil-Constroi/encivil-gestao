@@ -1,0 +1,8 @@
+export { FrotaPage } from './components/FrotaPage'
+export { FichaViaturaPage } from './components/FichaViaturaPage'
+export { FichaViaturaPrintPage } from './components/FichaViaturaPrintPage'
+export { ConfigurarItensPage } from './components/ConfigurarItensPage'
+export { RegistarManutencaoPage } from './components/RegistarManutencaoPage'
+export { ChecklistPage } from './components/ChecklistPage'
+export { CatalogoPage } from './components/CatalogoPage'
+export { DestinatariosPage } from './components/DestinatariosPage'

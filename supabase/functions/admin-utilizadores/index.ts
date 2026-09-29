@@ -22,8 +22,8 @@ const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' }
 function ok(data: unknown)    { return new Response(JSON.stringify(data),               { status: 200, headers: JSON_HEADERS }) }
 function err(msg: string, s = 400) { return new Response(JSON.stringify({ erro: msg }), { status: s,   headers: JSON_HEADERS }) }
 
-type Role = 'admin' | 'gestor' | 'armazem' | 'medicoes' | 'leitura'
-const ROLES_VALIDOS: Role[] = ['admin', 'gestor', 'armazem', 'medicoes', 'leitura']
+type Role = 'admin' | 'gestor' | 'armazem' | 'medicoes' | 'mecanico' | 'leitura'
+const ROLES_VALIDOS: Role[] = ['admin', 'gestor', 'armazem', 'medicoes', 'mecanico', 'leitura']
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })

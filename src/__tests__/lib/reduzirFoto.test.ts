@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { dimensoesReduzidas, reduzirFoto, LADO_MAX } from '@/features/combustivel/lib/reduzirFoto'
+import { dimensoesReduzidas, reduzirFoto, LADO_MAX } from '@/app/lib/reduzirFoto'
 import { destinoFotoAbastecimento } from '@/features/combustivel/lib/fotoAbastecimento'
 
 const foto = (bytes: number, type = 'image/jpeg') => new File([new Uint8Array(bytes)], 'IMG_0001.JPG', { type })

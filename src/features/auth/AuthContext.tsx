@@ -5,7 +5,9 @@ import { supabase } from '@/integrations/supabase/client'
 import type { Enums } from '@/integrations/supabase/types'
 import { setSentryUser, clearSentryUser } from '@/app/lib/sentry'
 
-export type RoleUtilizador = Enums<'role_utilizador'>
+// 'mecanico' (Fase 9, migration 20260929020000) ainda não está nos tipos gerados —
+// sai daqui quando os tipos forem regenerados (etapa 3 do plano de segurança)
+export type RoleUtilizador = Enums<'role_utilizador'> | 'mecanico'
 
 // Sem MFA disponível no plano atual, a sessão expira após inatividade —
 // reduz o risco de um telemóvel/laptop desbloqueado ficar logado indefinidamente.

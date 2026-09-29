@@ -32,6 +32,7 @@ src/
     custos/       ← custos agregados por obra
     configuracoes/ ← configurações globais
     notificacoes/ ← sistema de notificações
+    frota/        ← manutenção, checklists, prazos e condutor por viatura (Fase 9)
                      + colaboradores, horarios, picagens, epis, faturas,
                      livro-obra, autos, alertas, contabilidade, backup, search
                      (expansão ERP v3 — ver docs/12-plano-v3.md)
@@ -40,12 +41,13 @@ src/
   components/     ← UI shared (shadcn/ui + Radix)
 ```
 
-**RBAC — 5 papeis** (enum `role_utilizador`; fonte da verdade: `public.pode_escrever(modulo)` no
+**RBAC — 6 papeis** (enum `role_utilizador`; fonte da verdade: `public.pode_escrever(modulo)` no
 Postgres — a RLS é a segurança real, a UI é conforto):
 - `admin` — acesso total, incluindo eliminar permanentemente e aprovação final
 - `gestor` — gestão e aprovação na maioria dos módulos
 - `armazem` — regista em armazém/ferramentas/combustível; sem gestão
 - `medicoes` — regista em subempreitadas (contratos/autos); sem gestão
+- `mecanico` — só a Frota (manutenções, checklists, prazos); o site mostra-lhe só a Frota
 - `leitura` — só consulta, em todos os módulos
 
 ---
