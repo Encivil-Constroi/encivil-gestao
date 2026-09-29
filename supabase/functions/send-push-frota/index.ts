@@ -3,8 +3,9 @@
 // quem está em frota_alerta_destinatarios (o chefe e o mecânico) — nunca a
 // todos os subscritos, ao contrário do send-push do combustível.
 //
-// Chamada por um agendamento (Dashboard → Integrations → Cron → Edge Function),
-// com o cabeçalho  x-frota-secret: <FROTA_PUSH_SECRET>.
+// Chamada pelo pg_cron (migration 20260929040000), com o cabeçalho x-frota-secret.
+// O segredo é gerado no próprio banco e confirmado com frota_push_autorizado()
+// — não há segredo para copiar para o Dashboard.
 //
 // Cada alerta é notificado uma vez; volta a ser notificado se passar de
 // ATENÇÃO a URGENTE (colunas push_severidade / push_em em alertas).
@@ -14,7 +15,7 @@
 // permite ao service worker distinguir uma notificação de frota de um pedido
 // de combustível.
 //
-// Segredos: FROTA_PUSH_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT.
+// Segredos: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (já usados pelo send-push).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -23,7 +24,6 @@ const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY') ?? ''
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
 const VAPID_SUBJECT     = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:gestao@encivil.pt'
-const FROTA_PUSH_SECRET = Deno.env.get('FROTA_PUSH_SECRET') ?? ''
 
 // WebCrypto só aceita bytes sobre ArrayBuffer (não SharedArrayBuffer)
 export type Bytes = Uint8Array<ArrayBuffer>
@@ -180,16 +180,6 @@ async function enviar(sub: Subscricao, conteudo: Bytes): Promise<number> {
   }
 }
 
-function segredoValido(recebido: string | null): boolean {
-  if (!FROTA_PUSH_SECRET || !recebido) return false
-  const a = texto(recebido)
-  const b = texto(FROTA_PUSH_SECRET)
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
-  return diff === 0
-}
-
 function resposta(dados: Record<string, unknown>, status = 200) {
   if (status >= 400) console.error(`[send-push-frota] ${status} ${JSON.stringify(dados)}`)
   return new Response(JSON.stringify(dados), { status, headers: { 'Content-Type': 'application/json' } })
@@ -197,12 +187,17 @@ function resposta(dados: Record<string, unknown>, status = 200) {
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return resposta({ erro: 'Método não permitido' }, 405)
-  if (!segredoValido(req.headers.get('x-frota-secret'))) return resposta({ erro: 'Não autorizado' }, 401)
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return resposta({ erro: 'VAPID não configurado' }, 500)
+  const segredo = req.headers.get('x-frota-secret')
+  if (!segredo) return resposta({ erro: 'Não autorizado' }, 401)
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  const { data: autorizado, error: autErr } = await admin.rpc('frota_push_autorizado', { p_segredo: segredo })
+  if (autErr) return resposta({ erro: 'Falha ao validar o pedido', detalhe: autErr.message }, 500)
+  if (autorizado !== true) return resposta({ erro: 'Não autorizado' }, 401)
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return resposta({ erro: 'VAPID não configurado' }, 500)
 
   // Datas avançam de um dia para o outro: avaliar antes de decidir o que enviar
   const { error: avalErr } = await admin.rpc('avaliar_frota')

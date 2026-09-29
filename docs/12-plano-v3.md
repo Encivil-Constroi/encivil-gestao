@@ -1079,8 +1079,10 @@ encontradas ao implementar:
 - **`send-push` (combustível) filtrado por papel**: mandava para todas as
   subscrições; como o mecânico passa a subscrever, passaria a receber pedidos de
   combustível. Agora só admin/gestor — exatamente quem já os recebia.
-- Envio diário por agendamento no Dashboard (Integrations → Cron → Edge Function)
-  com o cabeçalho `x-frota-secret`; a função avalia a frota antes de enviar.
+- Envio diário por SQL (migration `20260929040000`): o segredo é gerado no próprio
+  banco (schema `privado`, fora da API) e o pg_cron chama a `send-push-frota` via
+  pg_net às 07:00 UTC; a função confirma o segredo com `frota_push_autorizado()`
+  e avalia a frota antes de enviar. Nada para copiar para o Dashboard.
 - Abastecimento com contador reavalia na hora os prazos em km dessa viatura
   (trigger protegido: um erro da frota nunca impede um abastecimento).
 - As 4 regras antigas (REVISAO_KM/DATA, SEGURO, IPO) ficam desligadas e os dados
@@ -1107,9 +1109,8 @@ manutenção, isolamento do mecânico, menu, notificação do service worker, pr
    `20260929030000_fase9_frota.sql`.
 2. Edge Functions (Dashboard): `send-push` (filtro por papel),
    `admin-utilizadores` (aceita o papel mecânico) e a nova `send-push-frota`.
-3. Segredo `FROTA_PUSH_SECRET` (valor aleatório) nos Secrets das Edge Functions.
-4. Agendamento: Integrations → Cron → novo job → Edge Function `send-push-frota`,
-   método POST, todos os dias às 08:00, cabeçalho `x-frota-secret: <o segredo>`.
+3. SQL Editor: `20260929040000_fase9_agendar_push_frota.sql` (segredo + agendamento).
+4. Voltar a publicar a `send-push-frota` (passou a confirmar o segredo no banco).
 5. Site (push para `main`).
 6. Criar o utilizador do Carlos com o papel **Mecânico**; em Frota → Notificações
    escolher quem recebe (chefe + Carlos); cada um aceita as notificações no telemóvel.

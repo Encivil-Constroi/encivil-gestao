@@ -538,3 +538,33 @@ describe('resumo da frota (lista numa só consulta)', () => {
     await expect(anon(tx => tx.query(`SELECT * FROM public.frota_resumo_viaturas()`))).rejects.toThrow(/permission denied/)
   })
 })
+
+describe('autorização do envio diário (segredo gerado no banco)', () => {
+  const MIGRATION_AGENDA = fileURLToPath(new URL('../migrations/20260929040000_fase9_agendar_push_frota.sql', import.meta.url))
+  const segredo = async () => (await db.query(`SELECT segredo FROM privado.frota_push`)).rows[0].segredo
+  const autorizado = s => servico(tx => tx.query(`SELECT public.frota_push_autorizado($1) AS ok`, [s])).then(r => r.rows[0].ok)
+
+  it('gera um segredo forte, uma só vez', async () => {
+    const s = await segredo()
+    expect(s).toMatch(/^[0-9a-f]{64}$/)
+    await db.exec(readFileSync(MIGRATION_AGENDA, 'utf8'))
+    expect(await segredo()).toBe(s)
+    const n = await db.query(`SELECT count(*)::int AS n FROM privado.frota_push`)
+    expect(n.rows[0].n).toBe(1)
+  })
+
+  it('papel de serviço: só o segredo certo passa', async () => {
+    const s = await segredo()
+    expect(await autorizado(s)).toBe(true)
+    expect(await autorizado(s.slice(0, -1) + (s.endsWith('0') ? '1' : '0'))).toBe(false)
+    expect(await autorizado('')).toBe(false)
+    expect(await autorizado(null)).toBe(false)
+  })
+
+  it('ninguém da app lê o segredo nem chama a verificação', async () => {
+    for (const papel of [{ papel: 'anon' }, { papel: 'authenticated', uid: admin }]) {
+      await expect(como(db, papel, tx => tx.query(`SELECT segredo FROM privado.frota_push`))).rejects.toThrow(/permission denied/)
+      await expect(como(db, papel, tx => tx.query(`SELECT public.frota_push_autorizado('x')`))).rejects.toThrow(/permission denied/)
+    }
+  })
+})
