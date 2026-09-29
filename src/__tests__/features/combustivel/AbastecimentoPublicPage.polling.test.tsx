@@ -6,11 +6,12 @@ import { AbastecimentoPublicPage } from '@/app/pages/pub/AbastecimentoPublicPage
 
 const mocks = vi.hoisted(() => ({
   pedido: vi.fn<(id: string) => Promise<EstadoPedidoBomba | null>>(),
+  erroInsert: null as { code: string; message: string } | null,
 }))
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    from: () => ({ insert: async () => ({ error: null }) }),
+    from: () => ({ insert: async () => ({ error: mocks.erroInsert }) }),
     functions: { invoke: async () => ({ data: null, error: null }) },
   },
 }))
@@ -58,6 +59,7 @@ beforeEach(() => {
   oculto = false
   Object.defineProperty(document, 'hidden', { configurable: true, get: () => oculto })
   mocks.pedido.mockReset()
+  mocks.erroInsert = null
   mocks.pedido.mockResolvedValue(estado())
   sessionStorage.clear()
 })
@@ -164,5 +166,29 @@ describe('AbastecimentoPublicPage — polling', () => {
     expect(screen.getByText('A abrir bomba…')).toBeInTheDocument()
     await avancar(14 * 2_000)
     expect(screen.queryByText('Confirmação lenta')).not.toBeInTheDocument()
+  })
+})
+
+describe('AbastecimentoPublicPage — pedir autorização', () => {
+  it('limite de pedidos da viatura mostra a mensagem certa e fica no formulário', async () => {
+    mocks.erroInsert = {
+      code: '42501',
+      message: 'new row violates row-level security policy for table "comb_abastecimentos_pendentes"',
+    }
+    montarAguardar()
+    await avancar(201 * 3_000)
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar Novamente' }))
+    await submeterPedido()
+    expect(screen.getByText(/3 pedidos para esta viatura nos últimos 5 minutos/)).toBeInTheDocument()
+    expect(screen.getByText('Pedir autorização')).toBeInTheDocument()
+  })
+
+  it('outras falhas mantêm a mensagem de ligação', async () => {
+    mocks.erroInsert = { code: '', message: 'TypeError: Failed to fetch' }
+    montarAguardar()
+    await avancar(201 * 3_000)
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar Novamente' }))
+    await submeterPedido()
+    expect(screen.getByText('Erro ao enviar. Verifica a ligação.')).toBeInTheDocument()
   })
 })

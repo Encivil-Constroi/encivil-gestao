@@ -81,6 +81,10 @@ automáticas com modelo de reserva (9 testes Deno), e `maxOutputTokens` 256 → 
 - Fotos dos abastecimentos visíveis depois de aprovados (miniatura na lista, foto na
   página do abastecimento, coluna no Excel) — a foto era gravada mas nunca lida
 - Rejeitar na aprovação final (`AGUARDA_APROVACAO`) — migration `20260929010000`
+- Página do motorista: o 4.º pedido da mesma viatura em 5 min (limite da policy
+  `pend_anon_insert`) aparecia como "Erro ao enviar. Verifica a ligação." Passa a
+  explicar o limite. A regra não muda (testes de banco: 3 passam, 4.º recusado,
+  limite por viatura, janela de 5 min)
 
 ---
 

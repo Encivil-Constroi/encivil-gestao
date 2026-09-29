@@ -11,6 +11,7 @@ import { useIntervaloVisivel } from '@/app/lib/useIntervaloVisivel'
 import { fetchEstadoBomba, fetchEstadoPedidoBomba } from '@/features/combustivel/services/bombaService'
 import { BombaAtiva } from '@/features/combustivel/components/BombaAtiva'
 import { destinoFotoAbastecimento } from '@/features/combustivel/lib/fotoAbastecimento'
+import { mensagemErroPedido } from '@/features/combustivel/lib/erroPedido'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
 // URL: /pub/combustivel?v=UUID_VIATURA&vn=Nome+da+Viatura
@@ -242,7 +243,7 @@ export function AbastecimentoPublicPage() {
       })
     setSaving(false)
 
-    if (error) { setErr('Erro ao enviar. Verifica a ligação.'); return }
+    if (error) { setErr(mensagemErroPedido(error)); return }
 
     setPendId(novoId)
     setPollTimedOut(false)
