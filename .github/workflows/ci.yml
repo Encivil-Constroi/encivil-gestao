@@ -54,3 +54,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm test
+      # Edge Functions correm em Deno: verificação de tipos e testes próprios
+      - run: npm run check:edge
+      - run: npm run test:edge

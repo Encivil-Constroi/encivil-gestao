@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:edge": "npx -y deno check --no-lock --node-modules-dir=none supabase/functions/",
+    "test:edge": "npx -y deno test --no-lock --node-modules-dir=none --allow-env supabase/functions/",
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {

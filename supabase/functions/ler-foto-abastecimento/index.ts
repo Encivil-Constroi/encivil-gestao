@@ -15,10 +15,65 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-// Alias mantido pela Google a apontar para o Flash atual (o gemini-2.0-flash foi
-// descontinuado). Segredo GEMINI_MODEL permite fixar outro sem mexer no código.
-const GEMINI_MODEL      = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
-const GEMINI_URL        = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+// Aliases mantidos pela Google a apontar para os modelos atuais (o gemini-2.0-flash
+// foi descontinuado). Segredos GEMINI_MODEL / GEMINI_MODEL_RESERVA permitem fixar outros.
+const GEMINI_MODEL   = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
+const MODELO_RESERVA = Deno.env.get('GEMINI_MODEL_RESERVA') || 'gemini-flash-lite-latest'
+const urlModelo = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`
+
+// Sobrecarga da Google (503 "high demand") é frequente e passageira: o motorista
+// não pode cair no manual por azar. 3.ª tentativa noutro modelo (outra capacidade).
+export const TENTATIVAS = [
+  { modelo: GEMINI_MODEL,   esperaMs: 0 },
+  { modelo: GEMINI_MODEL,   esperaMs: 1_500 },
+  { modelo: MODELO_RESERVA, esperaMs: 1_500 },
+]
+const TRANSITORIOS = new Set([0, 429, 500, 502, 503, 504])  // 0 = sem resposta (rede)
+
+export type ResultadoGemini =
+  | { ok: true;  res: Response; modelo: string }
+  | { ok: false; status: number; detalhe: string }
+
+export async function chamarGemini(
+  corpo: string,
+  {
+    fetchFn    = fetch,
+    dormir     = (ms: number) => new Promise<void>(r => setTimeout(r, ms)),
+    tentativas = TENTATIVAS,
+    chave      = GOOGLE_AI_API_KEY,
+  }: {
+    fetchFn?:    typeof fetch
+    dormir?:     (ms: number) => Promise<void>
+    tentativas?: { modelo: string; esperaMs: number }[]
+    chave?:      string
+  } = {},
+): Promise<ResultadoGemini> {
+  let status = 0
+  const detalhes: string[] = []
+  const inexistentes = new Set<string>()
+
+  for (const t of tentativas) {
+    if (inexistentes.has(t.modelo)) continue
+    if (t.esperaMs) await dormir(t.esperaMs)
+
+    const res = await fetchFn(`${urlModelo(t.modelo)}?key=${chave}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    corpo,
+    }).catch(() => null)
+
+    if (res?.ok) return { ok: true, res, modelo: t.modelo }
+
+    status = res?.status ?? 0
+    detalhes.push(`${t.modelo} ${status}: ${res ? (await res.text()).slice(0, 200) : 'sem resposta'}`)
+
+    // 404 = modelo não existe: passa ao seguinte sem o repetir
+    if (status === 404) { inexistentes.add(t.modelo); continue }
+    // Outros 4xx (pedido inválido, chave errada) não se resolvem a repetir
+    if (!TRANSITORIOS.has(status)) break
+  }
+  return { ok: false, status, detalhe: detalhes.join(' | ') }
+}
 
 const PREFIXO_FOTOS = `${SUPABASE_URL}/storage/v1/object/public/combustivel-taloes/`
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
@@ -126,35 +181,36 @@ Deno.serve(async (req) => {
   const base64   = toBase64(buffer)
   const mimeType = MIME_GEMINI[ext]
 
-  const geminiRes = await fetch(`${GEMINI_URL}?key=${GOOGLE_AI_API_KEY}`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: mimeType, data: base64 } },
-          { text: promptParaTipo(tipo_fonte) },
-        ],
-      }],
-      generationConfig: {
-        temperature:        0.1,
-        maxOutputTokens:    256,
-        response_mime_type: 'application/json',
-      },
-    }),
-  })
+  const gemini = await chamarGemini(JSON.stringify({
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: mimeType, data: base64 } },
+        { text: promptParaTipo(tipo_fonte) },
+      ],
+    }],
+    generationConfig: {
+      temperature:        0.1,
+      // Os modelos Flash atuais "pensam" e esse raciocínio conta para este limite:
+      // com 256 a resposta chegava vazia/cortada. O JSON final é pequeno.
+      maxOutputTokens:    4096,
+      response_mime_type: 'application/json',
+    },
+  }))
 
-  if (!geminiRes.ok) {
-    const detalhe = `modelo ${GEMINI_MODEL}: ${(await geminiRes.text()).slice(0, 300)}`
-    if (geminiRes.status === 429) return err('Limite Gemini atingido. Tenta novamente.', 429, detalhe)
-    return err(`Erro Gemini (${geminiRes.status})`, 502, detalhe)
+  if (!gemini.ok) {
+    if (gemini.status === 429) return err('Limite Gemini atingido. Tenta novamente.', 429, gemini.detalhe)
+    return err(`Erro Gemini (${gemini.status})`, 502, gemini.detalhe)
   }
 
-  const geminiData = await geminiRes.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+  const geminiData = await gemini.res.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
   }
 
-  const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  // Só as partes de texto da resposta (não as de raciocínio, se o modelo as devolver)
+  const rawText = (geminiData.candidates?.[0]?.content?.parts ?? [])
+    .filter(p => !p.thought && typeof p.text === 'string')
+    .map(p => p.text)
+    .join('')
   const jsonStr = rawText.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/, '').trim()
 
   let result: { litros: number | null; custo_total: number | null; confianca: string }
