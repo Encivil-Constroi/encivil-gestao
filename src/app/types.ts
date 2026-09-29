@@ -225,6 +225,8 @@ export interface FuelEntry {
   createdAt: Date;
   /** Preço por litro derivado (custo / litros). */
   pricePerLiter: number;
+  /** Foto do medidor/talão enviada pelo motorista (URL público). */
+  photoUrl?: string;
 }
 
 /* ─── Colaboradores (Fase 0) ────────────────────────────────────── */

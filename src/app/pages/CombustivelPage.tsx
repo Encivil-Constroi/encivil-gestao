@@ -111,6 +111,7 @@ export function CombustivelPage() {
         Responsável: e.responsible ?? '',
         Obra: e.obraName ?? '',
         Observações: e.notes ?? '',
+        Foto: e.photoUrl ?? '',
       }))
       await exportarXlsx(rows, 'combustivel', 'Combustível')
       toast.success(`${rows.length} abastecimento${rows.length !== 1 ? 's' : ''} exportados`)
@@ -196,8 +197,8 @@ export function CombustivelPage() {
     setRejeitarId(null);
     setActionId(id);
     try {
-      const ok = await rejeitar(id);
-      if (!ok) toast.error('Erro ao rejeitar. Tenta novamente.');
+      const erro = await rejeitar(id);
+      if (erro) toast.error(erro);
     } finally {
       setActionId(null);
     }
@@ -388,9 +389,18 @@ export function CombustivelPage() {
                         className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-accent/40 active:bg-accent/60 transition-colors"
                       >
                         <div className="min-w-0 flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                            <Fuel className="w-4 h-4 text-primary" />
-                          </div>
+                          {e.photoUrl ? (
+                            <img
+                              src={e.photoUrl}
+                              alt="Foto do abastecimento"
+                              loading="lazy"
+                              className="w-10 h-10 rounded-lg object-cover border border-border shrink-0 bg-muted"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                              <Fuel className="w-4 h-4 text-primary" />
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <p className="text-sm font-semibold truncate">
                               {e.vehicleName ?? '—'}

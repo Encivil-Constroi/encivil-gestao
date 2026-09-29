@@ -13,6 +13,7 @@ type AbastecimentoRow = {
   local: string | null
   responsavel: string
   observacoes: string | null
+  foto_url: string | null
   created_at: string
   comb_veiculos: { nome: string; codigo: string; unidade_contador: CounterUnit } | null
   obras: { nome: string } | null
@@ -38,6 +39,7 @@ function toFuelEntry(row: AbastecimentoRow): FuelEntry {
     notes: row.observacoes ?? undefined,
     createdAt: new Date(row.created_at),
     pricePerLiter: liters > 0 ? totalCost / liters : 0,
+    photoUrl: row.foto_url ?? undefined,
   }
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ChevronLeft, Trash2, Droplet } from 'lucide-react';
+import { ChevronLeft, Trash2, Droplet, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtEuro } from '../lib/format';
 import { useRole } from '@/features/auth/useRole';
@@ -104,6 +104,23 @@ export function AbastecimentoFormPage() {
           <p className="text-sm text-muted-foreground mt-0.5">Registo de combustível</p>
         </div>
       </div>
+
+      {isEdit && entry?.photoUrl && (
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Foto enviada pelo motorista</p>
+            <a href={entry.photoUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+              Abrir em tamanho real
+            </a>
+          </div>
+          <a href={entry.photoUrl} target="_blank" rel="noopener noreferrer" className="block">
+            <img src={entry.photoUrl} alt="Foto do medidor ou talão"
+              className="w-full max-h-80 object-contain rounded-xl border border-border bg-muted" />
+          </a>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">

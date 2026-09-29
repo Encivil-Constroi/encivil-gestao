@@ -364,11 +364,49 @@ describe('integração com aprovação', () => {
     await comoGestor(tx => tx.query('SELECT public.aprovar_abastecimento_pendente($1)', [p]))
 
     const { rows: [a] } = await db.query('SELECT * FROM public.comb_abastecimentos')
-    expect(a).toMatchObject({ tipo_fonte: 'POLO2', responsavel: 'João' })
+    // foto_url: a foto do medidor/talão passa para o abastecimento aprovado
+    expect(a).toMatchObject({ tipo_fonte: 'POLO2', responsavel: 'João', foto_url: 'foto.jpg' })
     expect(Number(a.litros)).toBe(42.5)
     expect((await sessoes())[0].abastecimento_id).toBe(a.id)
     const { rows } = await db.query('SELECT 1 FROM public.comb_abastecimentos_pendentes WHERE id = $1', [p])
     expect(rows).toHaveLength(0)
+  })
+})
+
+describe('rejeição na aprovação final', () => {
+  async function aguardaAprovacao() {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await terminei(p); await poll(true)
+    await anon(tx => tx.query(`SELECT public.concluir_abastecimento($1, 42.5, 0, 'foto.jpg')`, [p]))
+    return p
+  }
+  const rejeitar = id => comoGestor(tx => tx.query('SELECT public.rejeitar_abastecimento($1)', [id]))
+  const estadoDe = async id =>
+    (await db.query('SELECT estado FROM public.comb_abastecimentos_pendentes WHERE id = $1', [id])).rows[0]?.estado
+
+  it('rejeita um registo que aguarda aprovação final e não o lança', async () => {
+    const p = await aguardaAprovacao()
+    await rejeitar(p)
+    expect(await estadoDe(p)).toBe('REJEITADO')
+    const { rows } = await db.query('SELECT 1 FROM public.comb_abastecimentos')
+    expect(rows).toHaveLength(0)
+  })
+
+  it('não rejeita duas vezes nem depois de aprovado', async () => {
+    const p1 = await aguardaAprovacao()
+    await rejeitar(p1)
+    await expect(rejeitar(p1)).rejects.toThrow(/já processado/)
+
+    await db.query('TRUNCATE public.pump_sessoes, public.pump_comandos')
+    const p2 = await aguardaAprovacao()
+    await comoGestor(tx => tx.query('SELECT public.aprovar_abastecimento_pendente($1)', [p2]))
+    await expect(rejeitar(p2)).rejects.toThrow(/já processado/)
+  })
+
+  it('perfil leitura não rejeita', async () => {
+    const p = await aguardaAprovacao()
+    await expect(comoLeitor(tx => tx.query('SELECT public.rejeitar_abastecimento($1)', [p]))).rejects.toThrow(/Sem permissão/)
   })
 })
 

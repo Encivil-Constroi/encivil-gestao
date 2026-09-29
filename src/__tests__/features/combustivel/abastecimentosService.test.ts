@@ -47,6 +47,7 @@ const abRow = {
   local: 'Posto BP',
   responsavel: 'João Silva',
   observacoes: null,
+  foto_url: 'https://x.supabase.co/storage/v1/object/public/combustivel-taloes/v/2026-07-15_p_1.jpg',
   created_at: '2026-07-15T08:00:00Z',
   comb_veiculos: { nome: 'Ford Transit', codigo: 'V001', unidade_contador: 'km' },
   obras: { nome: 'Obra Central' },
@@ -74,6 +75,7 @@ describe('listarAbastecimentos', () => {
     expect(ab).toMatchObject({
       id: 'ab-1', vehicleName: 'Ford Transit', vehicleCode: 'V001',
       liters: 50, totalCost: 95, obraName: 'Obra Central',
+      photoUrl: abRow.foto_url,
     })
     expect(ab.pricePerLiter).toBeCloseTo(1.9)
   })
@@ -217,10 +219,11 @@ describe('mapeamento do domínio', () => {
   })
 
   it('resolve campos opcionais para undefined (não null)', async () => {
-    const rowSemOpcional = { ...abRow, contador: null, local: null, observacoes: null, obra_id: null, obras: null }
+    const rowSemOpcional = { ...abRow, contador: null, local: null, observacoes: null, obra_id: null, obras: null, foto_url: null }
     b.order.mockResolvedValue({ data: [rowSemOpcional], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.counter).toBeUndefined()
+    expect(ab.photoUrl).toBeUndefined()
     expect(ab.location).toBeUndefined()
     expect(ab.obraId).toBeUndefined()
   })

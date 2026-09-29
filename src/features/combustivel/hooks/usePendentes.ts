@@ -88,11 +88,12 @@ export function usePendentes() {
     return null
   }, [])
 
-  const rejeitar = useCallback(async (id: string): Promise<boolean> => {
+  // Devolve a mensagem de erro ou null se rejeitou
+  const rejeitar = useCallback(async (id: string): Promise<string | null> => {
     const { error: err } = await supabase.rpc('rejeitar_abastecimento', { p_id: id })
-    if (err) return false
+    if (err) return parseSupabaseError(err, 'Erro ao rejeitar. Tenta novamente.')
     invalidateCache(...INV)
-    return true
+    return null
   }, [])
 
   const aprovar = useCallback(async (id: string): Promise<boolean> => {
