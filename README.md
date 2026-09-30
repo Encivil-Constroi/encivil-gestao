@@ -3,7 +3,7 @@
 ERP interno da ENCIVIL (empresa de construção civil, Portugal) — armazém,
 obras, subempreiteiros, ferramentas, combustível/frota, RH e mais.
 
-**Estado: em produção, multiutilizador.** [encivil-gestao.pages.dev](https://encivil-gestao.pages.dev)
+**Estado: em produção, multiutilizador.** [app.encivilconstroi.com](https://app.encivilconstroi.com)
 
 ---
 

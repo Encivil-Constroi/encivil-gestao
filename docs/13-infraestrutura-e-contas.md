@@ -42,8 +42,8 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 ### Cloudflare Pages — alojamento e deploy
 
 - **Função:** serve o site em produção; cada push a `main` dispara um deploy automático
-- **Domínio atual:** `encivil-gestao.pages.dev` (subdomínio gratuito do Cloudflare)
-- **Domínio próprio planeado:** `app.encivil.pt` — **ainda não ligado** (ver §6)
+- **Domínio principal:** `app.encivilconstroi.com` (ligado em 2026-09-30); `encivil-gestao.pages.dev` continua a funcionar
+- **Titular do domínio `encivilconstroi.com`:** A CONFIRMAR
 - **Variáveis de ambiente configuradas lá:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SENTRY_DSN`, `VITE_VAPID_PUBLIC_KEY`
 - **Titular da conta Cloudflare:** A CONFIRMAR (email institucional? pessoal?)
 - **Custo:** A CONFIRMAR — Cloudflare Pages tem plano gratuito generoso; confirmar se algum recurso (domínio, WAF) está a gerar custo
@@ -172,7 +172,7 @@ Origem: `docs/11-transferencia-titularidade.md` (checklist completo lá).
 | 2FA nas contas novas | ❌ |
 | Gestor de passwords partilhado + envelope de emergência para a Direção | ❌ |
 | E-mail institucional definitivo (`ti@encivil.pt`) | ❌ Ainda no hotmail interino |
-| Domínio `app.encivil.pt` ligado | ❌ |
+| Domínio `app.encivilconstroi.com` ligado | ✅ (2026-09-30) |
 | Projeto Vercel antigo desligado | ❌ |
 | Documento de continuidade entregue à Direção | 🟡 Este documento é o rascunho — falta reunir os "A CONFIRMAR" e entregar |
 | Declaração de propriedade formalizada | ❌ |

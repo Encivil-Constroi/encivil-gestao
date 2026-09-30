@@ -7,7 +7,7 @@ ERP interno da ENCIVIL (empresa de construção civil) — sistema em produção
 **Stack:** React 18 + Vite + TypeScript (strict) + Tailwind CSS v4 + Supabase (PostgreSQL, Auth, Storage, RLS)  
 **Deploy:** Cloudflare Pages via `origin` remote (GitHub org: Encivil-Constroi)  
 **Legado:** `antigo-vercel` remote — ignorar, deprecado  
-**URL produção:** https://encivil-gestao.pages.dev
+**URL produção:** https://app.encivilconstroi.com (também https://encivil-gestao.pages.dev)
 
 ---
 
