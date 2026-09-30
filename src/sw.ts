@@ -60,19 +60,21 @@ registerRoute(
 )
 
 // ── Push notifications ────────────────────────────────────────────────────────
-// Sem conteúdo = pedido de combustível (send-push, texto fixo); com conteúdo =
-// alerta de frota (send-push-frota, cifrado conforme a RFC 8291 — o browser
-// entrega-o já decifrado). Ver src/app/lib/notificacaoPush.ts.
+// O texto vem cifrado conforme a RFC 8291 (notificar-abastecimento,
+// send-push-frota) — o browser entrega-o já decifrado. Ver src/app/lib/notificacaoPush.ts.
 self.addEventListener('push', (event: PushEvent) => {
   let conteudo: string | null = null
   try { conteudo = event.data?.text() ?? null } catch { conteudo = null }
-  const { titulo, opcoes } = notificacaoDoPush(conteudo)
-  event.waitUntil(self.registration.showNotification(titulo, opcoes))
+  const { titulo, opcoes, contagem } = notificacaoDoPush(conteudo)
+  // Número no ícone da app (iPhone 16.4+ e Android); a lista de pedidos limpa-o
+  const nav = self.navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void> }
+  const badge = contagem != null && nav.setAppBadge ? nav.setAppBadge(contagem).catch(() => {}) : Promise.resolve()
+  event.waitUntil(Promise.all([self.registration.showNotification(titulo, opcoes), badge]))
 })
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
-  const url = (event.notification.data as { url?: string } | null)?.url ?? '/combustivel'
+  const url = (event.notification.data as { url?: string } | null)?.url ?? '/abastecer/pedidos'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       for (const client of clients) {

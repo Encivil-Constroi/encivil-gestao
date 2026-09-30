@@ -20,7 +20,7 @@
 | Sistema | O que é | URL |
 |---|---|---|
 | ENCIVIL Gestão | ERP interno — armazém, obras, subempreiteiros, ferramentas, combustível/frota, RH, faturas | https://encivil-gestao.pages.dev |
-| Página do motorista | Sem login, acedida por QR code na viatura — pedir abastecimento | `/pub/combustivel?v=...` no mesmo domínio |
+| Pedido de abastecimento | Com conta (papel `motorista` ou outro); o QR da viatura abre o pedido com a viatura escolhida — ver `docs/15-abastecimento-v2.md` | `/abastecer` (o QR antigo `/pub/combustivel?v=...` redireciona) |
 
 Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 
@@ -67,6 +67,9 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
   - (envio diário dos alertas da frota: o segredo **não** está aqui — é gerado
     no próprio banco, em `privado.frota_push`, e o pg_cron chama a
     `send-push-frota` com ele; ver migration `20260929040000`)
+  - (notificações imediatas do abastecimento: idem — segredo em
+    `privado.segredos`, enviado pelo trigger do banco à `notificar-abastecimento`;
+    ver migration `20260930010000`)
   - `EDGE_FUNCTION_SECRET` — chamadas entre funções
   - URL do projeto, chave anónima e a chave de papel de serviço — geridas automaticamente pelo próprio Supabase, não precisam de configuração manual
 - **Acesso ao CLI:** **ainda não configurado** com a conta da organização —

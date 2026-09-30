@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { FuelEntry, CounterUnit } from '@/app/types'
+import { urlFotoCombustivel } from './fotosService'
 
 type AbastecimentoRow = {
   id: string
@@ -14,6 +15,8 @@ type AbastecimentoRow = {
   responsavel: string
   observacoes: string | null
   foto_url: string | null
+  // Abastecimento v2 (20260930010000): caminho no bucket; ainda não está nos tipos gerados
+  foto_path?: string | null
   created_at: string
   comb_veiculos: { nome: string; codigo: string; unidade_contador: CounterUnit } | null
   obras: { nome: string } | null
@@ -39,7 +42,7 @@ function toFuelEntry(row: AbastecimentoRow): FuelEntry {
     notes: row.observacoes ?? undefined,
     createdAt: new Date(row.created_at),
     pricePerLiter: liters > 0 ? totalCost / liters : 0,
-    photoUrl: row.foto_url ?? undefined,
+    photoUrl: row.foto_url ?? (row.foto_path ? urlFotoCombustivel(row.foto_path) : undefined),
   }
 }
 

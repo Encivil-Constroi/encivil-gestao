@@ -94,8 +94,7 @@ import { MainLayout }   from './layouts/MainLayout';
 import { AuthGuard }    from '@/features/auth/AuthGuard';
 import { RoleGuard }    from '@/features/auth/RoleGuard';
 import { LoginPage }    from './pages/LoginPage';
-// Páginas públicas (acedidas via QR code — lazy para não pesar o bundle principal)
-const AbastecimentoPublicPage = lazy(() => import('./pages/pub/AbastecimentoPublicPage').then(m => ({ default: m.AbastecimentoPublicPage })));
+import { QrCombustivel } from './pages/pub/QrCombustivel';
 const ImprimirQrPage          = lazy(() => import('./pages/pub/ImprimirQrPage').then(m => ({ default: m.ImprimirQrPage })));
 
 // ── Imports lazy (carregados só quando a rota é visitada) ────────────────────
@@ -159,6 +158,11 @@ const RegistarManutencaoPage = lazy(() => import('@/features/frota').then(m => (
 const ChecklistPage         = lazy(() => import('@/features/frota').then(m => ({ default: m.ChecklistPage })));
 const CatalogoFrotaPage     = lazy(() => import('@/features/frota').then(m => ({ default: m.CatalogoPage })));
 const DestinatariosFrotaPage = lazy(() => import('@/features/frota').then(m => ({ default: m.DestinatariosPage })));
+const NovoPedidoPage          = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.NovoPedidoPage })));
+const PedidosPage             = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.PedidosPage })));
+const PedidoPage              = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.PedidoPage })));
+const ConfigAbastecimentoPage = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.ConfigAbastecimentoPage })));
+const RelatorioCombustivelPage = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.RelatorioCombustivelPage })));
 
 export const router = createBrowserRouter([
   {
@@ -172,7 +176,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/pub/combustivel',
-    element: <L><AbastecimentoPublicPage /></L>,
+    element: <QrCombustivel />,
     errorElement: <RouteErrorPage />,
   },
   {
@@ -242,6 +246,11 @@ export const router = createBrowserRouter([
           { path: 'combustivel/abastecimento',         element: <L><AbastecimentoFormPage /></L> },
           { path: 'combustivel/abastecimento/:id/editar', element: <L><AbastecimentoFormPage /></L> },
           { path: 'combustivel/veiculo',               element: <L><VeiculoFormPage /></L> },
+          { path: 'combustivel/relatorio',             element: <L><RelatorioCombustivelPage /></L> },
+          { path: 'combustivel/configuracao',          element: <L><RoleGuard require="admin"><ConfigAbastecimentoPage /></RoleGuard></L> },
+          { path: 'abastecer',                         element: <L><NovoPedidoPage /></L> },
+          { path: 'abastecer/pedidos',                 element: <L><PedidosPage /></L> },
+          { path: 'abastecer/pedido/:id',              element: <L><PedidoPage /></L> },
           { path: 'combustivel/veiculo/:id/editar',    element: <L><VeiculoFormPage /></L> },
           { path: 'frota',                             element: <L><FrotaPage /></L> },
           { path: 'frota/catalogo',                    element: <L><CatalogoFrotaPage /></L> },

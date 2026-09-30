@@ -59,6 +59,9 @@ export type NovoColaborador = {
   nif?: string
   obraId?: string
   notas?: string
+  // Conta na app: liga o pedido de abastecimento à viatura atribuída na Frota.
+  // undefined = não mexer (só o admin vê e altera este campo)
+  userId?: string | null
 }
 
 export async function criarColaborador(input: NovoColaborador): Promise<Colaborador> {
@@ -71,6 +74,7 @@ export async function criarColaborador(input: NovoColaborador): Promise<Colabora
       nif: input.nif?.trim() || null,
       obra_id: input.obraId ?? null,
       notas: input.notas?.trim() || null,
+      user_id: input.userId ?? null,
     })
     .select(SELECT)
     .single()
@@ -87,6 +91,7 @@ type ColaboradorPatch = {
   nif?: string | null
   obra_id?: string | null
   notas?: string | null
+  user_id?: string | null
 }
 
 export async function atualizarColaborador(id: string, input: AtualizarColaborador): Promise<Colaborador> {
@@ -97,6 +102,7 @@ export async function atualizarColaborador(id: string, input: AtualizarColaborad
   if (input.nif !== undefined)        patch.nif = input.nif.trim() || null
   if (input.obraId !== undefined)     patch.obra_id = input.obraId || null
   if (input.notas !== undefined)      patch.notas = input.notas.trim() || null
+  if (input.userId !== undefined)     patch.user_id = input.userId
 
   const { data, error } = await supabase
     .from('colaboradores')
@@ -122,4 +128,13 @@ export async function restaurarColaborador(id: string): Promise<void> {
     .update({ ativo: true })
     .eq('id', id)
   if (error) throw error
+}
+
+export type ContaApp = { id: string; nome: string; role: string }
+
+// Só o admin lê todos os perfis (RLS profiles_select_own_or_admin)
+export async function listarContasApp(): Promise<ContaApp[]> {
+  const { data, error } = await supabase.from('profiles').select('id, nome, role').order('nome')
+  if (error) throw error
+  return data.map(p => ({ id: p.id, nome: p.nome ?? '—', role: p.role }))
 }

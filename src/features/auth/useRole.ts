@@ -41,6 +41,8 @@ export function useRole() {
     podeFrota:          podeEscrever('frota'),
     // O mecânico só vê a Frota (ver MainLayout e Sidebar)
     isMecanico: role === 'mecanico',
+    // O motorista só pede abastecimentos e vê os seus pedidos (idem)
+    isMotorista: role === 'motorista',
     // Só admin valida (rascunho -> validado)
     podeValidar: role === 'admin',
   }

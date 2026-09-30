@@ -63,11 +63,10 @@ describe('anon não executa funções privilegiadas', () => {
        WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef
          AND has_function_privilege('anon', p.oid, 'EXECUTE')
        ORDER BY 1`)
-    // Página do motorista e políticas RLS avaliadas como anon; as duas últimas são triggers
+    // Políticas RLS avaliadas como anon e triggers. Desde o abastecimento v2
+    // (20260930010000) já não há página sem sessão: saíram as 6 funções dela.
     expect(rows.map(r => r.proname)).toEqual([
-      'audit_delete', 'auth_role', 'check_pend_rate_limit', 'concluir_abastecimento',
-      'estado_bomba', 'foto_abastecimento_valida', 'get_pend_estado_bomba',
-      'handle_new_user', 'parar_bomba', 'pode_escrever',
+      'audit_delete', 'auth_role', 'handle_new_user', 'pode_escrever',
     ])
   })
 
@@ -122,40 +121,49 @@ describe('quem tinha acesso continua a ter (comportamento preservado)', () => {
 })
 
 describe('fotos dos abastecimentos (storage)', () => {
-  async function pedido(estado = 'AUTORIZADO') {
+  // Desde o abastecimento v2 as fotos só se enviam com sessão, para o próprio pedido
+  let motorista, outro
+  async function pedido(estado = 'AUTORIZADO', dono = motorista) {
     const id = randomUUID()
     await db.query(
-      `INSERT INTO public.comb_abastecimentos_pendentes (id, veiculo_id, veiculo_nome, funcionario_nome, data, tipo_fonte, estado)
-       VALUES ($1, $2, 'Carrinha 1', 'Rui', CURRENT_DATE, 'POLO2', $3)`, [id, viatura, estado])
+      `INSERT INTO public.comb_abastecimentos_pendentes (id, veiculo_id, veiculo_nome, funcionario_nome, data, tipo_fonte, estado, solicitante_id)
+       VALUES ($1, $2, 'Carrinha 1', 'Rui', CURRENT_DATE, 'POLO2', $3, $4)`, [id, viatura, estado, dono])
     return id
   }
-  const enviar = (nome, bucket = 'combustivel-taloes') =>
-    anon(tx => tx.query(`INSERT INTO storage.objects (bucket_id, name) VALUES ($1, $2)`, [bucket, nome]))
+  const enviar = (nome, bucket = 'combustivel-taloes', uid = motorista) =>
+    como(db, { papel: 'authenticated', uid }, tx => tx.query('INSERT INTO storage.objects (bucket_id, name) VALUES ($1, $2)', [bucket, nome]))
+  const enviarAnon = (nome) =>
+    anon(tx => tx.query("INSERT INTO storage.objects (bucket_id, name) VALUES ('combustivel-taloes', $1)", [nome]))
+  const nome = (p, n = 1, ext = 'jpg', v = viatura) => v + '/2026-09-29_' + p + '_' + n + '.' + ext
 
   beforeAll(async () => {
-    await db.query(`INSERT INTO storage.buckets (id, name, public) VALUES ('combustivel-taloes', 'combustivel-taloes', true) ON CONFLICT DO NOTHING`)
-    await db.query(`INSERT INTO storage.buckets (id, name, public) VALUES ('outro', 'outro', true) ON CONFLICT DO NOTHING`)
+    motorista = await novoUtilizador('motorista', 'motorista@teste.pt')
+    outro     = await novoUtilizador('motorista', 'outro@teste.pt')
+    await db.query("INSERT INTO storage.buckets (id, name, public) VALUES ('combustivel-taloes', 'combustivel-taloes', true) ON CONFLICT DO NOTHING")
+    await db.query("INSERT INTO storage.buckets (id, name, public) VALUES ('outro', 'outro', true) ON CONFLICT DO NOTHING")
   })
 
-  it('aceita o caminho do pedido autorizado', async () => {
-    const p = await pedido()
-    await enviar(`${viatura}/2026-09-29_${p}_1727600000000.jpg`)
+  it('aceita o caminho do próprio pedido autorizado', async () => {
+    await enviar(nome(await pedido(), 1727600000000))
+  })
+
+  it('anónimo já não envia fotos, nem para um pedido autorizado', async () => {
+    await expect(enviarAnon(nome(await pedido()))).rejects.toThrow(/row-level security/)
   })
 
   it.each([
-    ['pedido ainda não autorizado', async () => `${viatura}/2026-09-29_${await pedido('AGUARDA_AUTORIZACAO')}_1.jpg`],
-    ['pasta de outra viatura',      async () => `${randomUUID()}/2026-09-29_${await pedido()}_1.jpg`],
-    ['pedido inexistente',          async () => `${viatura}/2026-09-29_${randomUUID()}_1.jpg`],
-    ['extensão não permitida',      async () => `${viatura}/2026-09-29_${await pedido()}_1.html`],
-    ['caminho com ..',              async () => `${viatura}/../2026-09-29_${await pedido()}_1.jpg`],
-    ['nome livre',                  async () => `qualquer-coisa.jpg`],
-  ])('recusa: %s', async (_n, nome) => {
-    await expect(enviar(await nome())).rejects.toThrow(/row-level security/)
+    ['pedido ainda não autorizado', async () => nome(await pedido('AGUARDA_AUTORIZACAO'))],
+    ['pedido de outro motorista',   async () => nome(await pedido('AUTORIZADO', outro))],
+    ['pasta de outra viatura',      async () => nome(await pedido(), 1, 'jpg', randomUUID())],
+    ['extensão não permitida',      async () => nome(await pedido(), 1, 'html')],
+    ['caminho com ..',              async () => viatura + '/../2026-09-29_' + (await pedido()) + '_1.jpg'],
+    ['nome livre',                  async () => 'qualquer-coisa.jpg'],
+  ])('recusa: %s', async (_n, gerar) => {
+    await expect(enviar(await gerar())).rejects.toThrow(/row-level security/)
   })
 
   it('recusa outros buckets', async () => {
-    const p = await pedido()
-    await expect(enviar(`${viatura}/2026-09-29_${p}_1.jpg`, 'outro')).rejects.toThrow(/row-level security/)
+    await expect(enviar(nome(await pedido()), 'outro')).rejects.toThrow(/row-level security/)
   })
 
   it.each([
@@ -178,10 +186,9 @@ describe('fotos dos abastecimentos (storage)', () => {
     await enviar(b.caminho)
   })
 
-  it('anon já não consegue listar as fotos', async () => {
-    const p = await pedido()
-    await enviar(`${viatura}/2026-09-29_${p}_2.jpg`)
-    const { rows } = await anon(tx => tx.query(`SELECT name FROM storage.objects WHERE bucket_id = 'combustivel-taloes'`))
+  it('anon não consegue listar as fotos', async () => {
+    await enviar(nome(await pedido(), 2))
+    const { rows } = await anon(tx => tx.query("SELECT name FROM storage.objects WHERE bucket_id = 'combustivel-taloes'"))
     expect(rows).toEqual([])
   })
 })

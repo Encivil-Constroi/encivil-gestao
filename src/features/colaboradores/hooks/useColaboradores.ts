@@ -7,6 +7,7 @@ import {
   atualizarColaborador,
   arquivarColaborador,
   restaurarColaborador,
+  listarContasApp,
   type NovoColaborador,
   type AtualizarColaborador,
 } from '../services/colaboradoresService'
@@ -64,4 +65,10 @@ export function useRestaurarColaborador() {
   )
   const restaurar = async (id: string) => (await mutate(id)) === true
   return { restaurar, loading }
+}
+
+export function useContasApp(enabled: boolean) {
+  const { data, loading } = useAsync(listarContasApp, [],
+    { enabled, errorMsg: 'Erro ao carregar as contas', cacheKey: 'colaboradores-contas', cacheTtl: 60_000 })
+  return { contas: data ?? [], loading }
 }

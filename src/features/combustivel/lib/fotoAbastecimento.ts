@@ -1,6 +1,7 @@
 // Tem de corresponder à política de upload do bucket combustivel-taloes
-// (public.foto_abastecimento_valida — migration 20260929000000):
+// (public.foto_combustivel_valida — migration 20260930010000):
 //   <viatura>/<AAAA-MM-DD>_<pedido>_<n>.<jpg|png|webp|heic|heif>
+// Sem dependências: é importado também pelos testes de banco (Node).
 const EXT_POR_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/jpg':  'jpg',
@@ -20,6 +21,6 @@ export function destinoFotoAbastecimento(
   const ext = EXT_POR_MIME[tipoMime] ?? 'jpg'
   const contentType = EXT_POR_MIME[tipoMime] ? tipoMime : 'image/jpeg'
   const dia = agora.toISOString().slice(0, 10)
-  // Nome único por tentativa: o upload é sem upsert (o bucket não é legível por anon)
+  // Nome único por tentativa: o upload é sem upsert
   return { caminho: `${veiculoId}/${dia}_${pedidoId}_${agora.getTime()}.${ext}`, contentType }
 }

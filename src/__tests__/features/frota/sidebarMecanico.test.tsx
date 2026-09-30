@@ -10,6 +10,12 @@ vi.mock('@/features/auth/useRole', () => ({
   }),
 }))
 
+// A contagem de pedidos lê do Supabase: aqui só interessa o menu
+vi.mock('@/features/combustivel/hooks/useAprovacao', () => ({
+  usePodeAprovar: () => ({ podeAprovar: false, loading: false }),
+  useContagemAguardam: () => 0,
+}))
+
 import { Sidebar } from '@/app/components/Sidebar'
 
 function opcoes(p: string): string[] {

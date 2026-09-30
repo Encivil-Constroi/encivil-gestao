@@ -31,15 +31,15 @@ function useRefreshBomba(enabled: boolean) {
   useIntervaloVisivel(() => invalidateCache('bomba-*'), REFRESH_MS, enabled)
 }
 
-// Página do motorista: estado da sessão deste pedido (ativa / desligada confirmada)
-export function useEstadoPedidoBomba(pedidoId: string) {
+// Página do pedido: estado da sessão deste pedido (ativa / desligada confirmada)
+export function useEstadoPedidoBomba(pedidoId: string, ativo = true) {
   const chave = `bomba-pedido-${pedidoId}`
   const { data } = useAsync(
     () => fetchEstadoPedidoBomba(pedidoId), [pedidoId],
-    { errorMsg: 'Erro ao ler estado da bomba', cacheKey: chave, cacheTtl: 2_500 }
+    { enabled: ativo, errorMsg: 'Erro ao ler estado da bomba', cacheKey: chave, cacheTtl: 2_500 }
   )
-  useIntervaloVisivel(() => invalidateCache(chave), 3_000)
-  return data
+  useIntervaloVisivel(() => invalidateCache(chave), 3_000, ativo)
+  return ativo ? data : null
 }
 
 export function useDefinirRegrasBomba() {

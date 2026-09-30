@@ -152,3 +152,24 @@ html { scroll-behavior: smooth; }
   /* Remover sombras e bordas arredondadas */
   * { box-shadow: none !important; border-radius: 0 !important; }
 }
+
+/* Gráficos — paleta validada (skill dataviz: CVD e contraste, claro e escuro).
+   Série única = slot 1; partes de um todo = slots 1-3, sempre nesta ordem. */
+.viz-root {
+  --viz-s1: #2a78d6;
+  --viz-s2: #eb6834;
+  --viz-s3: #1baf7a;
+  --viz-cinza: #c3c2b7;
+  --viz-grelha: #e1e0d9;
+  --viz-eixo: #c3c2b7;
+  --viz-texto: #898781;
+}
+.dark .viz-root {
+  --viz-s1: #3987e5;
+  --viz-s2: #d95926;
+  --viz-s3: #199e70;
+  --viz-cinza: #52514e;
+  --viz-grelha: #2c2c2a;
+  --viz-eixo: #383835;
+  --viz-texto: #898781;
+}

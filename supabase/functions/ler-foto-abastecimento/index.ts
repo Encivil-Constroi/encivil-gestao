@@ -1,32 +1,38 @@
 // Edge Function: ler-foto-abastecimento
-// Recebe URL de uma foto (medidor de Polo2/Carrinha ou talão de posto de rua)
-// e usa a Gemini (Flash) para extrair litros e custo total.
-// Chamada pela página pública após o motorista tirar a foto.
+// Lê uma foto do abastecimento com a Gemini e devolve o número para o
+// motorista confirmar (se falhar, a app pede o valor à mão).
 //
-// Body: { foto_url: string, tipo_fonte: 'POLO2' | 'CARRINHA' | 'POSTO_RUA' }
-// Resposta: { litros: number | null, custo_total: number | null, confianca: 'alta' | 'media' | 'baixa' }
+// Body: { foto_path: string, leitura: 'KM' | 'CONTADOR' | 'MEDIDOR' | 'TALAO' }
+//   KM       — conta-quilómetros da viatura (antes de pedir)
+//   CONTADOR — contador da bomba Polo 2 (litros acumulados; início e fim)
+//   MEDIDOR  — medidor da carrinha (litros abastecidos)
+//   TALAO    — talão do posto (litros e valor)
+// Resposta: { valor: number | null, custo_total: number | null, confianca: 'alta' | 'media' | 'baixa' }
 //
-// Segurança: é chamada sem login (página do motorista). Só aceita fotos do bucket
-// combustivel-taloes cujo nome aponte para um pedido AUTORIZADO dessa viatura —
-// sem isto qualquer pessoa usava a chave da Gemini e o servidor como proxy (SSRF).
+// Segurança (abastecimento v2, 20260930010000): só com sessão. A foto tem de
+// ser do bucket combustivel-taloes, no formato <viatura>/<dia>_<pedido>_<n>.<ext>,
+// e o pedido tem de ser do próprio utilizador — AUTORIZADO, ou ainda por criar
+// no caso da foto dos km. A foto é lida pelo storage (nunca por um URL vindo
+// do browser), portanto não há como usar a função como proxy.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-// Aliases mantidos pela Google a apontar para os modelos atuais (o gemini-2.0-flash
-// foi descontinuado). Segredos GEMINI_MODEL / GEMINI_MODEL_RESERVA permitem fixar outros.
-const GEMINI_MODEL   = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
-const MODELO_RESERVA = Deno.env.get('GEMINI_MODEL_RESERVA') || 'gemini-flash-lite-latest'
+// Flash-Lite primeiro: ler um número numa foto não precisa de mais, e o Flash
+// completo "pensa" e anda sobrecarregado (medido: 21 s em 3 tentativas).
+// Segredos GEMINI_MODEL / GEMINI_MODEL_RESERVA permitem fixar outros.
+const GEMINI_MODEL   = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-lite-latest'
+const MODELO_RESERVA = Deno.env.get('GEMINI_MODEL_RESERVA') || 'gemini-flash-latest'
 const urlModelo = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`
 
 // Sobrecarga da Google (503 "high demand") é frequente e passageira: o motorista
 // não pode cair no manual por azar. 3.ª tentativa noutro modelo (outra capacidade).
 export const TENTATIVAS = [
   { modelo: GEMINI_MODEL,   esperaMs: 0 },
-  { modelo: GEMINI_MODEL,   esperaMs: 1_500 },
-  { modelo: MODELO_RESERVA, esperaMs: 1_500 },
+  { modelo: GEMINI_MODEL,   esperaMs: 1_000 },
+  { modelo: MODELO_RESERVA, esperaMs: 1_000 },
 ]
 const TRANSITORIOS = new Set([0, 429, 500, 502, 503, 504])  // 0 = sem resposta (rede)
 
@@ -88,9 +94,11 @@ export function linhaTempos(t: {
     + `gemini=${t.geminiMs}ms modelo=${t.modelo} tentativas=${t.tentativas}`
 }
 
-const PREFIXO_FOTOS = `${SUPABASE_URL}/storage/v1/object/public/combustivel-taloes/`
+export type Leitura = 'KM' | 'CONTADOR' | 'MEDIDOR' | 'TALAO'
+export const LEITURAS: readonly Leitura[] = ['KM', 'CONTADOR', 'MEDIDOR', 'TALAO']
+
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-// Mesmo formato da política de upload (public.foto_abastecimento_valida)
+// Mesmo formato da política de upload (public.foto_combustivel_valida)
 const NOME_FOTO = new RegExp(`^(${UUID})/[0-9]{4}-[0-9]{2}-[0-9]{2}_(${UUID})_[0-9]{1,16}\\.(jpg|png|webp|heic|heif)$`)
 const MAX_BYTES = 10 * 1024 * 1024  // limite do bucket
 
@@ -98,7 +106,88 @@ const MIME_GEMINI: Record<string, string> = {
   jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif',
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+export function lerCaminho(path: unknown): { veiculoId: string; pedidoId: string; mime: string } | null {
+  if (typeof path !== 'string') return null
+  const m = NOME_FOTO.exec(path)
+  return m ? { veiculoId: m[1], pedidoId: m[2], mime: MIME_GEMINI[m[3]] } : null
+}
+
+type PedidoFoto = { solicitante_id: string | null; veiculo_id: string; estado: string } | null
+
+// null = pode ler; texto = motivo da recusa
+export function recusaAcesso(pedido: PedidoFoto, userId: string, leitura: Leitura, veiculoId: string): string | null {
+  if (leitura === 'KM') {
+    // A foto dos km tira-se antes de o pedido existir
+    if (!pedido) return null
+    return pedido.solicitante_id === userId && pedido.veiculo_id === veiculoId ? null : 'Pedido de outra pessoa'
+  }
+  if (!pedido || pedido.solicitante_id !== userId || pedido.veiculo_id !== veiculoId) return 'Pedido não encontrado'
+  if (pedido.estado !== 'AUTORIZADO') return 'Pedido não autorizado'
+  return null
+}
+
+export function promptParaLeitura(leitura: Leitura): string {
+  const fim = [
+    'Confiança "alta": número claramente visível; "media": parcialmente visível ou difícil de ler; "baixa": imagem pouco clara.',
+    'Se não conseguires ler, coloca null e confianca "baixa". Nunca inventes dígitos.',
+  ]
+  switch (leitura) {
+    case 'KM':
+      return [
+        'Foto do painel de uma viatura. Lê o conta-quilómetros TOTAL (odómetro), não o parcial (trip).',
+        'Retorna JSON exacto: { "valor": número inteiro de km ou null, "custo_total": null, "confianca": "alta" | "media" | "baixa" }',
+        ...fim,
+      ].join('\n')
+    case 'CONTADOR':
+      return [
+        'Foto do contador de uma bomba de combustível (totalizador de litros acumulados).',
+        'Lê o número total mostrado no contador, com as casas decimais se forem visíveis.',
+        'Retorna JSON exacto: { "valor": número ou null, "custo_total": null, "confianca": "alta" | "media" | "baixa" }',
+        ...fim,
+      ].join('\n')
+    case 'MEDIDOR':
+      return [
+        'Foto do medidor de um depósito de combustível numa carrinha.',
+        'Lê a quantidade de litros dispensada/abastecida.',
+        'Retorna JSON exacto: { "valor": litros com 1-3 casas decimais ou null, "custo_total": null, "confianca": "alta" | "media" | "baixa" }',
+        ...fim,
+      ].join('\n')
+    case 'TALAO':
+      return [
+        'Talão/recibo de abastecimento num posto de combustível.',
+        'Lê os litros abastecidos e o valor total pago em euros.',
+        'Retorna JSON exacto: { "valor": litros com 1-3 casas decimais ou null, "custo_total": euros com 2 casas decimais ou null, "confianca": "alta" | "media" | "baixa" }',
+        ...fim,
+      ].join('\n')
+  }
+}
+
+const numeroOuNull = (v: unknown): number | null => {
+  const n = typeof v === 'string' ? Number(v.replace(/\s/g, '').replace(',', '.')) : v
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null
+}
+
+// Texto da Gemini → resposta; tolera ```json e texto à volta do objeto
+export function interpretarResposta(rawText: string, leitura: Leitura):
+  { valor: number | null; custo_total: number | null; confianca: 'alta' | 'media' | 'baixa' } | null {
+  const limpo = rawText.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/, '').trim()
+  let r: Record<string, unknown> | null = null
+  try { r = JSON.parse(limpo) } catch {
+    const m = rawText.match(/\{[\s\S]*\}/)
+    if (m) { try { r = JSON.parse(m[0]) } catch { r = null } }
+  }
+  if (!r || typeof r !== 'object') return null
+  // Modelos por vezes respondem com "litros" (formato antigo) em vez de "valor"
+  let valor = numeroOuNull(r.valor ?? r.litros)
+  if (leitura === 'KM' && valor != null) valor = Math.round(valor)
+  const custo = leitura === 'TALAO' ? numeroOuNull(r.custo_total) : null
+  const conf = r.confianca === 'alta' || r.confianca === 'media' ? r.confianca : 'baixa'
+  return { valor, custo_total: custo, confianca: valor == null ? 'baixa' : conf }
+}
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
 
 // supabase.functions.invoke envia authorization/apikey/x-client-info: sem os
 // declarar aqui o preflight do browser falhava e a leitura nunca chegava a correr
@@ -126,86 +215,50 @@ function toBase64(buffer: ArrayBuffer): string {
   return btoa(binary)
 }
 
-function promptParaTipo(tipo: string): string {
-  if (tipo === 'POLO2' || tipo === 'CARRINHA') {
-    return [
-      'Esta é uma foto do contador/medidor de um depósito de combustível.',
-      'Extrai a quantidade de litros dispensada/abastecida.',
-      'Retorna JSON exacto:',
-      '{ "litros": número com 1-3 casas decimais ou null, "custo_total": null, "confianca": "alta" | "media" | "baixa" }',
-      'Confiança "alta": número claramente visível.',
-      'Confiança "media": número parcialmente visível ou difícil de ler.',
-      'Confiança "baixa": imagem pouco clara.',
-      'Se não conseguires ler os litros, coloca litros: null e confianca: "baixa".',
-    ].join('\n')
-  }
-  // POSTO_RUA — talão de combustível
-  return [
-    'Este é um talão/recibo de abastecimento num posto de combustível.',
-    'Extrai os litros abastecidos e o custo total em euros.',
-    'Retorna JSON exacto:',
-    '{ "litros": número com 1-3 casas decimais ou null, "custo_total": número com 2 casas decimais ou null, "confianca": "alta" | "media" | "baixa" }',
-    'Confiança "alta": todos os valores claramente visíveis.',
-    'Confiança "media": valores parcialmente visíveis.',
-    'Confiança "baixa": imagem pouco clara ou valores ilegíveis.',
-    'Se não conseguires ler algum valor, coloca null nesse campo.',
-  ].join('\n')
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST')    return err('Método não permitido', 405)
   const t0 = performance.now()
   const ms = (desde: number) => Math.round(performance.now() - desde)
 
-  const body = await req.json().catch(() => null)
-  if (!body?.foto_url || !body?.tipo_fonte) return err('foto_url e tipo_fonte obrigatórios')
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
+  if (!token) return err('Sessão obrigatória', 401)
+  const { data: sessao, error: sessErr } = await supabase.auth.getUser(token)
+  if (sessErr || !sessao?.user) return err('Sessão inválida', 401)
+  const userId = sessao.user.id
 
-  const { foto_url, tipo_fonte } = body as { foto_url: string; tipo_fonte: string }
-
-  if (!['POLO2', 'CARRINHA', 'POSTO_RUA'].includes(tipo_fonte)) {
-    return err('tipo_fonte inválido')
-  }
+  const body = await req.json().catch(() => null) as { foto_path?: unknown; leitura?: unknown } | null
+  const leitura = body?.leitura as Leitura
+  if (!LEITURAS.includes(leitura)) return err('leitura inválida')
+  const foto = lerCaminho(body?.foto_path)
+  if (!foto) return err('foto_path inválido')
 
   if (!GOOGLE_AI_API_KEY) return err('GOOGLE_AI_API_KEY não configurada', 500)
-
-  if (typeof foto_url !== 'string' || !foto_url.startsWith(PREFIXO_FOTOS)) {
-    return err('foto_url inválida', 400)
-  }
-  const nome = NOME_FOTO.exec(foto_url.slice(PREFIXO_FOTOS.length))
-  if (!nome) return err('foto_url inválida', 400)
-  const [, veiculoId, pedidoId, ext] = nome
 
   const tPedido = performance.now()
   const { data: pedido, error: pedErr } = await supabase
     .from('comb_abastecimentos_pendentes')
-    .select('id')
-    .eq('id', pedidoId)
-    .eq('veiculo_id', veiculoId)
-    .eq('estado', 'AUTORIZADO')
+    .select('solicitante_id, veiculo_id, estado')
+    .eq('id', foto.pedidoId)
     .maybeSingle()
-  if (pedErr) return err('Erro ao validar o pedido', 500)
-  if (!pedido) return err('Pedido não autorizado', 403)
+  if (pedErr) return err('Erro ao validar o pedido', 500, pedErr.message)
+  const recusa = recusaAcesso(pedido as PedidoFoto, userId, leitura, foto.veiculoId)
+  if (recusa) return err(recusa, 403)
   const pedidoMs = ms(tPedido)
 
-  // redirect: 'error' — o URL foi validado; não seguir para outro destino
   const tDownload = performance.now()
-  const imgRes = await fetch(foto_url, { redirect: 'error' }).catch(() => null)
-  if (!imgRes?.ok) return err('Não foi possível descarregar a foto', 422)
-  if (Number(imgRes.headers.get('content-length') ?? 0) > MAX_BYTES) return err('Foto demasiado grande', 413)
-
-  const buffer = await imgRes.arrayBuffer()
-  if (buffer.byteLength > MAX_BYTES) return err('Foto demasiado grande', 413)
+  const { data: blob, error: dlErr } = await supabase.storage.from('combustivel-taloes').download(body!.foto_path as string)
+  if (dlErr || !blob) return err('Não foi possível descarregar a foto', 422, dlErr?.message)
+  if (blob.size > MAX_BYTES) return err('Foto demasiado grande', 413)
+  const buffer = await blob.arrayBuffer()
   const downloadMs = ms(tDownload)
-  const base64   = toBase64(buffer)
-  const mimeType = MIME_GEMINI[ext]
 
   const tGemini = performance.now()
   const gemini = await chamarGemini(JSON.stringify({
     contents: [{
       parts: [
-        { inline_data: { mime_type: mimeType, data: base64 } },
-        { text: promptParaTipo(tipo_fonte) },
+        { inline_data: { mime_type: foto.mime, data: toBase64(buffer) } },
+        { text: promptParaLeitura(leitura) },
       ],
     }],
     generationConfig: {
@@ -216,47 +269,28 @@ Deno.serve(async (req) => {
       response_mime_type: 'application/json',
     },
   }))
-
   const geminiMs = ms(tGemini)
 
+  console.log(linhaTempos({
+    pedidoMs, downloadMs, bytes: buffer.byteLength, geminiMs,
+    modelo: gemini.ok ? gemini.modelo : 'falhou', tentativas: gemini.tentativas, totalMs: ms(t0),
+  }))
+
   if (!gemini.ok) {
-    console.log(linhaTempos({
-      pedidoMs, downloadMs, bytes: buffer.byteLength, geminiMs,
-      modelo: 'falhou', tentativas: gemini.tentativas, totalMs: ms(t0),
-    }))
     if (gemini.status === 429) return err('Limite Gemini atingido. Tenta novamente.', 429, gemini.detalhe)
     return err(`Erro Gemini (${gemini.status})`, 502, gemini.detalhe)
   }
 
-  console.log(linhaTempos({
-    pedidoMs, downloadMs, bytes: buffer.byteLength, geminiMs,
-    modelo: gemini.modelo, tentativas: gemini.tentativas, totalMs: ms(t0),
-  }))
-
   const geminiData = await gemini.res.json() as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
   }
-
   // Só as partes de texto da resposta (não as de raciocínio, se o modelo as devolver)
   const rawText = (geminiData.candidates?.[0]?.content?.parts ?? [])
     .filter(p => !p.thought && typeof p.text === 'string')
     .map(p => p.text)
     .join('')
-  const jsonStr = rawText.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/, '').trim()
 
-  let result: { litros: number | null; custo_total: number | null; confianca: string }
-  try {
-    result = JSON.parse(jsonStr)
-  } catch {
-    const match = rawText.match(/\{[\s\S]*\}/)
-    if (!match) return err('Gemini não devolveu JSON válido', 502)
-    try { result = JSON.parse(match[0]) }
-    catch { return err('Erro ao parsear resposta Gemini', 502) }
-  }
-
-  return ok({
-    litros:      result.litros      ?? null,
-    custo_total: result.custo_total ?? null,
-    confianca:   result.confianca   ?? 'baixa',
-  })
+  const resultado = interpretarResposta(rawText, leitura)
+  if (!resultado) return err('Gemini não devolveu JSON válido', 502, rawText.slice(0, 200))
+  return ok(resultado)
 })

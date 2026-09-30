@@ -260,7 +260,7 @@ export function BackupPage() {
             <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">3. O que está incluído</h4>
             <p className="text-muted-foreground">
               Obras, subempreiteiros, artigos, autos de medição e linhas, liberações de retenção,
-              produtos, movimentos de stock, ferramentas, empréstimos, viaturas, abastecimentos,
+              produtos, movimentos de stock, ferramentas, empréstimos, viaturas, abastecimentos, pedidos de abastecimento,
               colaboradores, horários, faltas, alertas, regras de alerta, configurações da empresa.
             </p>
           </section>
@@ -270,7 +270,6 @@ export function BackupPage() {
             <ul className="ml-4 space-y-0.5 text-muted-foreground list-disc">
               <li><span className="font-medium text-foreground">Registos de auditoria (audit_log)</span> — geridos e retidos pelo Supabase.</li>
               <li><span className="font-medium text-foreground">Perfis de utilizadores (profiles)</span> — dados de autenticação geridos pelo Supabase Auth.</li>
-              <li><span className="font-medium text-foreground">Fila de abastecimentos pendentes</span> — dados transientes do QR code (limpos após processamento).</li>
               <li><span className="font-medium text-foreground">Ficheiros e imagens</span> — armazenados no Supabase Storage; gerir separadamente via Dashboard.</li>
             </ul>
           </section>

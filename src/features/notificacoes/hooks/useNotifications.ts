@@ -17,7 +17,7 @@ export type AppNotification = {
 }
 
 export function useNotifications() {
-  const { podeValidar, podeCombustivel, isMecanico } = useRole()
+  const { podeValidar, podeCombustivel, isMecanico, isMotorista } = useRole()
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -26,7 +26,8 @@ export function useNotifications() {
     setLoading(true)
     setError(false)
     // Stock, ferramentas e aprovações não são da área do mecânico (os prazos da frota vivem na Frota)
-    if (isMecanico) { setItems([]); setLoading(false); return }
+    // O mecânico e o motorista não gerem stock nem autos: o sino fica vazio
+    if (isMecanico || isMotorista) { setItems([]); setLoading(false); return }
     const today = new Date().toISOString().split('T')[0]
 
     const [produtosRes, atrasoRes, subsPend, autosPend, combustPend] = await Promise.all([
@@ -113,10 +114,10 @@ export function useNotifications() {
       notifs.push({
         id: 'comb-pendentes',
         kind: 'pending',
-        title: `${pendCount} abastecimento${pendCount !== 1 ? 's' : ''} por aprovar`,
-        subtitle: 'Via QR code · aguarda validação',
+        title: `${pendCount} pedido${pendCount !== 1 ? 's' : ''} de abastecimento à espera`,
+        subtitle: 'Autorização do responsável',
         severity: 'info',
-        link: '/combustivel',
+        link: '/abastecer/pedidos',
       })
     }
 
@@ -129,7 +130,7 @@ export function useNotifications() {
 
     setItems(notifs)
     setLoading(false)
-  }, [podeValidar, podeCombustivel, isMecanico])
+  }, [podeValidar, podeCombustivel, isMecanico, isMotorista])
 
   useEffect(() => { load() }, [load])
   // Voltar à app/separador já recarrega (useIntervaloVisivel); o 'focus' repetia o pedido

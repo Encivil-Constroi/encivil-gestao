@@ -41,13 +41,15 @@ src/
   components/     ← UI shared (shadcn/ui + Radix)
 ```
 
-**RBAC — 6 papeis** (enum `role_utilizador`; fonte da verdade: `public.pode_escrever(modulo)` no
+**RBAC — 7 papeis** (enum `role_utilizador`; fonte da verdade: `public.pode_escrever(modulo)` no
 Postgres — a RLS é a segurança real, a UI é conforto):
 - `admin` — acesso total, incluindo eliminar permanentemente e aprovação final
 - `gestor` — gestão e aprovação na maioria dos módulos
 - `armazem` — regista em armazém/ferramentas/combustível; sem gestão
 - `medicoes` — regista em subempreitadas (contratos/autos); sem gestão
 - `mecanico` — só a Frota (manutenções, checklists, prazos); o site mostra-lhe só a Frota
+- `motorista` — só pede abastecimentos e vê os seus pedidos (`/abastecer`); aprovar é de
+  `comb_aprovadores` (o CEO e quem ele designar), não de um papel — ver docs/15-abastecimento-v2.md
 - `leitura` — só consulta, em todos os módulos
 
 ---

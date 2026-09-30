@@ -23,8 +23,12 @@ import {
   GraduationCap,
   UserCheck,
   Receipt,
+  Droplets,
+  ClipboardList,
+  BarChart3,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
+import { usePodeAprovar, useContagemAguardam } from '@/features/combustivel/hooks/useAprovacao';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 type MenuItem = {
@@ -40,6 +44,10 @@ type MenuItem = {
   hidden?: boolean;
   // Visível para o mecânico, que só vê a Frota (e a Ajuda)
   mecanico?: boolean;
+  // Visível para o motorista, que só vê o abastecimento (e a Ajuda)
+  motorista?: boolean;
+  // Mostra quantos pedidos de combustível esperam decisão (só a quem aprova)
+  contaPedidos?: boolean;
 };
 type MenuSection = { title?: string; items: MenuItem[] };
 
@@ -65,6 +73,10 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/app/pages/ToolsPage') } },
       { path: '/combustivel',    label: 'Combustível',    icon: Fuel,
         prefetch: () => { void import('@/app/pages/CombustivelPage') } },
+      { path: '/abastecer',      label: 'Pedir combustível', icon: Droplets, motorista: true,
+        prefetch: () => { void import('@/features/combustivel/pedidos') } },
+      { path: '/abastecer/pedidos', label: 'Pedidos combustível', icon: ClipboardList, motorista: true, contaPedidos: true,
+        prefetch: () => { void import('@/features/combustivel/pedidos') } },
       { path: '/frota',          label: 'Frota',          icon: Truck, mecanico: true,
         prefetch: () => { void import('@/features/frota') } },
       { path: '/alertas',        label: 'Alertas',        icon: Bell, gestorOnly: true,
@@ -100,6 +112,8 @@ const menuSections: MenuSection[] = [
     items: [
       { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart,
         prefetch: () => { void import('@/app/pages/ReportsPage') } },
+      { path: '/combustivel/relatorio', label: 'Relatório combustível', icon: BarChart3, gestorOnly: true,
+        prefetch: () => { void import('@/features/combustivel/pedidos') } },
       { path: '/faturas',                 label: 'Faturas',       icon: Receipt,   gestorOnly: true,
         prefetch: () => { void import('@/features/faturas') }, hidden: true },
       { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true,
@@ -115,7 +129,7 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/app/pages/AuditoriaPage') } },
       { path: '/configuracoes',       label: 'Configurações', icon: Settings,  adminOnly: true,
         prefetch: () => { void import('@/app/pages/SettingsPage') } },
-      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp, mecanico: true,
+      { path: '/ajuda',               label: 'Ajuda',         icon: CircleHelp, mecanico: true, motorista: true,
         prefetch: () => { void import('@/app/pages/HelpPage') } },
     ],
   },
@@ -129,7 +143,9 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   useLockBodyScroll(mobileOpen);
   const location = useLocation();
-  const { isAdmin, isGestor, isMecanico } = useRole();
+  const { isAdmin, isGestor, isMecanico, isMotorista } = useRole();
+  const { podeAprovar } = usePodeAprovar();
+  const aguardam = useContagemAguardam(podeAprovar && !isMotorista);
 
   const visibleSections = menuSections
     .map(section => ({
@@ -137,6 +153,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       items: section.items.filter(item => {
         if (item.hidden)                              return false;
         if (isMecanico)                               return !!item.mecanico;
+        if (isMotorista)                              return !!item.motorista;
         if (item.adminOnly  && !isAdmin)              return false;
         if (item.gestorOnly && !isAdmin && !isGestor) return false;
         return true;
@@ -199,7 +216,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                       `}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
-                      <span className="text-sm">{item.label}</span>
+                      <span className="text-sm flex-1">{item.label}</span>
+                      {item.contaPedidos && podeAprovar && aguardam > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-warning text-warning-foreground text-[11px] font-bold flex items-center justify-center"
+                          aria-label={`${aguardam} à espera de decisão`}>
+                          {aguardam}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

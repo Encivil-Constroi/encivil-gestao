@@ -4,7 +4,7 @@ import { useDestinatarios, useAlterarDestinatario } from '../hooks/useFrota'
 import { Cabecalho, Seccao } from './ui'
 
 const PAPEL: Record<string, string> = {
-  admin: 'Administrador', gestor: 'Gestor', armazem: 'Armazém', medicoes: 'Medições', mecanico: 'Mecânico', leitura: 'Leitura',
+  admin: 'Administrador', gestor: 'Gestor', armazem: 'Armazém', medicoes: 'Medições', mecanico: 'Mecânico', motorista: 'Motorista', leitura: 'Leitura',
 }
 
 // Só o admin chega aqui (RoleGuard na rota; a RLS também só deixa o admin escrever)

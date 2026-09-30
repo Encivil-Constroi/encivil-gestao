@@ -91,7 +91,7 @@ type EstadoPedidoRow = {
   desligada_confirmada: boolean | null
 }
 
-// Usado pela página pública (anon): a tabela não tem SELECT para anon
+// O motorista, quem aprova e quem gere combustível (get_pend_estado_bomba, 20260930010000)
 export async function fetchEstadoPedidoBomba(pedidoId: string): Promise<EstadoPedidoBomba | null> {
   const rows = await rpcSemTipos<EstadoPedidoRow[] | null>('get_pend_estado_bomba', { p_id: pedidoId })
   const r = rows?.[0]
@@ -99,7 +99,7 @@ export async function fetchEstadoPedidoBomba(pedidoId: string): Promise<EstadoPe
   return {
     estado:              r.estado,
     pumpActivatedAt:     r.pump_activated_at,
-    pumpMaxSeconds:      r.pump_max_seconds ?? 180,
+    pumpMaxSeconds:      r.pump_max_seconds ?? 600,
     bombaOcupada:        r.bomba_ocupada === true,
     bloqueioMotivo:      r.bloqueio_motivo,
     sessaoAtiva:         r.sessao_ativa === true,

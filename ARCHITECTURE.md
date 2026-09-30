@@ -111,6 +111,8 @@ Nunca confiar apenas na UI.
 | `gestor` | Opera todos os módulos (sem gestão de utilizadores nem validação) |
 | `armazem` | Armazém + Ferramentas (escrita); resto leitura |
 | `medicoes` | Subempreitadas + Autos (escrita); resto leitura |
+| `mecanico` | Só a Frota (manutenções, checklists, prazos) |
+| `motorista` | Só pede abastecimentos e vê os seus pedidos |
 | `leitura` | Só ver + relatórios |
 
 ### Matriz (papéis × módulos × ações)
@@ -121,7 +123,12 @@ Nunca confiar apenas na UI.
 | gestor | ✏️ | ✏️ | ✏️ | ✏️ | — | — |
 | armazem | ✏️ | ✏️ | 👁️ | ✏️ | — | — |
 | medicoes | 👁️ | 👁️ | ✏️ | 👁️ | — | — |
+| mecanico | — | — | — | — (Frota ✏️) | — | — |
+| motorista | — | — | — | pede para si | — | — |
 | leitura | 👁️ | 👁️ | 👁️ | 👁️ | — | — |
+
+- **Autorizar abastecimentos** não é de um papel: é de `comb_aprovadores` (o CEO
+  e quem ele designar; sem ninguém designado, os admin) — ver `docs/15-abastecimento-v2.md`.
 
 - **Menor privilégio:** cada papel só o que precisa.
 - **Validação = cadeado do admin** (padrão rascunho→validado já implementado).

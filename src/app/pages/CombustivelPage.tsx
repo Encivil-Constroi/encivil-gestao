@@ -2,9 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router';
 import {
   Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode,
-  Printer, Clock, CheckCircle2, XCircle, AlertTriangle,
-  ChevronLeft, ChevronRight, Calendar, Download, BarChart2,
-  ShieldCheck, Camera, RefreshCw,
+  Printer, ClipboardList, ChevronLeft, ChevronRight, Calendar, Download, BarChart2, ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -14,17 +12,11 @@ import { fmtEuro, fmtNumber } from '../lib/format';
 import { exportarXlsx } from '../lib/exportXlsx';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
 import { useAbastecimentos, useVeiculos } from '@/features/combustivel/hooks/useCombustivel';
-import { usePendentes } from '@/features/combustivel/hooks/usePendentes';
-import type { TipoFonte } from '@/features/combustivel/hooks/usePendentes';
+import { useContagemAguardam } from '@/features/combustivel/hooks/usePedidos';
+import { ListaPedidos } from '@/features/combustivel/pedidos';
 import { BombaPolo2Card } from '@/features/combustivel/components/BombaPolo2Card';
 import { useRole } from '@/features/auth/useRole';
 import type { FuelEntry } from '@/app/types';
-
-const TIPO_LABEL: Record<TipoFonte, { label: string; cor: string }> = {
-  POLO2:     { label: 'Polo 2',    cor: 'bg-blue-100 text-blue-700'    },
-  CARRINHA:  { label: 'Carrinha',  cor: 'bg-amber-100 text-amber-700'  },
-  POSTO_RUA: { label: 'Posto Rua', cor: 'bg-emerald-100 text-emerald-700' },
-}
 
 type Tab = 'abastecimentos' | 'veiculos' | 'pendentes' | 'analise';
 type PeriodoTipo = 'mes' | 'tudo';
@@ -58,8 +50,6 @@ export function CombustivelPage() {
   const navigate = useNavigate();
   const { podeCombustivel } = useRole();
   const [tab, setTab] = useState<Tab>('abastecimentos');
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [rejeitarId, setRejeitarId] = useState<string | null>(null);
 
   // Filtros da aba de abastecimentos
   const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes');
@@ -82,17 +72,7 @@ export function CombustivelPage() {
   const { entries: allEntries, loading: aLoading } = useAbastecimentos(filtrosAnalise, tab === 'analise');
 
   const { vehicles, loading: vLoading } = useVeiculos(true);
-  const {
-    items: pendentes,
-    pedidosAutorizacao,
-    aguardaAprovacao,
-    loading: pLoading,
-    error: pError,
-    reload,
-    autorizar,
-    aprovar,
-    rejeitar,
-  } = usePendentes();
+  const aguardam = useContagemAguardam(true);
   const [exporting, setExporting] = useState(false);
 
   async function handleExportCombustivel() {
@@ -169,41 +149,6 @@ export function CombustivelPage() {
     window.open(`/pub/imprimir-qr?v=${id}&vn=${encodeURIComponent(name)}&vc=${encodeURIComponent(code)}`, '_blank');
   };
 
-  const handleAutorizar = async (id: string) => {
-    setActionId(id);
-    try {
-      const erro = await autorizar(id);
-      if (erro) toast.error(erro);
-    } finally {
-      setActionId(null);
-    }
-  };
-
-  const handleAprovar = async (id: string) => {
-    setActionId(id);
-    try {
-      const ok = await aprovar(id);
-      if (!ok) toast.error('Erro ao aprovar. Tenta novamente.');
-    } finally {
-      setActionId(null);
-    }
-  };
-
-  const handleRejeitar = (id: string) => setRejeitarId(id);
-
-  const confirmarRejeitar = async () => {
-    if (!rejeitarId) return;
-    const id = rejeitarId;
-    setRejeitarId(null);
-    setActionId(id);
-    try {
-      const erro = await rejeitar(id);
-      if (erro) toast.error(erro);
-    } finally {
-      setActionId(null);
-    }
-  };
-
   const subtitleMap: Record<Tab, string> = {
     abastecimentos: loading
       ? 'A carregar…'
@@ -211,9 +156,7 @@ export function CombustivelPage() {
     veiculos: vLoading
       ? 'A carregar…'
       : `${vehicles.length} viatura${vehicles.length !== 1 ? 's' : ''}/máquina${vehicles.length !== 1 ? 's' : ''}`,
-    pendentes: pLoading
-      ? 'A carregar…'
-      : `${pedidosAutorizacao.length} a aguardar autorização · ${aguardaAprovacao.length} por aprovar`,
+    pendentes: `${aguardam} pedido${aguardam !== 1 ? 's' : ''} à espera de autorização`,
     analise: aLoading
       ? 'A carregar…'
       : `${porViatura.length} viatura${porViatura.length !== 1 ? 's' : ''} com dados`,
@@ -221,19 +164,6 @@ export function CombustivelPage() {
 
   return (
     <div className="space-y-4">
-      {/* Diálogo de confirmação de rejeição — substitui window.confirm (iOS PWA safe) */}
-      {rejeitarId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <p className="font-semibold text-base mb-1">Rejeitar pedido?</p>
-            <p className="text-sm text-muted-foreground mb-5">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setRejeitarId(null)} className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors">Cancelar</button>
-              <button onClick={confirmarRejeitar} className="flex-1 px-4 py-2.5 bg-destructive text-destructive-foreground rounded-xl text-sm font-medium hover:bg-destructive/90 transition-colors">Rejeitar</button>
-            </div>
-          </div>
-        </div>
-      )}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Combustível</h1>
@@ -256,7 +186,7 @@ export function CombustivelPage() {
           ['abastecimentos', 'Abastecimentos', Droplet],
           ['veiculos',       'Viaturas & Máquinas', Truck],
           ['analise',        'Análise', BarChart2],
-          ['pendentes',      'Pendentes', Clock],
+          ['pendentes',      'Pedidos', ClipboardList],
         ] as const).map(([v, label, Icon]) => (
           <button
             key={v}
@@ -267,9 +197,9 @@ export function CombustivelPage() {
           >
             <Icon className="w-4 h-4" />
             {label}
-            {v === 'pendentes' && pendentes.length > 0 && (
+            {v === 'pendentes' && aguardam > 0 && (
               <span className="ml-0.5 bg-warning text-warning-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
-                {pendentes.length}
+                {aguardam}
               </span>
             )}
           </button>
@@ -439,7 +369,7 @@ export function CombustivelPage() {
               <QrCode className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="text-muted-foreground">
                 Clique em <strong className="text-foreground">Imprimir QR</strong> em cada viatura, imprima e cole no interior.
-                O motorista lê o QR code, lança o nome e os dados do abastecimento — sem precisar de login.
+                O motorista lê o QR code, entra com a sua conta e o pedido abre com a viatura já escolhida.
               </p>
             </div>
 
@@ -472,6 +402,16 @@ export function CombustivelPage() {
       )}
 
       {/* ── Análise por Viatura ────────────────────────── */}
+      {tab === 'analise' && (
+        <Link to="/combustivel/relatorio"
+          className="flex items-center justify-between gap-3 p-4 bg-primary/5 border border-primary/20 rounded-2xl hover:bg-primary/10 transition-colors">
+          <span className="text-sm">
+            <strong className="text-primary">Relatório avançado</strong>
+            <span className="text-muted-foreground"> — por semana, mês, viatura e motorista, com a análise automática.</span>
+          </span>
+          <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+        </Link>
+      )}
       {tab === 'analise' && (
         aLoading ? (
           <SkeletonList rows={3} cols={4} />
@@ -551,178 +491,7 @@ export function CombustivelPage() {
       {/* ── Pendentes ──────────────────────────────────── */}
       {/* Fora do ternário de loading: o polling de pendentes não pode desmontar o corte de emergência */}
       {tab === 'pendentes' && podeCombustivel && <BombaPolo2Card />}
-      {tab === 'pendentes' && (
-        pLoading ? (
-          <SkeletonList rows={3} cols={3} />
-        ) : pError != null ? (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center">
-            <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">{typeof pError === 'string' ? pError : 'Erro ao carregar pendentes'}</p>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            <div className="flex justify-end">
-              <button
-                onClick={() => reload()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Atualizar
-              </button>
-            </div>
-            {pendentes.length === 0 && (
-              <EmptyState icon={CheckCircle2} title="Sem pendentes" description="Quando os motoristas pedirem autorização via QR code, aparecem aqui." />
-            )}
-
-            {/* ── Pedidos de Autorização ─── */}
-            {pedidosAutorizacao.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-amber-500" />
-                  <h3 className="text-sm font-bold text-foreground">
-                    Pedidos de Autorização
-                    <span className="ml-2 text-xs font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                      {pedidosAutorizacao.length}
-                    </span>
-                  </h3>
-                </div>
-                {pedidosAutorizacao.map(p => (
-                  <div key={p.id} className="bg-card rounded-2xl border border-amber-200 p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold">{p.veiculo_nome}</p>
-                          {p.tipo_fonte && (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TIPO_LABEL[p.tipo_fonte].cor}`}>
-                              {TIPO_LABEL[p.tipo_fonte].label}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          por <span className="font-medium text-foreground">{p.funcionario_nome}</span>
-                          {' · '}{new Date(p.criado_em).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      {p.contador != null && (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtNumber(p.contador)} km/h</span>
-                      )}
-                    </div>
-                    {p.tipo_fonte === 'POLO2' && (
-                      <p className="text-xs text-blue-600 font-medium flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
-                        <Gauge className="w-3.5 h-3.5 shrink-0" />
-                        Autorizar abre a bomba por {Math.round((p.comb_veiculos?.pump_max_seconds ?? 180) / 60)} min
-                      </p>
-                    )}
-                    {podeCombustivel && (
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => handleAutorizar(p.id)}
-                          disabled={actionId === p.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-semibold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          <ShieldCheck className="w-4 h-4" />
-                          {actionId === p.id ? 'A processar…' : 'Autorizar'}
-                        </button>
-                        <button
-                          onClick={() => handleRejeitar(p.id)}
-                          disabled={actionId === p.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-destructive/10 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/20 active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          Rejeitar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ── A Aguardar Aprovação Final ─── */}
-            {aguardaAprovacao.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-blue-500" />
-                  <h3 className="text-sm font-bold text-foreground">
-                    A Aguardar Aprovação Final
-                    <span className="ml-2 text-xs font-semibold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                      {aguardaAprovacao.length}
-                    </span>
-                  </h3>
-                </div>
-                {aguardaAprovacao.map(p => (
-                  <div key={p.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold">{p.veiculo_nome}</p>
-                          {p.tipo_fonte && (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TIPO_LABEL[p.tipo_fonte].cor}`}>
-                              {TIPO_LABEL[p.tipo_fonte].label}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          por <span className="font-medium text-foreground">{p.funcionario_nome}</span>
-                          {' · '}{new Date(p.criado_em).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {(p.litros ?? p.litros_gemini) != null && (
-                          <p className="text-sm font-bold">{fmtNumber((p.litros ?? p.litros_gemini)!)} L</p>
-                        )}
-                        {(p.custo_total ?? p.custo_gemini) != null && (
-                          <p className="text-xs text-muted-foreground">{fmtEuro((p.custo_total ?? p.custo_gemini)!)}</p>
-                        )}
-                      </div>
-                    </div>
-                    {(p.foto_medidor_url ?? p.foto_url) && (
-                      <a href={(p.foto_medidor_url ?? p.foto_url)!} target="_blank" rel="noopener noreferrer" className="block">
-                        <img
-                          src={(p.foto_medidor_url ?? p.foto_url)!}
-                          alt="Foto"
-                          className="h-28 w-auto rounded-xl border border-border object-cover hover:opacity-90 transition-opacity"
-                        />
-                      </a>
-                    )}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                      {p.contador != null && <span>{fmtNumber(p.contador)} km/h</span>}
-                      {p.local && <span>{p.local}</span>}
-                      {p.pump_activated_at && (
-                        <span className="flex items-center gap-1 text-success font-semibold">
-                          <Gauge className="w-3.5 h-3.5" />
-                          Bomba ativou às {new Date(p.pump_activated_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
-                    {podeCombustivel && (
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => handleAprovar(p.id)}
-                          disabled={actionId === p.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-semibold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          {actionId === p.id ? 'A processar…' : 'Aprovar'}
-                        </button>
-                        <button
-                          onClick={() => handleRejeitar(p.id)}
-                          disabled={actionId === p.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-destructive/10 text-destructive rounded-xl text-sm font-semibold hover:bg-destructive/20 active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          Rejeitar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-          </div>
-        )
-      )}
+      {tab === 'pendentes' && <ListaPedidos veTodos />}
     </div>
   );
 }

@@ -8,7 +8,6 @@ const db = supabase as unknown as any
 // Excluídas intencionalmente:
 //   audit_log                   — gerido pelo Supabase, pode ser muito grande
 //   profiles                    — dados de autenticação geridos pelo Supabase Auth
-//   comb_abastecimentos_pendentes — fila transiente de QR codes (dados temporários)
 //   resumo_assiduidade_dia      — calculado; pode ser reconstruído a partir de faltas/horários
 
 export const TABELAS_BACKUP = [
@@ -28,6 +27,10 @@ export const TABELAS_BACKUP = [
   // Combustível
   { id: 'comb_viaturas',            label: 'Viaturas',                    grupo: 'Combustível' },
   { id: 'comb_abastecimentos',      label: 'Abastecimentos',              grupo: 'Combustível' },
+  // Desde o abastecimento v2 os pedidos ficam guardados (fotos, leituras, decisões)
+  { id: 'comb_abastecimentos_pendentes', label: 'Pedidos de Abastecimento', grupo: 'Combustível' },
+  { id: 'comb_precos',              label: 'Preços do Combustível',       grupo: 'Combustível' },
+  { id: 'comb_aprovadores',         label: 'Aprovadores de Abastecimento', grupo: 'Combustível' },
   // Recursos Humanos
   { id: 'colaboradores',            label: 'Colaboradores',               grupo: 'RH' },
   { id: 'horarios',                 label: 'Horários',                    grupo: 'RH' },

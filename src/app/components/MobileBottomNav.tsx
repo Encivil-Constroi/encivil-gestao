@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Package, Plus, History, FileBarChart, Truck, CircleHelp } from 'lucide-react';
+import { LayoutDashboard, Package, Plus, History, FileBarChart, Truck, CircleHelp, Droplets, ClipboardList } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 
 const navItems = [
@@ -12,16 +12,21 @@ const navItems = [
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { podeArmazem, isMecanico } = useRole();
+  const { podeArmazem, isMecanico, isMotorista } = useRole();
 
   // Quem tem escrita no armazém pode registar movimentos (admin, gestor, armazém)
   const canRegisterMovement = podeArmazem;
 
-  // O mecânico só usa a Frota
-  if (isMecanico) {
-    const itens = [
-      { path: '/frota', label: 'Frota', icon: Truck },
-      { path: '/ajuda', label: 'Ajuda', icon: CircleHelp },
+  // O mecânico só usa a Frota; o motorista só o abastecimento
+  if (isMecanico || isMotorista) {
+    const itens = isMecanico ? [
+      { path: '/frota', label: 'Frota', icon: Truck, ativo: (p: string) => p.startsWith('/frota') },
+      { path: '/ajuda', label: 'Ajuda', icon: CircleHelp, ativo: (p: string) => p.startsWith('/ajuda') },
+    ] : [
+      { path: '/abastecer', label: 'Pedir', icon: Droplets, ativo: (p: string) => p === '/abastecer' || p === '/abastecer/' },
+      // Inclui o ecrã de cada pedido (/abastecer/pedido/:id)
+      { path: '/abastecer/pedidos', label: 'Pedidos', icon: ClipboardList, ativo: (p: string) => p.startsWith('/abastecer/pedido') },
+      { path: '/ajuda', label: 'Ajuda', icon: CircleHelp, ativo: (p: string) => p.startsWith('/ajuda') },
     ];
     return (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
@@ -29,7 +34,7 @@ export function MobileBottomNav() {
         <div className="flex items-center justify-around h-16">
           {itens.map(item => {
             const Icon = item.icon;
-            const isActive = location.pathname.startsWith(item.path);
+            const isActive = item.ativo(location.pathname);
             return (
               <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center h-full min-w-[48px]">
                 <div className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}>

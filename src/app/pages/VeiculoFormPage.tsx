@@ -25,8 +25,6 @@ export function VeiculoFormPage() {
     fuelType: 'gasoleo' as FuelType,
     counterUnit: 'km' as CounterUnit,
     notes: '',
-    // bomba POLO2
-    pumpMaxMinutos: '3',
   });
 
   useEffect(() => {
@@ -43,7 +41,6 @@ export function VeiculoFormPage() {
       fuelType: vehicle.fuelType,
       counterUnit: vehicle.counterUnit,
       notes: vehicle.notes ?? '',
-      pumpMaxMinutos: String(Math.round((vehicle.pumpMaxSeconds ?? 180) / 60)),
     });
   }, [isEdit, vehicle]);
 
@@ -59,7 +56,6 @@ export function VeiculoFormPage() {
       fuelType: form.fuelType,
       counterUnit: form.counterUnit,
       notes: form.notes || undefined,
-      pumpMaxSeconds: Math.max(60, Math.min(3600, (Number(form.pumpMaxMinutos) || 3) * 60)),
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) { toast.success(isEdit ? 'Viatura atualizada.' : 'Viatura criada.'); navigate('/combustivel'); }
@@ -135,37 +131,12 @@ export function VeiculoFormPage() {
           </div>
         </div>
 
-        {/* ── Bomba POLO2 ──────────────────────────────────────── */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Droplets className="w-4 h-4 text-blue-500" />
-            <h2 className="text-sm font-semibold">Bomba POLO2</h2>
-            <span className="text-xs text-muted-foreground">(Shelly Pro 3 — galpão)</span>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Tempo máximo na bomba (minutos)
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="1"
-                max="60"
-                step="1"
-                value={form.pumpMaxMinutos}
-                onChange={e => set({ pumpMaxMinutos: e.target.value })}
-                className={`${inputCls} max-w-[140px]`}
-                placeholder="3"
-              />
-              <p className="text-sm text-muted-foreground">
-                = {(Number(form.pumpMaxMinutos) || 3) * 60} segundos no Shelly
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              O Shelly fecha o relay automaticamente após este tempo.
-              Viaturas com depósito maior precisam de mais minutos.
-            </p>
-          </div>
+        {/* Desde o abastecimento v2 a bomba Polo 2 liga sempre 10 min, no botão "Ligar bomba" do motorista */}
+        <div className="bg-card rounded-2xl border border-border p-4 flex items-start gap-3">
+          <Droplets className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">Bomba Polo 2:</span> liga no botão “Ligar bomba” do motorista, até 10 minutos, depois de o pedido ser autorizado.
+          </p>
         </div>
 
         <div className="sticky bottom-20 md:bottom-0 py-3 bg-background/80 backdrop-blur-sm md:bg-transparent flex gap-3">

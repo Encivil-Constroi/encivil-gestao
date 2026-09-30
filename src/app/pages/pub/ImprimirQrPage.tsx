@@ -96,8 +96,8 @@ export function ImprimirQrPage() {
             <p className="text-sm font-bold text-gray-800">Como registar um abastecimento:</p>
             <ol className="text-sm text-gray-500 text-left space-y-1 list-decimal list-inside">
               <li>Aponte a câmara do telemóvel para o QR code</li>
-              <li>Preencha o seu nome e os dados do abastecimento</li>
-              <li>Carregue em <strong className="text-gray-700">Registar Abastecimento</strong></li>
+              <li>Entre com a sua conta — a viatura fica escolhida</li>
+              <li>Fotografe os km e carregue em <strong className="text-gray-700">Pedir autorização</strong></li>
             </ol>
           </div>
 

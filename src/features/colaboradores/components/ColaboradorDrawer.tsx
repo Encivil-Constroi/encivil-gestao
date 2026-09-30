@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { X, User } from 'lucide-react'
 import { toast } from 'sonner'
-import { useGuardarColaborador } from '../hooks/useColaboradores'
+import { useGuardarColaborador, useContasApp, useColaboradores } from '../hooks/useColaboradores'
+import { useRole } from '@/features/auth/useRole'
 import { useObras } from '@/features/obras/hooks/useObras'
 import type { Colaborador } from '@/app/types'
 
@@ -18,6 +19,9 @@ export function ColaboradorDrawer({ colaborador, onClose, onSaved }: Colaborador
   const isEdit = !!colaborador
   const { criar, atualizar, loading } = useGuardarColaborador()
   const { obras } = useObras()
+  const { isAdmin } = useRole()
+  const { contas } = useContasApp(isAdmin)
+  const { colaboradores } = useColaboradores()
 
   const [form, setForm] = useState({
     nome: '',
@@ -26,6 +30,7 @@ export function ColaboradorDrawer({ colaborador, onClose, onSaved }: Colaborador
     nif: '',
     obraId: '',
     notas: '',
+    userId: '',
   })
 
   useEffect(() => {
@@ -37,6 +42,7 @@ export function ColaboradorDrawer({ colaborador, onClose, onSaved }: Colaborador
       nif:         colaborador.nif ?? '',
       obraId:      colaborador.obraId ?? '',
       notas:       colaborador.notas ?? '',
+      userId:      colaborador.userId ?? '',
     })
   }, [colaborador])
 
@@ -56,6 +62,7 @@ export function ColaboradorDrawer({ colaborador, onClose, onSaved }: Colaborador
       nif:         form.nif || undefined,
       obraId:      form.obraId || undefined,
       notas:       form.notas || undefined,
+      ...(isAdmin ? { userId: form.userId || null } : {}),
     }
 
     const result = isEdit
@@ -181,6 +188,23 @@ export function ColaboradorDrawer({ colaborador, onClose, onSaved }: Colaborador
               ))}
             </select>
           </div>
+
+          {/* Conta na app — só o admin lê os perfis */}
+          {isAdmin && (
+            <div>
+              <label htmlFor="colab-conta" className={labelCls}>Conta na app <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+              <select id="colab-conta" value={form.userId} onChange={e => set({ userId: e.target.value })} className={inputCls}>
+                <option value="">— Sem conta —</option>
+                {contas.map(c => {
+                  const ligada = colaboradores.find(x => x.userId === c.id && x.id !== colaborador?.id)
+                  return <option key={c.id} value={c.id}>{c.nome}{ligada ? ` (já ligada a ${ligada.nome})` : ''}</option>
+                })}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Com a conta ligada, o pedido de abastecimento abre com o nome deste colaborador e a viatura que lhe está atribuída na Frota.
+              </p>
+            </div>
+          )}
 
           {/* Notas */}
           <div>

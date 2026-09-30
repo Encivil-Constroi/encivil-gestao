@@ -4,9 +4,10 @@ import { notificacaoDoPush } from '@/app/lib/notificacaoPush'
 const combustivel = {
   titulo: 'ENCIVIL · Combustível',
   opcoes: {
-    body: 'Novo pedido de abastecimento aguarda autorização.', tag: 'abastecimento',
-    data: { url: '/combustivel' }, icon: '/pwa-192x192.png', badge: '/pwa-64x64.png',
+    body: 'Há um pedido de abastecimento para ver.', tag: 'abastecimento',
+    data: { url: '/abastecer/pedidos' }, icon: '/pwa-192x192.png', badge: '/pwa-64x64.png',
   },
+  contagem: null,
 }
 
 describe('notificacaoDoPush', () => {
@@ -40,6 +41,27 @@ describe('notificacaoDoPush', () => {
   ])('o toque nunca abre %s', (_n, url) => {
     const n = notificacaoDoPush(JSON.stringify({ title: 'T', body: 'B', url }))
     expect(n.opcoes.data.url).toBe('/')
+  })
+
+  it('pedido de abastecimento: fica no ecrã, vibra, volta a avisar e leva a contagem para o ícone', () => {
+    const n = notificacaoDoPush(JSON.stringify({
+      title: '⛽ Pedido de abastecimento (3 à espera)', body: '👷 Rui · 🚐 Carrinha 3', url: '/abastecer/pedidos?pedido=abc',
+      tag: 'abast-11111111-2222-3333-4444-555555555555', contagem: 3,
+    }))
+    expect(n.titulo).toBe('⛽ Pedido de abastecimento (3 à espera)')
+    expect(n.opcoes).toMatchObject({ requireInteraction: true, renotify: true, data: { url: '/abastecer/pedidos?pedido=abc' } })
+    expect(n.opcoes.vibrate?.length).toBeGreaterThan(0)
+    expect(n.contagem).toBe(3)
+  })
+
+  it('frota não fica presa no ecrã nem mexe no ícone', () => {
+    const n = notificacaoDoPush(JSON.stringify({ title: 'Frota', body: 'x', url: '/frota', tag: 'frota' }))
+    expect(n.opcoes.requireInteraction).toBeUndefined()
+    expect(n.contagem).toBeNull()
+  })
+
+  it.each([[-1], [1.5], ['3'], [5000]])('contagem inválida (%s) é ignorada', c => {
+    expect(notificacaoDoPush(JSON.stringify({ title: 'T', body: 'B', tag: 'abast-x', contagem: c })).contagem).toBeNull()
   })
 
   it('corta textos enormes', () => {
