@@ -95,7 +95,7 @@ ano) e viatura, sempre comparado com o período anterior do mesmo tamanho.
   antigo (viatura + dia + litros + custo) passou a valer só para registos
   manuais — com pedido, dois abastecimentos iguais no mesmo dia são legítimos.
 
-## Publicação (ordem)
+## Publicação (ordem) — feita em 2026-09-30
 
 1. SQL Editor: `20260930000000_abastecimento_papel_motorista.sql`, depois
    `20260930010000_abastecimento_v2.sql`.
