@@ -38,3 +38,6 @@ npm-debug.log*
 
 # Supabase CLI temp files (contém project ref e metadados — não commitar)
 supabase/.temp/
+
+# Material de referência (ex.: projeto FlutterFlow exportado) — consulta, não é código do sistema
+_referencia/
