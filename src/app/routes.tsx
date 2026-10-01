@@ -99,14 +99,7 @@ const ImprimirQrPage          = lazy(() => import('./pages/pub/ImprimirQrPage').
 
 // ── Imports lazy (carregados só quando a rota é visitada) ────────────────────
 const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const ProductsPage     = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
-const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })));
 
-const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
-const ToolDetailPage   = lazy(() => import('./pages/ToolDetailPage').then(m => ({ default: m.ToolDetailPage })));
-const ToolFormPage     = lazy(() => import('./pages/ToolFormPage').then(m => ({ default: m.ToolFormPage })));
-const ToolLoanPage     = lazy(() => import('./pages/ToolLoanPage').then(m => ({ default: m.ToolLoanPage })));
-const ToolReturnPage   = lazy(() => import('./pages/ToolReturnPage').then(m => ({ default: m.ToolReturnPage })));
 
 const ObrasPage        = lazy(() => import('./pages/ObrasPage').then(m => ({ default: m.ObrasPage })));
 const ObraFormPage     = lazy(() => import('./pages/ObraFormPage').then(m => ({ default: m.ObraFormPage })));
@@ -131,8 +124,6 @@ const FichaSegurancaPage = lazy(() => import('@/features/epis').then(m => ({ def
 const AlertasPage        = lazy(() => import('@/features/alertas').then(m => ({ default: m.AlertasPage })));
 const AuditoriaPage      = lazy(() => import('./pages/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
-const NewMovementPage    = lazy(() => import('./pages/NewMovementPage').then(m => ({ default: m.NewMovementPage })));
-const HistoryPage        = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const ReportsPage        = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const SettingsPage       = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
@@ -158,6 +149,19 @@ const ChecklistPage         = lazy(() => import('@/features/frota').then(m => ({
 const CatalogoFrotaPage     = lazy(() => import('@/features/frota').then(m => ({ default: m.CatalogoPage })));
 const DestinatariosFrotaPage = lazy(() => import('@/features/frota').then(m => ({ default: m.DestinatariosPage })));
 const NovoPedidoPage          = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.NovoPedidoPage })));
+const ArmazemLayout          = lazy(() => import('./pages/armazem').then(m => ({ default: m.ArmazemLayout })));
+const InventarioPage         = lazy(() => import('./pages/armazem').then(m => ({ default: m.InventarioPage })));
+const ProdutoFormPage        = lazy(() => import('./pages/armazem').then(m => ({ default: m.ProdutoFormPage })));
+const ProdutoDetalhePage     = lazy(() => import('./pages/armazem').then(m => ({ default: m.ProdutoDetalhePage })));
+const VisaoGeralPage         = lazy(() => import('./pages/armazem').then(m => ({ default: m.VisaoGeralPage })));
+const MovimentosPage         = lazy(() => import('./pages/armazem').then(m => ({ default: m.MovimentosPage })));
+const MovimentoFormPage      = lazy(() => import('./pages/armazem').then(m => ({ default: m.MovimentoFormPage })));
+const ObrasArmazemPage       = lazy(() => import('./pages/armazem').then(m => ({ default: m.ObrasArmazemPage })));
+const FerramentasPage        = lazy(() => import('./pages/armazem').then(m => ({ default: m.FerramentasPage })));
+const FerramentaFormPage     = lazy(() => import('./pages/armazem').then(m => ({ default: m.FerramentaFormPage })));
+const FerramentaDetalhePage  = lazy(() => import('./pages/armazem').then(m => ({ default: m.FerramentaDetalhePage })));
+const EmprestimoPage         = lazy(() => import('./pages/armazem').then(m => ({ default: m.EmprestimoPage })));
+const DevolucaoPage          = lazy(() => import('./pages/armazem').then(m => ({ default: m.DevolucaoPage })));
 const AbastecimentoLayout     = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.AbastecimentoLayout })));
 const SeparadorPedidos        = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.SeparadorPedidos })));
 const SeparadorBomba          = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.SeparadorBomba })));
@@ -212,14 +216,39 @@ export const router = createBrowserRouter([
         errorElement: <RouteErrorPage />,
         children: [
           { index: true,           element: <L><DashboardPage /></L> },
-          { path: 'produtos',      element: <L><ProductsPage /></L> },
-          { path: 'produtos/:id',  element: <L><ProductDetailPage /></L> },
-          { path: 'ferramentas',             element: <L><ToolsPage /></L> },
-          { path: 'ferramentas/nova',         element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
-          { path: 'ferramentas/emprestimo',   element: <L><RoleGuard require="gestor"><ToolLoanPage /></RoleGuard></L> },
-          { path: 'ferramentas/:id',          element: <L><ToolDetailPage /></L> },
-          { path: 'ferramentas/:id/editar',   element: <L><RoleGuard require="gestor"><ToolFormPage /></RoleGuard></L> },
-          { path: 'ferramentas/:id/devolucao', element: <L><RoleGuard require="gestor"><ToolReturnPage /></RoleGuard></L> },
+          // ── Armazém ── (quem pode escrever decide-se em cada página e na RLS)
+          {
+            path: 'armazem',
+            element: <L><ArmazemLayout /></L>,
+            children: [
+              { index: true,         element: <L><VisaoGeralPage /></L> },
+              { path: 'inventario',  element: <L><InventarioPage /></L> },
+              { path: 'movimentos',  element: <L><MovimentosPage /></L> },
+              { path: 'ferramentas', element: <L><FerramentasPage /></L> },
+              { path: 'obras',       element: <L><ObrasArmazemPage /></L> },
+            ],
+          },
+          { path: 'armazem/produto/novo',             element: <L><ProdutoFormPage /></L> },
+          { path: 'armazem/produto/:id',              element: <L><ProdutoDetalhePage /></L> },
+          { path: 'armazem/produto/:id/editar',       element: <L><ProdutoFormPage /></L> },
+          { path: 'armazem/movimento/entrada',        element: <L><MovimentoFormPage tipo="entrada" /></L> },
+          { path: 'armazem/movimento/saida',          element: <L><MovimentoFormPage tipo="saida" /></L> },
+          { path: 'armazem/ferramenta/nova',          element: <L><FerramentaFormPage /></L> },
+          { path: 'armazem/ferramenta/emprestimo',    element: <L><EmprestimoPage /></L> },
+          { path: 'armazem/ferramenta/:id',           element: <L><FerramentaDetalhePage /></L> },
+          { path: 'armazem/ferramenta/:id/editar',    element: <L><FerramentaFormPage /></L> },
+          { path: 'armazem/ferramenta/:id/devolucao', element: <L><DevolucaoPage /></L> },
+          // Endereços antigos do armazém
+          { path: 'produtos',                  element: <Redirecionar para="/armazem/inventario" /> },
+          { path: 'produtos/:id',              element: <Redirecionar para="/armazem/produto/:id" /> },
+          { path: 'novo-movimento',            element: <Redirecionar para="/armazem/movimento/entrada" /> },
+          { path: 'historico',                 element: <Redirecionar para="/armazem/movimentos" /> },
+          { path: 'ferramentas',               element: <Redirecionar para="/armazem/ferramentas" /> },
+          { path: 'ferramentas/nova',          element: <Redirecionar para="/armazem/ferramenta/nova" /> },
+          { path: 'ferramentas/emprestimo',    element: <Redirecionar para="/armazem/ferramenta/emprestimo" /> },
+          { path: 'ferramentas/:id',           element: <Redirecionar para="/armazem/ferramenta/:id" /> },
+          { path: 'ferramentas/:id/editar',    element: <Redirecionar para="/armazem/ferramenta/:id/editar" /> },
+          { path: 'ferramentas/:id/devolucao', element: <Redirecionar para="/armazem/ferramenta/:id/devolucao" /> },
           { path: 'colaboradores', element: <L><RoleGuard require="gestor"><ColaboradoresPage /></RoleGuard></L> },
           { path: 'rh',           element: <L><RoleGuard require="gestor"><RHPage /></RoleGuard></L> },
           { path: 'picagens',     element: <L><PicagemPage /></L> },
@@ -281,8 +310,6 @@ export const router = createBrowserRouter([
           { path: 'frota/viatura/:id/configurar',      element: <L><ConfigurarItensPage /></L> },
           { path: 'frota/viatura/:id/manutencao',      element: <L><RegistarManutencaoPage /></L> },
           { path: 'frota/viatura/:id/checklist',       element: <L><ChecklistPage /></L> },
-          { path: 'novo-movimento', element: <L><NewMovementPage /></L> },
-          { path: 'historico',     element: <L><HistoryPage /></L> },
           { path: 'relatorios',        element: <L><ReportsPage /></L> },
           { path: 'relatorio-semanal', element: <Navigate to="/relatorios" replace /> },
           { path: 'faturas',                  element: <L><RoleGuard require="gestor"><FaturasPage /></RoleGuard></L> },

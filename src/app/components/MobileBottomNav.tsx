@@ -1,12 +1,12 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Package, Plus, History, FileBarChart, Truck, CircleHelp, Droplets, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Warehouse, Plus, Fuel, FileBarChart, Truck, CircleHelp, Droplets, ClipboardList } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 
 const navItems = [
   { path: '/',               label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/produtos',       label: 'Produtos',  icon: Package },
-  { path: '/novo-movimento', label: 'Movimento', icon: Plus, primary: true },
-  { path: '/historico',      label: 'Histórico', icon: History },
+  { path: '/armazem',        label: 'Armazém',   icon: Warehouse },
+  { path: '/armazem/movimento/entrada', label: 'Movimento', icon: Plus, primary: true },
+  { path: '/abastecimento',  label: 'Combustível', icon: Fuel },
   { path: '/relatorios',     label: 'Relatórios', icon: FileBarChart },
 ];
 
@@ -55,7 +55,7 @@ export function MobileBottomNav() {
       <div className="flex items-center justify-around h-16">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || (item.path !== '/' && !item.primary && location.pathname.startsWith(`${item.path}/`) && !location.pathname.startsWith('/armazem/movimento'));
 
           if (item.primary) {
             if (!canRegisterMovement) {

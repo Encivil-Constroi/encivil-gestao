@@ -244,7 +244,7 @@ export function ObraDetailPage() {
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
           <h2 className="font-semibold text-sm flex items-center gap-2"><Package className="w-4 h-4" /> Materiais enviados</h2>
-          <Link to={`/historico?tipo=saida`} className="text-xs font-medium text-primary hover:underline">Histórico</Link>
+          <Link to="/armazem/obras" className="text-xs font-medium text-primary hover:underline">Histórico</Link>
         </div>
         {movsLoading ? (
           <p className="px-5 py-6 text-sm text-muted-foreground text-center">A carregar…</p>

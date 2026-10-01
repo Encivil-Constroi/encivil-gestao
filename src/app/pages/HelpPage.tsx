@@ -663,7 +663,7 @@ export function HelpPage() {
         </p>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => navigate('/novo-movimento')}
+            onClick={() => navigate('/armazem/movimento/saida')}
             className="bg-card rounded-2xl border border-border p-4 flex flex-col items-center gap-2 hover:border-destructive/50 hover:bg-destructive/5 active:scale-95 transition-all shadow-sm"
           >
             <div className="bg-destructive/10 p-2.5 rounded-xl">
@@ -672,7 +672,7 @@ export function HelpPage() {
             <span className="text-xs font-semibold text-foreground">Registar Saída</span>
           </button>
           <button
-            onClick={() => navigate('/novo-movimento')}
+            onClick={() => navigate('/armazem/movimento/entrada')}
             className="bg-card rounded-2xl border border-border p-4 flex flex-col items-center gap-2 hover:border-success/50 hover:bg-success/5 active:scale-95 transition-all shadow-sm"
           >
             <div className="bg-success/10 p-2.5 rounded-xl">

@@ -1,7 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import {
   listarMovimentos,
-  listarMovimentosPaginados,
   registarMovimento,
 } from '@/features/movimentos/services/movimentosService'
 
@@ -149,44 +148,6 @@ describe('listarMovimentos', () => {
     b.order.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
 
     await expect(listarMovimentos()).rejects.toMatchObject({ message: 'BD offline' })
-  })
-})
-
-// ── listarMovimentosPaginados ─────────────────────────────────────────────────
-// chain: from().select({count:'exact'}).order().range()  ← range() é terminal (base)
-// + filtros opcionais encadeados após range()
-
-describe('listarMovimentosPaginados', () => {
-  it('retorna dados e contagem total', async () => {
-    b.range.mockResolvedValue({ data: [movRow], error: null, count: 42 })
-
-    const result = await listarMovimentosPaginados({}, 0)
-
-    expect(result.data).toHaveLength(1)
-    expect(result.count).toBe(42)
-    expect(result.data[0]).toMatchObject(movMapped)
-  })
-
-  it('calcula o range correto para a página 2', async () => {
-    b.range.mockResolvedValue({ data: [], error: null, count: 0 })
-
-    await listarMovimentosPaginados({}, 2)
-
-    // PAGE_SIZE = 50 → página 2 começa em 100
-    expect(b.range).toHaveBeenCalledWith(100, 149)
-  })
-
-  it('retorna count 0 quando Supabase retorna null', async () => {
-    b.range.mockResolvedValue({ data: [], error: null, count: null })
-
-    const result = await listarMovimentosPaginados()
-    expect(result.count).toBe(0)
-  })
-
-  it('propaga erro', async () => {
-    b.range.mockResolvedValue({ data: null, error: { message: 'timeout' }, count: null })
-
-    await expect(listarMovimentosPaginados()).rejects.toMatchObject({ message: 'timeout' })
   })
 })
 

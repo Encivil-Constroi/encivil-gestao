@@ -182,6 +182,7 @@ describe('registarEmprestimo', () => {
       employeeDocument: '12345678',
       destination: 'Obra Norte',
       obraId: 'obra-1',
+      fotoEntregaPath: 'ferramentas/tool-1/entrega_1.jpg',
     })
 
     expect(rpc).toHaveBeenCalledWith('registar_emprestimo_ferramenta', expect.objectContaining({
@@ -190,6 +191,7 @@ describe('registarEmprestimo', () => {
       p_responsavel_entrega: 'Admin',
       p_assinatura_entrega: 'sig-base64',
       p_assinatura_responsavel_ent: 'sig-resp-base64',
+      p_foto_entrega_path: 'ferramentas/tool-1/entrega_1.jpg',
     }))
   })
 
@@ -198,7 +200,7 @@ describe('registarEmprestimo', () => {
     await expect(
       registarEmprestimo({
         toolId: 'tool-1', employeeName: 'X', deliveredBy: 'Y',
-        signature: 's1', responsibleSignature: 's2',
+        signature: 's1', responsibleSignature: 's2', fotoEntregaPath: 'f.jpg',
       })
     ).rejects.toMatchObject({ message: 'ferramenta já emprestada' })
     expect(b.single).not.toHaveBeenCalled()

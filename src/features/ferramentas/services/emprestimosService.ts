@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client'
+import { armazemDb } from '@/app/lib/armazemDb'
 import type { ToolLoan, LoanStatus, ReturnCondition } from '@/app/types'
 
 type EmprestimoRow = {
@@ -22,10 +22,12 @@ type EmprestimoRow = {
   assinatura_responsavel_entrega: string | null
   assinatura_responsavel_devolucao: string | null
   obra_id: string | null
+  foto_entrega_path?: string | null
+  foto_devolucao_path?: string | null
   ferramentas: { nome: string; codigo: string } | null
 }
 
-function toLoan(row: EmprestimoRow): ToolLoan {
+function toLoan(row: EmprestimoRow): Emprestimo {
   return {
     id: row.id,
     toolId: row.ferramenta_id,
@@ -49,8 +51,13 @@ function toLoan(row: EmprestimoRow): ToolLoan {
     returnSignature: row.assinatura_devolucao ?? undefined,
     deliveredBySignature: row.assinatura_responsavel_entrega ?? undefined,
     receivedBySignature: row.assinatura_responsavel_devolucao ?? undefined,
+    fotoEntregaPath: row.foto_entrega_path ?? undefined,
+    fotoDevolucaoPath: row.foto_devolucao_path ?? undefined,
   }
 }
+
+// Empréstimo com as fotos de prova do estado (entrega e devolução)
+export type Emprestimo = ToolLoan & { fotoEntregaPath?: string; fotoDevolucaoPath?: string }
 
 export type FiltrosEmprestimos = {
   ferramentaId?: string
@@ -66,8 +73,8 @@ export type FiltrosEmprestimos = {
 
 export const LOANS_PAGE_SIZE = 50
 
-export async function listarEmprestimos(filtros: FiltrosEmprestimos = {}): Promise<ToolLoan[]> {
-  let q = supabase
+export async function listarEmprestimos(filtros: FiltrosEmprestimos = {}): Promise<Emprestimo[]> {
+  let q = armazemDb
     .from('emprestimos_ferramentas')
     .select('*, ferramentas(nome, codigo)')
     .order('data_emprestimo', { ascending: false })
@@ -91,9 +98,9 @@ export async function listarEmprestimos(filtros: FiltrosEmprestimos = {}): Promi
 export async function listarEmprestimosPaginados(
   filtros: FiltrosEmprestimos = {},
   page = 0,
-): Promise<{ data: ToolLoan[]; count: number }> {
+): Promise<{ data: Emprestimo[]; count: number }> {
   const from = page * LOANS_PAGE_SIZE
-  let q = supabase
+  let q = armazemDb
     .from('emprestimos_ferramentas')
     .select('*, ferramentas(nome, codigo)', { count: 'exact' })
     .order('data_emprestimo', { ascending: false })
@@ -125,10 +132,12 @@ export type RegistarEmprestimoInput = {
   expectedReturnDate?: string
   deliveryCondition?: string
   notes?: string
+  // Prova do estado na entrega (já enviada para o bucket) — o servidor recusa sem ela
+  fotoEntregaPath: string
 }
 
-async function buscarEmprestimoComFerramenta(id: string): Promise<ToolLoan> {
-  const { data, error } = await supabase
+async function buscarEmprestimoComFerramenta(id: string): Promise<Emprestimo> {
+  const { data, error } = await armazemDb
     .from('emprestimos_ferramentas')
     .select('*, ferramentas(nome, codigo)')
     .eq('id', id)
@@ -137,8 +146,8 @@ async function buscarEmprestimoComFerramenta(id: string): Promise<ToolLoan> {
   return toLoan(data as EmprestimoRow)
 }
 
-export async function registarEmprestimo(input: RegistarEmprestimoInput): Promise<ToolLoan> {
-  const { data, error } = await supabase.rpc('registar_emprestimo_ferramenta', {
+export async function registarEmprestimo(input: RegistarEmprestimoInput): Promise<Emprestimo> {
+  const { data, error } = await armazemDb.rpc('registar_emprestimo_ferramenta', {
     p_ferramenta_id: input.toolId,
     p_funcionario_nome: input.employeeName,
     p_responsavel_entrega: input.deliveredBy,
@@ -150,10 +159,11 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
     p_obra_id: input.obraId,
     p_assinatura_entrega: input.signature,
     p_assinatura_responsavel_ent: input.responsibleSignature,
+    p_foto_entrega_path: input.fotoEntregaPath,
   })
   if (error) throw error
 
-  return buscarEmprestimoComFerramenta((data as unknown as EmprestimoRow).id)
+  return buscarEmprestimoComFerramenta(data.id)
 }
 
 export type RegistarDevolucaoInput = {
@@ -163,18 +173,21 @@ export type RegistarDevolucaoInput = {
   signature: string
   responsibleSignature: string
   returnNotes?: string
+  // Obrigatória exceto 'perdida' (não há ferramenta para fotografar)
+  fotoDevolucaoPath?: string | null
 }
 
-export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<ToolLoan> {
-  const { data, error } = await supabase.rpc('registar_devolucao_ferramenta', {
+export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<Emprestimo> {
+  const { data, error } = await armazemDb.rpc('registar_devolucao_ferramenta', {
     p_emprestimo_id: input.loanId,
     p_condicao_devolucao: input.returnCondition,
     p_responsavel_recebimento: input.receivedBy,
     p_observacoes_devolucao: input.returnNotes,
     p_assinatura_devolucao: input.signature,
     p_assinatura_responsavel_dev: input.responsibleSignature,
+    p_foto_devolucao_path: input.fotoDevolucaoPath ?? null,
   })
   if (error) throw error
 
-  return buscarEmprestimoComFerramenta((data as unknown as EmprestimoRow).id)
+  return buscarEmprestimoComFerramenta(data.id)
 }

@@ -1,24 +1,20 @@
 import { supabase } from '@/integrations/supabase/client'
-import type { TablesUpdate } from '@/integrations/supabase/types'
-import type { Product, ProductCategory, Unit } from '@/app/types'
+import { armazemDb, type ArmazemDatabase, type SubtipoMovimento } from '@/app/lib/armazemDb'
+import type { MovementType, Product, ProductCategory, Unit } from '@/app/types'
 import { calcStatus } from '@/app/lib/stockUtils'
 
-type ProdutoRow = {
-  id: string
-  codigo: string
-  nome: string
-  categoria: string
-  unidade: string
-  stock_atual: number
-  stock_minimo: number
-  custo_unitario: number
-  ativo: boolean
-  observacoes: string | null
-  created_at: string
-  updated_at: string
+type Tabelas = ArmazemDatabase['public']['Tables']
+type ProdutoRow = Tabelas['produtos']['Row']
+type ProdutoUpdate = Tabelas['produtos']['Update']
+
+// Produto com os campos do armazém completo (foto e localização). Continua a ser
+// um Product, por isso os ecrãs antigos que só leem Product não mudam.
+export type ProdutoArmazem = Product & {
+  fotoPath: string | null
+  localizacao: string | null
 }
 
-function toProduct(row: ProdutoRow): Product {
+function toProduct(row: ProdutoRow): ProdutoArmazem {
   return {
     id: row.id,
     code: row.codigo,
@@ -30,32 +26,43 @@ function toProduct(row: ProdutoRow): Product {
     unitCost: Number(row.custo_unitario ?? 0),
     status: calcStatus(row.stock_atual, row.stock_minimo),
     notes: row.observacoes ?? undefined,
+    fotoPath: row.foto_path ?? null,
+    localizacao: row.localizacao ?? null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   }
 }
 
-export async function listarProdutos(apenasAtivos = true): Promise<Product[]> {
-  let query = supabase.from('produtos').select('*').order('nome')
+export async function listarProdutos(apenasAtivos = true): Promise<ProdutoArmazem[]> {
+  let query = armazemDb.from('produtos').select('*').order('nome')
   if (apenasAtivos) query = query.eq('ativo', true)
   const { data, error } = await query
   if (error) throw error
-  return (data as ProdutoRow[]).map(toProduct)
+  return (data ?? []).map(toProduct)
 }
 
-export async function buscarProduto(id: string): Promise<Product> {
-  const { data, error } = await supabase
+export async function buscarProduto(id: string): Promise<ProdutoArmazem> {
+  const { data, error } = await armazemDb
     .from('produtos')
     .select('*')
     .eq('id', id)
     .single()
   if (error) throw error
-  return toProduct(data as ProdutoRow)
+  return toProduct(data)
 }
 
-// 'code' nunca aparece aqui — código é gerado automaticamente pela coluna
-// (DEFAULT com nextval) no momento do INSERT, e é imutável após criação.
+// Só pré-visualização: não consome a sequência. O código real é atribuído pela
+// coluna (DEFAULT com nextval) no INSERT e é imutável depois.
+export async function previsualizarCodigoProduto(): Promise<string> {
+  const { data, error } = await supabase.rpc('gerar_codigo_produto')
+  if (error) throw error
+  return data
+}
+
 export type NovoProduto = {
+  // Gerado no browser quando a foto é tirada antes de o artigo existir: a
+  // política do bucket exige produtos/<id>/..., por isso o INSERT usa o mesmo id
+  id?: string
   name: string
   category: ProductCategory
   unit: Unit
@@ -63,12 +70,15 @@ export type NovoProduto = {
   minStock: number
   unitCost?: number
   notes?: string
+  fotoPath?: string | null
+  localizacao?: string | null
 }
 
-export async function criarProduto(input: NovoProduto): Promise<Product> {
-  const { data, error } = await supabase
+export async function criarProduto(input: NovoProduto): Promise<ProdutoArmazem> {
+  const { data, error } = await armazemDb
     .from('produtos')
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       nome: input.name,
       categoria: input.category,
       unidade: input.unit,
@@ -76,42 +86,47 @@ export async function criarProduto(input: NovoProduto): Promise<Product> {
       stock_minimo: input.minStock,
       custo_unitario: input.unitCost ?? 0,
       observacoes: input.notes ?? null,
+      foto_path: input.fotoPath ?? null,
+      localizacao: input.localizacao ?? null,
     })
     .select()
     .single()
   if (error) throw error
-  return toProduct(data as ProdutoRow)
+  return toProduct(data)
 }
 
-export type AtualizarProduto = Partial<NovoProduto>
+// O stock nunca se altera por aqui — só por movimentos (auditados)
+export type AtualizarProduto = Partial<Omit<NovoProduto, 'id' | 'currentStock'>>
 
-export async function atualizarProduto(id: string, input: AtualizarProduto): Promise<Product> {
-  const update: Record<string, unknown> = {}
+export async function atualizarProduto(id: string, input: AtualizarProduto): Promise<ProdutoArmazem> {
+  const update: ProdutoUpdate = {}
   if (input.name !== undefined) update.nome = input.name
   if (input.category !== undefined) update.categoria = input.category
   if (input.unit !== undefined) update.unidade = input.unit
   if (input.minStock !== undefined) update.stock_minimo = input.minStock
   if (input.unitCost !== undefined) update.custo_unitario = input.unitCost
   if (input.notes !== undefined) update.observacoes = input.notes
+  if (input.fotoPath !== undefined) update.foto_path = input.fotoPath
+  if (input.localizacao !== undefined) update.localizacao = input.localizacao
 
-  const { data, error } = await supabase
+  const { data, error } = await armazemDb
     .from('produtos')
-    .update(update as TablesUpdate<'produtos'>)
+    .update(update)
     .eq('id', id)
     .select()
     .single()
   if (error) throw error
-  return toProduct(data as ProdutoRow)
+  return toProduct(data)
 }
 
-export async function listarProdutosArquivados(): Promise<Product[]> {
-  const { data, error } = await supabase
+export async function listarProdutosArquivados(): Promise<ProdutoArmazem[]> {
+  const { data, error } = await armazemDb
     .from('produtos')
     .select('*')
     .eq('ativo', false)
     .order('nome')
   if (error) throw error
-  return (data as ProdutoRow[]).map(toProduct)
+  return (data ?? []).map(toProduct)
 }
 
 export async function desativarProduto(id: string): Promise<void> {
@@ -136,4 +151,55 @@ export async function deletarProduto(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   if (error) throw error
+}
+
+// ── Histórico de movimentos de um artigo (com o tipo detalhado) ──────────────
+
+const SELECT_MOVIMENTO = '*, obras(nome)'
+
+export type MovimentoArtigo = {
+  id: string
+  tipo: MovementType
+  subtipo: SubtipoMovimento | null
+  quantidade: number
+  stockAntes: number
+  stockDepois: number
+  responsavel: string
+  obraId: string | null
+  obraNome: string | null
+  destino: string | null
+  fornecedor: string | null
+  cliente: string | null
+  numeroFatura: string | null
+  precoUnitario: number | null
+  observacoes: string | null
+  data: Date
+}
+
+export async function listarMovimentosProduto(produtoId: string, limite = 50): Promise<MovimentoArtigo[]> {
+  const { data, error } = await armazemDb
+    .from('movimentos_stock')
+    .select(SELECT_MOVIMENTO)
+    .eq('produto_id', produtoId)
+    .order('created_at', { ascending: false })
+    .limit(limite)
+  if (error) throw error
+  return (data ?? []).map(r => ({
+    id: r.id,
+    tipo: r.tipo,
+    subtipo: r.subtipo ?? null,
+    quantidade: r.quantidade,
+    stockAntes: r.stock_antes,
+    stockDepois: r.stock_depois,
+    responsavel: r.responsavel,
+    obraId: r.obra_id,
+    obraNome: r.obras?.nome ?? null,
+    destino: r.destino_obra,
+    fornecedor: r.fornecedor ?? null,
+    cliente: r.cliente ?? null,
+    numeroFatura: r.numero_fatura ?? null,
+    precoUnitario: r.preco_unitario == null ? null : Number(r.preco_unitario),
+    observacoes: r.observacoes,
+    data: new Date(r.created_at),
+  }))
 }

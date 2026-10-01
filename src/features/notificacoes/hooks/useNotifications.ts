@@ -65,7 +65,7 @@ export function useNotifications() {
           title: p.nome,
           subtitle: `${semStock ? 'Sem stock' : 'Stock baixo'} · ${p.stock_atual} / ${p.stock_minimo} ${getUnitLabel(p.unidade)}`,
           severity: semStock ? 'danger' : 'warning',
-          link: `/produtos/${p.id}`,
+          link: `/armazem/produto/${p.id}`,
         })
       })
 
@@ -78,7 +78,7 @@ export function useNotifications() {
         title: l.ferramentas?.nome ?? 'Ferramenta',
         subtitle: `Em atraso · ${l.funcionario_nome} · desde ${new Date(l.data_prevista_devolucao).toLocaleDateString('pt-PT')}`,
         severity: 'danger',
-        link: `/ferramentas/${l.ferramenta_id}`,
+        link: `/armazem/ferramenta/${l.ferramenta_id}`,
       })
     })
 

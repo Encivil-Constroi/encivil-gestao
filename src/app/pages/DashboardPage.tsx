@@ -85,7 +85,7 @@ export function DashboardPage() {
         <div className={`grid gap-3 enc-fade-up ${nAtalhos === 3 ? 'grid-cols-3' : nAtalhos === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {podeArmazem && (
             <Link
-              to="/novo-movimento?tipo=saida"
+              to="/armazem/movimento/saida"
               className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
             >
               <ArrowUpCircle className="w-5 h-5" />
@@ -94,7 +94,7 @@ export function DashboardPage() {
           )}
           {podeArmazem && (
             <Link
-              to="/novo-movimento?tipo=entrada"
+              to="/armazem/movimento/entrada"
               className="flex items-center justify-center gap-2 py-4 bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
             >
               <ArrowDownCircle className="w-5 h-5" />
@@ -256,7 +256,7 @@ export function DashboardPage() {
 
           <div className="p-4 border-t border-border">
             <Link
-              to="/historico"
+              to="/armazem/movimentos"
               className="text-sm text-primary hover:underline flex items-center gap-1 transition-colors"
             >
               Ver todo o histórico <ChevronRight className="w-4 h-4" />
@@ -288,7 +288,7 @@ export function DashboardPage() {
                 {stats.lowStockItems.map((p, i) => (
                   <Link
                     key={p.id}
-                    to={`/produtos/${p.id}`}
+                    to={`/armazem/produto/${p.id}`}
                     className={`block p-3 bg-accent/50 rounded-lg border border-border hover:border-primary/50 active:bg-accent transition-all enc-fade-up delay-${[50,100,150,200][i] ?? 200}`}
                   >
                     <div className="flex items-start justify-between mb-1">
@@ -307,7 +307,7 @@ export function DashboardPage() {
           {!!stats?.lowStockItems.length && (
             <div className="px-4 pb-4">
               <Link
-                to="/produtos"
+                to="/armazem/inventario"
                 className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1"
               >
                 Ver todos os produtos <ChevronRight className="w-4 h-4" />

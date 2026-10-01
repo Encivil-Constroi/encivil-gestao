@@ -2,6 +2,13 @@
 
 ## Contexto do Projeto
 
+**Superpowers — uso permanente:** em todas as sessões deste projeto, ler
+`.agents/skills/using-superpowers/SKILL.md` antes de iniciar uma tarefa e
+aplicar as skills relevantes de `.agents/skills/`. Se não estiverem no
+catálogo da ferramenta, ler os ficheiros diretamente. As instruções explícitas
+do utilizador e as regras deste projeto prevalecem sobre as skills.
+Instalação e versão: `docs/superpowers.md`.
+
 ERP interno da ENCIVIL (empresa de construção civil) — sistema em produção, multiutilizador, usado diariamente pelas equipas de obra.
 
 **Stack:** React 18 + Vite + TypeScript (strict) + Tailwind CSS v4 + Supabase (PostgreSQL, Auth, Storage, RLS)  
@@ -22,11 +29,11 @@ src/
   features/       ← módulos por domínio (um por funcionalidade); um módulo nunca
                      importa de outro. Lista completa: `ls src/features`. Núcleo:
     auth/         ← useAuth, AuthGuard, RoleGuard, useRole
-    produtos/     ← armazém (produtos + stock)
-    movimentos/   ← movimentos de stock + offline queue (useOfflineQueue)
+    produtos/     ← armazém: artigos + stock (ecrãs do módulo em app/pages/armazem, rota /armazem)
+    movimentos/   ← entradas/saídas com tipo (compra, devolução de obra, venda…) + fila offline
     obras/        ← gestão de obras (entidade central — ver ARCHITECTURE.md)
     subempreiteiros/ ← contratos + autos de medição
-    ferramentas/  ← ferramentas + empréstimos (com termo de responsabilidade)
+    ferramentas/  ← ferramentas (série, garantia, foto) + empréstimos com foto na entrega/devolução
     combustivel/  ← módulo Abastecimento (/abastecimento): pedidos, histórico, análise,
                      bomba Polo 2, configuração — as viaturas vivem na Frota
     dashboard/    ← overview + alertas stock
@@ -134,6 +141,8 @@ function aplicarFiltros<T>(query: T, filtros: F): T { ... }  // ← nunca fazer
 
 ### RPCs existentes (não duplicar)
 - `registar_movimento` — atomic stock movement com audit log e advisory lock
+- `registar_movimento_armazem` — porta do armazém: tipo detalhado (compra, devolução de obra, venda…), fornecedor, fatura, cliente; usa `registar_movimento`
+- `armazem_materiais_por_obra` — material líquido em cada obra (enviado − devolvido), com valor
 - `criar_auto_rpc` — numeração de autos sem race condition (advisory lock por subempreiteiro)
 - `custos_materiais_por_obra` — custos agregados server-side (materiais + combustível)
 - `produtos_em_alerta` — produtos com stock baixo/sem-stock (sem fetch total da tabela)

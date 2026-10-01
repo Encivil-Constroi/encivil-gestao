@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import { getQueue, removeFromQueue, onQueueChange, isNetworkError, type PendingMovimento } from '../offlineQueue'
+import { getQueue, removeFromQueue, onQueueChange, isNetworkError, ehPendenteArmazem, type PendingMovimento } from '../offlineQueue'
 import { registarMovimento } from '../services/movimentosService'
+import { registarMovimentoArmazem } from '../services/armazemService'
 import { invalidateCache } from '@/app/lib/useAsync'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -24,13 +25,16 @@ export function useOfflineQueue() {
 
     // Sessão pode ter expirado por inatividade (30 min) enquanto offline.
     // Não sincronizar sem sessão válida — mantém a fila intacta para quando o utilizador iniciar sessão.
+    // A guarda é ativada antes do await: o arranque e o evento "online" podem chamar
+    // flush quase ao mesmo tempo e duplicariam os movimentos.
+    flushingRef.current = true
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
+      flushingRef.current = false
       toast.warning('Inicie sessão para sincronizar os registos pendentes.')
       return
     }
 
-    flushingRef.current = true
     setSyncing(true)
     let okCount = 0
     let failCount = 0
@@ -39,10 +43,16 @@ export function useOfflineQueue() {
     try {
       for (const item of queue) {
         try {
-          const { queueId, queuedAt, ...input } = item
-          void queuedAt
-          await registarMovimento(input)
-          removeFromQueue(queueId)
+          if (ehPendenteArmazem(item)) {
+            const { queueId, queuedAt, ...input } = item
+            void queueId; void queuedAt
+            await registarMovimentoArmazem(input)
+          } else {
+            const { queueId, queuedAt, ...input } = item
+            void queueId; void queuedAt
+            await registarMovimento(input)
+          }
+          removeFromQueue(item.queueId)
           okCount++
         } catch (e) {
           if (isNetworkError(e)) {
@@ -63,11 +73,11 @@ export function useOfflineQueue() {
 
     if (okCount > 0) {
       // Invalidar caches afetadas pelos movimentos sincronizados
-      invalidateCache('produtos-ativos', 'produtos-*', 'dashboard', 'movimentos-*')
+      invalidateCache('produtos-ativos', 'produtos-*', 'dashboard', 'movimentos-*', 'armazem-*')
       toast.success(`${okCount} movimento${okCount !== 1 ? 's' : ''} pendente${okCount !== 1 ? 's' : ''} sincronizado${okCount !== 1 ? 's' : ''} com sucesso.`)
     }
     if (failCount > 0) {
-      toast.error(`${failCount} movimento${failCount !== 1 ? 's' : ''} pendente${failCount !== 1 ? 's' : ''} não pôde${failCount !== 1 ? 'ram' : ''} ser sincronizado${failCount !== 1 ? 's' : ''} e foi${failCount !== 1 ? 'ram' : ''} removido${failCount !== 1 ? 's' : ''} da fila. Verifique o Histórico.`)
+      toast.error(`${failCount} movimento${failCount !== 1 ? 's' : ''} pendente${failCount !== 1 ? 's' : ''} não pôde${failCount !== 1 ? 'ram' : ''} ser sincronizado${failCount !== 1 ? 's' : ''} e foi${failCount !== 1 ? 'ram' : ''} removido${failCount !== 1 ? 's' : ''} da fila. Verifique os Movimentos do armazém.`)
     }
     if (stoppedByNetwork && okCount === 0 && failCount === 0) {
       // ainda offline — não vale a pena notificar, já existe o banner persistente

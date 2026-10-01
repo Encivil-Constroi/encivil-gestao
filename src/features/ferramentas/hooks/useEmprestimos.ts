@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { ToolLoan } from '@/app/types'
+
 import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import {
@@ -9,6 +9,7 @@ import {
   registarDevolucao,
   LOANS_PAGE_SIZE,
   type FiltrosEmprestimos,
+  type Emprestimo,
 } from '../services/emprestimosService'
 
 export function useEmprestimos(filtros: FiltrosEmprestimos = {}) {
@@ -24,7 +25,7 @@ export function useEmprestimos(filtros: FiltrosEmprestimos = {}) {
 
 // Pagination is stateful — keep manual implementation
 export function useEmprestimosPaginados(filtros: FiltrosEmprestimos = {}) {
-  const [loans, setLoans] = useState<ToolLoan[]>([])
+  const [loans, setLoans] = useState<Emprestimo[]>([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -59,7 +60,7 @@ export function useEmprestimosPaginados(filtros: FiltrosEmprestimos = {}) {
   }
 }
 
-const INV_EMPRESTIMOS = ['emprestimos-*', 'ferramentas-ativas', 'ferramentas-arquivadas']
+const INV_EMPRESTIMOS = ['emprestimos-*', 'ferramentas-ativas', 'ferramentas-arquivadas', 'ferramentas-todas', 'ferramenta-*']
 
 export function useRegistarEmprestimo() {
   const { mutate: registar, loading, error } = useMutation(
