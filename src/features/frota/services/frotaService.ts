@@ -4,6 +4,7 @@ import {
   frotaDb,
   type ItemCatalogoRow, type VeiculoItemRow, type ManutencaoRow, type ChecklistRow,
   type AtribuicaoRow, type ResumoViaturaRow, type Categoria, type Natureza, type EstadoItem,
+  type VeiculoFrotaRow, type LinhaTempoRow, type EntregaRow, type HistoricoManutencaoRow, type EstadoOperacional,
 } from '../db'
 
 // ── Catálogo ─────────────────────────────────────────────────────────────────
@@ -92,8 +93,12 @@ const SELECT_CHECKLIST = 'id, veiculo_id, data, km_na_altura, itens, estado_gera
 
 export type AlertaItem = { entidade_id: string; severidade: 'ATENCAO' | 'URGENTE'; estado: string }
 
+const SELECT_VEICULO = 'id, codigo, nome, marca, modelo, identificacao, tipo, tipo_combustivel, unidade_contador, estado_operacional, obra_atual_id, data_ultima_revisao, km_ultima_revisao, km_registo, data_fim_seguro, seguro_foto_path, data_proxima_ipo, ipo_foto_path, observacoes, ativo, created_at, created_by'
+
 export type FichaViatura = {
   viatura: { id: string; codigo: string; nome: string; identificacao: string | null; tipo: string; unidadeContador: string }
+  detalhe: VeiculoFrotaRow
+  obraNome: string | null
   kmAtual: number | null
   itens: VeiculoItemRow[]
   alertas: AlertaItem[]
@@ -106,7 +111,7 @@ export type FichaViatura = {
 // Tudo o que a ficha mostra, em pedidos paralelos (um por tabela, nunca por linha)
 export async function carregarFicha(veiculoId: string): Promise<FichaViatura> {
   const [v, km, itens, manut, check, atrib] = await Promise.all([
-    supabase.from('comb_veiculos').select('id, codigo, nome, identificacao, tipo, unidade_contador').eq('id', veiculoId).single(),
+    frotaDb.from('comb_veiculos').select(SELECT_VEICULO).eq('id', veiculoId).single(),
     frotaDb.rpc('km_atual_veiculo', { p_veiculo_id: veiculoId }),
     frotaDb.from('frota_veiculo_itens').select(SELECT_FVI).eq('veiculo_id', veiculoId),
     frotaDb.from('veiculo_manutencoes').select(SELECT_MANUTENCAO).eq('veiculo_id', veiculoId)
@@ -136,7 +141,14 @@ export async function carregarFicha(veiculoId: string): Promise<FichaViatura> {
   if (colab.error) throw colab.error
 
   const vv = v.data!
+  const obra = vv.obra_atual_id
+    ? await supabase.from('obras').select('nome').eq('id', vv.obra_atual_id).maybeSingle()
+    : { data: null, error: null }
+  if (obra.error) throw obra.error
+
   return {
+    detalhe: vv,
+    obraNome: obra.data?.nome ?? null,
     viatura: {
       id: vv.id, codigo: vv.codigo, nome: vv.nome, identificacao: vv.identificacao,
       tipo: vv.tipo, unidadeContador: vv.unidade_contador,
@@ -149,6 +161,70 @@ export async function carregarFicha(veiculoId: string): Promise<FichaViatura> {
     atribuicoes: atrib.data ?? [],
     colaboradores: new Map((colab.data ?? []).map(c => [c.id, c.nome])),
   }
+}
+
+// Viatura para o formulário de edição (inclui arquivadas) com a leitura atual do contador
+export async function carregarViaturaEdicao(id: string): Promise<{ viatura: VeiculoFrotaRow; kmAtual: number }> {
+  const [v, km] = await Promise.all([
+    frotaDb.from('comb_veiculos').select(SELECT_VEICULO).eq('id', id).single(),
+    frotaDb.rpc('km_atual_veiculo', { p_veiculo_id: id }),
+  ])
+  if (v.error) throw v.error
+  if (km.error) throw km.error
+  return { viatura: v.data, kmAtual: Number(km.data ?? v.data.km_registo ?? 0) }
+}
+
+export async function listarLinhaTempo(veiculoId: string): Promise<LinhaTempoRow[]> {
+  const { data, error } = await frotaDb.rpc('frota_linha_tempo', { p_veiculo_id: veiculoId, p_limite: 300 })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function ultimasEntregas(limite: number): Promise<EntregaRow[]> {
+  const { data, error } = await frotaDb.rpc('frota_listar_entregas', { p_limite: limite })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function ultimasManutencoes(limite: number): Promise<HistoricoManutencaoRow[]> {
+  const { data, error } = await frotaDb.rpc('frota_historico_manutencoes', { p_limite: limite })
+  if (error) throw error
+  return data ?? []
+}
+
+export type DadosViatura = {
+  id: string
+  marca: string; modelo: string; tipo: string; identificacao: string
+  unidade: 'km' | 'horas'; combustivel: string
+  leituraAtual: number
+  dataUltimaRevisao: string | null; leituraUltimaRevisao: number | null
+  dataSeguro: string | null; seguroFoto: string | null
+  dataIpo: string | null; ipoFoto: string | null
+  observacoes: string
+}
+
+export async function guardarViatura(d: DadosViatura): Promise<string> {
+  const { data, error } = await frotaDb.rpc('frota_guardar_viatura', {
+    p_id: d.id, p_marca: d.marca.trim() || null, p_modelo: d.modelo.trim() || null, p_tipo: d.tipo,
+    p_identificacao: d.identificacao.trim() || null, p_unidade_contador: d.unidade, p_tipo_combustivel: d.combustivel,
+    p_km_atual: d.leituraAtual, p_data_ultima_revisao: d.dataUltimaRevisao, p_km_ultima_revisao: d.leituraUltimaRevisao,
+    p_data_fim_seguro: d.dataSeguro, p_seguro_foto_path: d.seguroFoto,
+    p_data_proxima_ipo: d.dataIpo, p_ipo_foto_path: d.ipoFoto, p_observacoes: d.observacoes.trim() || null,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function arquivarViatura(veiculoId: string, arquivar: boolean): Promise<true> {
+  const { error } = await frotaDb.rpc('frota_arquivar_viatura', { p_veiculo_id: veiculoId, p_arquivar: arquivar })
+  if (error) throw error
+  return true
+}
+
+export async function definirEstadoViatura(veiculoId: string, estado: Exclude<EstadoOperacional, 'EM_USO'>): Promise<true> {
+  const { error } = await frotaDb.rpc('definir_estado_viatura', { p_veiculo_id: veiculoId, p_estado: estado })
+  if (error) throw error
+  return true
 }
 
 export async function listarColaboradoresAtivos(): Promise<{ id: string; nome: string }[]> {

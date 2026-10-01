@@ -1,9 +1,6 @@
 import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
-import {
-  listarVeiculos, buscarVeiculo, criarVeiculo, atualizarVeiculo,
-  type AtualizarVeiculo,
-} from '../services/veiculosService'
+import { listarVeiculos } from '../services/veiculosService'
 import {
   listarAbastecimentos, buscarAbastecimento, criarAbastecimento,
   atualizarAbastecimento, eliminarAbastecimento,
@@ -18,28 +15,6 @@ export function useVeiculos(apenasAtivos = true) {
     { cacheKey: `veiculos-${apenasAtivos}` }
   )
   return { vehicles: data ?? [], loading, error, reload }
-}
-
-export function useVeiculo(id: string | undefined) {
-  const { data: vehicle, loading, error, reload } = useAsync(
-    () => buscarVeiculo(id!), [id],
-    { enabled: !!id, cacheKey: id ? `veiculo-${id}` : undefined }
-  )
-  return { vehicle, loading, error, reload }
-}
-
-export function useGuardarVeiculo() {
-  const inv = { invalidates: ['veiculos-*', 'veiculo-*'] }
-  const criador    = useMutation(criarVeiculo, 'Erro ao guardar', inv)
-  const atualizador = useMutation(
-    (id: string, input: AtualizarVeiculo) => atualizarVeiculo(id, input),
-    'Erro ao guardar', inv
-  )
-  return {
-    criar:    criador.mutate,
-    atualizar: atualizador.mutate,
-    loading:  criador.loading || atualizador.loading,
-  }
 }
 
 /* ── Abastecimentos ────────────────────────────────────────────── */

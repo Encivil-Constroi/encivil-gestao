@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRole } from '@/features/auth/useRole'
 import { useCatalogo, useGuardarItemCatalogo } from '../hooks/useFrota'
 import { ordenar, agruparPorCategoria, rotuloCategoria, textoIntervalo, CATEGORIAS } from '../lib/frota'
 import type { DadosItemCatalogo } from '../services/frotaService'
+import { semAcentos } from '../lib/manutencao'
 import { validarItem, type FormItem as Form } from '../lib/validarItem'
 import type { ItemCatalogoRow, Categoria, Natureza } from '../db'
 import { Cabecalho, Seccao, inputCls, botaoPrimario, botaoSecundario } from './ui'
@@ -90,8 +91,14 @@ export function CatalogoPage() {
   const { criar, atualizar, loading: aGuardar } = useGuardarItemCatalogo()
   const { podeFrota } = useRole()
   const [aEditar, setAEditar] = useState<string | 'novo' | null>(null)
+  const [procura, setProcura] = useState('')
+  const [verInativos, setVerInativos] = useState(true)
 
-  const grupos = useMemo(() => agruparPorCategoria(ordenar(catalogo)), [catalogo])
+  const grupos = useMemo(() => {
+    const t = semAcentos(procura.trim())
+    return agruparPorCategoria(ordenar(catalogo.filter(i =>
+      (verInativos || i.ativo || i.id === aEditar) && (!t || semAcentos(i.rotulo).includes(t)))))
+  }, [catalogo, procura, verInativos, aEditar])
 
   const guardarNovo = async (d: DadosItemCatalogo) => {
     if (await criar(d)) { toast.success('Item criado.'); setAEditar(null) }
@@ -102,7 +109,7 @@ export function CatalogoPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
-      <Cabecalho titulo="Catálogo da frota" subtitulo="Itens de checklist e prazos de manutenção — valem para todas as viaturas"
+      <Cabecalho titulo="Ficha de revisão — itens e intervalos" subtitulo="Itens do checklist e prazos de manutenção — valem para todas as viaturas"
         acoes={podeFrota && aEditar !== 'novo' ? (
           <button onClick={() => setAEditar('novo')} className={botaoPrimario}><Plus className="w-4 h-4" aria-hidden="true" /> Novo item</button>
         ) : undefined} />
@@ -112,6 +119,18 @@ export function CatalogoPage() {
           <Editor inicial={VAZIO} aGuardar={aGuardar} onGuardar={guardarNovo} onCancelar={() => setAEditar(null)} />
         </Seccao>
       )}
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-48">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <input value={procura} onChange={e => setProcura(e.target.value)} className={`${inputCls} pl-10`}
+            placeholder="Procurar item…" aria-label="Procurar item" />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={verInativos} onChange={e => setVerInativos(e.target.checked)} className="w-4 h-4" />
+          Mostrar desativados
+        </label>
+      </div>
 
       {loading && catalogo.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">A carregar…</p>}
 

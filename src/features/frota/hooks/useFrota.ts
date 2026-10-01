@@ -4,8 +4,11 @@ import {
   listarCatalogo, criarItemCatalogo, atualizarItemCatalogo, listarResumoViaturas, carregarFicha,
   listarColaboradoresAtivos, configurarItem, registarManutencao, registarChecklist, atribuirCondutor,
   avaliarFrota, listarDestinatarios, listarUtilizadores, adicionarDestinatario, removerDestinatario,
-  type DadosItemCatalogo,
+  carregarViaturaEdicao, listarLinhaTempo, ultimasEntregas, ultimasManutencoes, guardarViatura,
+  arquivarViatura, definirEstadoViatura,
+  type DadosItemCatalogo, type DadosViatura,
 } from '../services/frotaService'
+import type { EstadoOperacional } from '../db'
 
 // Tudo o que muda prazos ou alertas invalida a lista, as fichas e os Alertas
 const INVALIDA_FROTA = ['frota-*', 'alertas-*']
@@ -96,4 +99,53 @@ export function useAlterarDestinatario() {
   )
   const alterar = async (userId: string, receber: boolean) => (await mutate(userId, receber)) === true
   return { alterar, loading }
+}
+
+export function useViaturaEdicao(id?: string) {
+  const { data, loading, error, reload } = useAsync(() => carregarViaturaEdicao(id!), [id],
+    { enabled: !!id, errorMsg: 'Viatura não encontrada' })
+  return { dados: data, loading, error, reload }
+}
+
+export function useLinhaTempo(veiculoId?: string) {
+  const { data, loading, error, reload } = useAsync(() => listarLinhaTempo(veiculoId!), [veiculoId],
+    { enabled: !!veiculoId, cacheKey: veiculoId ? `frota-tempo-${veiculoId}` : undefined, cacheTtl: 15_000,
+      errorMsg: 'Não foi possível carregar a linha do tempo' })
+  return { eventos: data ?? [], loading, error, reload }
+}
+
+export function useUltimasEntregas(limite = 5) {
+  const { data, loading } = useAsync(() => ultimasEntregas(limite), [limite],
+    { cacheKey: `frota-ultimas-entregas-${limite}`, cacheTtl: 30_000, errorMsg: 'Não foi possível carregar as entregas' })
+  return { entregas: data ?? [], loading }
+}
+
+export function useUltimasManutencoes(limite = 5) {
+  const { data, loading } = useAsync(() => ultimasManutencoes(limite), [limite],
+    { cacheKey: `frota-ultimas-manutencoes-${limite}`, cacheTtl: 30_000, errorMsg: 'Não foi possível carregar as manutenções' })
+  return { manutencoes: data ?? [], loading }
+}
+
+// comb_veiculos alimenta também o Abastecimento: invalida as suas listas
+const INVALIDA_VIATURAS = [...INVALIDA_FROTA, 'veiculos-*', 'veiculo-*']
+
+export function useGuardarViatura() {
+  const { mutate: guardar, loading, error } = useMutation(
+    (d: DadosViatura) => guardarViatura(d), 'Erro ao guardar a viatura', { invalidates: INVALIDA_VIATURAS })
+  return { guardar, loading, error }
+}
+
+export function useArquivarViatura() {
+  const { mutate, loading } = useMutation(
+    (id: string, arquivar: boolean) => arquivarViatura(id, arquivar), 'Erro ao arquivar a viatura', { invalidates: INVALIDA_VIATURAS })
+  const arquivar = async (id: string, valor: boolean) => (await mutate(id, valor)) === true
+  return { arquivar, loading }
+}
+
+export function useDefinirEstadoViatura() {
+  const { mutate, loading } = useMutation(
+    (id: string, estado: Exclude<EstadoOperacional, 'EM_USO'>) => definirEstadoViatura(id, estado),
+    'Erro ao alterar o estado da viatura', { invalidates: INVALIDA_VIATURAS })
+  const definir = async (id: string, estado: Exclude<EstadoOperacional, 'EM_USO'>) => (await mutate(id, estado)) === true
+  return { definir, loading }
 }

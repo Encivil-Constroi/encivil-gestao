@@ -40,7 +40,8 @@ src/
     custos/       ← custos agregados por obra
     configuracoes/ ← configurações globais
     notificacoes/ ← sistema de notificações
-    frota/        ← viaturas e máquinas (cadastro, QR) + manutenção, checklists, prazos (Fase 9)
+    frota/        ← módulo Frota (/frota): viaturas e máquinas (estado Livre/Em uso/Oficina), entregas e
+                     devoluções com mapa de danos, manutenção e ficha de revisão (docs/18-frota.md)
                      + colaboradores, horarios, picagens, epis, faturas,
                      livro-obra, autos, alertas, contabilidade, backup, search
                      (expansão ERP v3 — ver docs/12-plano-v3.md)

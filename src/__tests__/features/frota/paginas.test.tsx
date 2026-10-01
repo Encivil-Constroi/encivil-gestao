@@ -5,7 +5,6 @@ import type { ItemCatalogoRow, Categoria, Natureza } from '@/features/frota/db'
 
 const mocks = vi.hoisted(() => ({
   registarChecklist: vi.fn(async () => 'novo-id' as string | null),
-  registarManutencao: vi.fn(async () => 'novo-id' as string | null),
   catalogo: [] as unknown[],
   itensViatura: [] as unknown[],
   role: 'mecanico' as string,
@@ -22,7 +21,6 @@ vi.mock('@/features/frota/hooks/useFrota', () => ({
   }),
   useCatalogo: () => ({ catalogo: mocks.catalogo, loading: false, error: null, reload: vi.fn() }),
   useRegistarChecklist: () => ({ registar: mocks.registarChecklist, loading: false, error: null }),
-  useRegistarManutencao: () => ({ registar: mocks.registarManutencao, loading: false, error: null }),
 }))
 
 vi.mock('@/features/auth/useRole', () => ({
@@ -35,7 +33,6 @@ vi.mock('@/features/auth/useRole', () => ({
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 import { toast } from 'sonner'
 import { ChecklistPage } from '@/features/frota/components/ChecklistPage'
-import { RegistarManutencaoPage } from '@/features/frota/components/RegistarManutencaoPage'
 
 let seq = 0
 function item(o: Partial<ItemCatalogoRow> & { categoria: Categoria; natureza: Natureza; rotulo: string }): ItemCatalogoRow {
@@ -58,7 +55,6 @@ function abrir(pagina: React.ReactNode, caminho: string) {
     <MemoryRouter initialEntries={[caminho]}>
       <Routes>
         <Route path="/frota/viatura/:id/checklist" element={pagina} />
-        <Route path="/frota/viatura/:id/manutencao" element={pagina} />
         <Route path="/frota/viatura/:id" element={<p>FICHA</p>} />
       </Routes>
     </MemoryRouter>,
@@ -71,7 +67,6 @@ beforeEach(() => {
   mocks.catalogo = [luzes, pneus, adblue, oleo, seguro]
   mocks.itensViatura = [{ id: 'f-ad', veiculo_id: 'v1', item_id: adblue.id, ativo: false }]
   mocks.registarChecklist.mockClear()
-  mocks.registarManutencao.mockClear()
   vi.mocked(toast.error).mockClear()
 })
 afterEach(cleanup)
@@ -122,56 +117,5 @@ describe('ChecklistPage', () => {
     await clicar(screen.getByRole('button', { name: 'Restantes OK' }))
     expect(screen.getAllByRole('radio', { name: 'Atenção' })[0]).toHaveAttribute('aria-checked', 'true')
     expect(screen.getAllByRole('radio', { name: 'OK' })[1]).toHaveAttribute('aria-checked', 'true')
-  })
-})
-
-describe('RegistarManutencaoPage', () => {
-  const escolher = (valor: string) => fireEvent.change(screen.getByRole('combobox'), { target: { value: valor } })
-
-  it('só lista itens de manutenção, mais "Outro trabalho"', () => {
-    abrir(<RegistarManutencaoPage />, '/frota/viatura/v1/manutencao')
-    const opcoes = screen.getAllByRole('option').map(o => o.textContent)
-    expect(opcoes).toContain('Óleo')
-    expect(opcoes).toContain('Seguro')
-    expect(opcoes).not.toContain('Luzes')
-    expect(opcoes).toContain('Outro trabalho (reparação avulsa)')
-  })
-
-  it('item com prazo em km exige os km', async () => {
-    abrir(<RegistarManutencaoPage />, '/frota/viatura/v1/manutencao')
-    escolher(oleo.id)
-    await clicar(screen.getByRole('button', { name: 'Registar manutenção' }))
-    expect(mocks.registarManutencao).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith('Indique os km: este item tem prazo em km.')
-  })
-
-  it('envia a manutenção com vírgula decimal no custo e recomeça o prazo', async () => {
-    abrir(<RegistarManutencaoPage />, '/frota/viatura/v1/manutencao')
-    escolher(oleo.id)
-    fireEvent.change(screen.getByPlaceholderText(/Último conhecido/), { target: { value: '9900' } })
-    fireEvent.change(screen.getByPlaceholderText('Ex: 85,50'), { target: { value: '85,50' } })
-    await clicar(screen.getByRole('button', { name: 'Registar manutenção' }))
-    expect(mocks.registarManutencao).toHaveBeenCalledWith(expect.objectContaining({
-      veiculoId: 'v1', itemId: oleo.id, km: 9900, custo: 85.5, atualizaProxima: true, proximaData: null,
-    }))
-  })
-
-  it('"Outro trabalho" exige descrição e nunca mexe em prazos', async () => {
-    abrir(<RegistarManutencaoPage />, '/frota/viatura/v1/manutencao')
-    escolher('outro')
-    await clicar(screen.getByRole('button', { name: 'Registar manutenção' }))
-    expect(toast.error).toHaveBeenCalledWith('Descreva o trabalho feito.')
-    fireEvent.change(screen.getByPlaceholderText(/substituição da lâmpada/), { target: { value: 'Lâmpada do farol' } })
-    await clicar(screen.getByRole('button', { name: 'Registar manutenção' }))
-    expect(mocks.registarManutencao).toHaveBeenCalledWith(expect.objectContaining({
-      itemId: null, descricao: 'Lâmpada do farol', atualizaProxima: false,
-    }))
-  })
-
-  it('seguro sem intervalo em km não pede km', async () => {
-    abrir(<RegistarManutencaoPage />, '/frota/viatura/v1/manutencao')
-    escolher(seguro.id)
-    await clicar(screen.getByRole('button', { name: 'Registar manutenção' }))
-    expect(mocks.registarManutencao).toHaveBeenCalledWith(expect.objectContaining({ itemId: seguro.id, km: null }))
   })
 })

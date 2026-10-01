@@ -140,7 +140,7 @@ export function ConfigurarItensPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
-      <Cabecalho titulo="Itens e prazos" subtitulo={`${ficha.viatura.nome} — o que acompanhar nesta viatura`} />
+      <Cabecalho titulo="Ficha de revisão — itens e prazos" subtitulo={`${ficha.viatura.nome} — o que acompanhar nesta viatura`} />
 
       <Seccao titulo="Prazos a acompanhar (geram alertas)">
         {manutencao.map(g => (

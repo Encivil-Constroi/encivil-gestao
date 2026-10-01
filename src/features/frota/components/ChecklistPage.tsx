@@ -79,7 +79,7 @@ export function ChecklistPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-32">
-      <Cabecalho titulo="Checklist" subtitulo={ficha ? `${ficha.viatura.nome} — estado atual da viatura` : undefined}
+      <Cabecalho titulo="Ficha de revisão" subtitulo={ficha ? `${ficha.viatura.nome} — checklist de inspeção` : undefined}
         acoes={faltam > 0 && itens.length > 0 ? <button onClick={todosOk} className={botaoSecundario}>Restantes OK</button> : undefined} />
 
       <div className="grid grid-cols-2 gap-3">

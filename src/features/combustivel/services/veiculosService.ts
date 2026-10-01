@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client'
-import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Vehicle, VehicleType, FuelType, CounterUnit } from '@/app/types'
 
 type VeiculoRow = {
@@ -55,85 +54,4 @@ export async function listarVeiculos(apenasAtivos = true): Promise<Vehicle[]> {
   if (error) throw error
   // pump_max_seconds não está nos tipos gerados (coluna nova, sem acesso ao CLI)
   return (data as unknown as VeiculoRow[]).map(toVehicle)
-}
-
-export async function buscarVeiculo(id: string): Promise<Vehicle> {
-  const { data, error } = await supabase.from('comb_veiculos').select('*').eq('id', id).single()
-  if (error) throw error
-  return toVehicle(data as unknown as VeiculoRow)
-}
-
-export type ManutencaoVeiculo = {
-  proximaRevisaoKm?: number
-  proximaRevisaoData?: string   // ISO date string
-  intervaloRevisaoKm?: number
-  intervaloRevisaoMeses?: number
-  dataFimSeguro?: string        // ISO date string
-  dataProximaIpo?: string       // ISO date string
-}
-
-export type NovoVeiculo = {
-  name: string
-  type: VehicleType
-  identification?: string
-  fuelType: FuelType
-  counterUnit: CounterUnit
-  notes?: string
-  pumpMaxSeconds?: number
-} & ManutencaoVeiculo
-
-export async function criarVeiculo(input: NovoVeiculo): Promise<Vehicle> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('comb_veiculos') as any)
-    .insert({
-      nome: input.name,
-      tipo: input.type,
-      identificacao: input.identification ?? null,
-      tipo_combustivel: input.fuelType,
-      unidade_contador: input.counterUnit,
-      observacoes: input.notes ?? null,
-      proxima_revisao_km: input.proximaRevisaoKm ?? null,
-      proxima_revisao_data: input.proximaRevisaoData ?? null,
-      intervalo_revisao_km: input.intervaloRevisaoKm ?? null,
-      intervalo_revisao_meses: input.intervaloRevisaoMeses ?? null,
-      data_fim_seguro: input.dataFimSeguro ?? null,
-      data_proxima_ipo: input.dataProximaIpo ?? null,
-      // pump_max_seconds: coluna nova, sem entrada nos tipos gerados
-      pump_max_seconds: input.pumpMaxSeconds ?? 180,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  return toVehicle(data as unknown as VeiculoRow)
-}
-
-export type AtualizarVeiculo = Partial<NovoVeiculo> & { active?: boolean }
-
-export async function atualizarVeiculo(id: string, input: AtualizarVeiculo): Promise<Vehicle> {
-  const update: Record<string, unknown> = {}
-  if (input.name !== undefined)           update.nome = input.name
-  if (input.type !== undefined)           update.tipo = input.type
-  if (input.identification !== undefined) update.identificacao = input.identification || null
-  if (input.fuelType !== undefined)       update.tipo_combustivel = input.fuelType
-  if (input.counterUnit !== undefined)    update.unidade_contador = input.counterUnit
-  if (input.notes !== undefined)          update.observacoes = input.notes || null
-  if (input.active !== undefined)         update.ativo = input.active
-  // manutenção
-  if ('proximaRevisaoKm'     in input)    update.proxima_revisao_km      = input.proximaRevisaoKm ?? null
-  if ('proximaRevisaoData'   in input)    update.proxima_revisao_data    = input.proximaRevisaoData ?? null
-  if ('intervaloRevisaoKm'   in input)    update.intervalo_revisao_km    = input.intervaloRevisaoKm ?? null
-  if ('intervaloRevisaoMeses' in input)   update.intervalo_revisao_meses = input.intervaloRevisaoMeses ?? null
-  if ('dataFimSeguro'        in input)    update.data_fim_seguro         = input.dataFimSeguro ?? null
-  if ('dataProximaIpo'       in input)    update.data_proxima_ipo        = input.dataProximaIpo ?? null
-  if (input.pumpMaxSeconds !== undefined) update.pump_max_seconds        = input.pumpMaxSeconds
-
-  const { data, error } = await supabase.from('comb_veiculos').update(update as TablesUpdate<'comb_veiculos'>).eq('id', id).select().single()
-  if (error) throw error
-  return toVehicle(data as unknown as VeiculoRow)
-}
-
-export async function gerarCodigoVeiculoPreview(): Promise<string> {
-  const { data, error } = await supabase.rpc('gerar_codigo_veiculo')
-  if (error) throw error
-  return data as string
 }
