@@ -101,15 +101,20 @@ const ImprimirQrPage          = lazy(() => import('./pages/pub/ImprimirQrPage').
 const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 
 
-const ObrasPage        = lazy(() => import('./pages/ObrasPage').then(m => ({ default: m.ObrasPage })));
-const ObraFormPage     = lazy(() => import('./pages/ObraFormPage').then(m => ({ default: m.ObraFormPage })));
-const ObraDetailPage   = lazy(() => import('./pages/ObraDetailPage').then(m => ({ default: m.ObraDetailPage })));
+const ObrasLayout          = lazy(() => import('@/features/obras').then(m => ({ default: m.ObrasLayout })));
+const ObrasPainelPage      = lazy(() => import('@/features/obras').then(m => ({ default: m.ObrasPainelPage })));
+const ObrasListaPage       = lazy(() => import('@/features/obras').then(m => ({ default: m.ObrasListaPage })));
+const ObraFormPage         = lazy(() => import('@/features/obras').then(m => ({ default: m.ObraFormPage })));
+const ObraFichaPage        = lazy(() => import('@/features/obras').then(m => ({ default: m.ObraFichaPage })));
+const RelatoriosDiariosPage = lazy(() => import('@/features/obras').then(m => ({ default: m.RelatoriosDiariosPage })));
+const RelatorioDiarioPage  = lazy(() => import('@/features/obras').then(m => ({ default: m.RelatorioDiarioPage })));
 
-const SubempreiteirosPage    = lazy(() => import('./pages/SubempreiteirosPage').then(m => ({ default: m.SubempreiteirosPage })));
-const SubempreiteiroFormPage = lazy(() => import('./pages/SubempreiteiroFormPage').then(m => ({ default: m.SubempreiteiroFormPage })));
-const SubempreiteiroDetailPage = lazy(() => import('./pages/SubempreiteiroDetailPage').then(m => ({ default: m.SubempreiteiroDetailPage })));
-const AutoFormPage     = lazy(() => import('./pages/AutoFormPage').then(m => ({ default: m.AutoFormPage })));
-const AutoDetailPage   = lazy(() => import('./pages/AutoDetailPage').then(m => ({ default: m.AutoDetailPage })));
+const SubempreiteirosPage    = lazy(() => import('@/features/obras/components/subempreitadas/SubempreiteirosPage').then(m => ({ default: m.SubempreiteirosPage })));
+const SubWriteGuard = lazy(() => import('@/features/obras/components/subempreitadas/SubWriteGuard').then(m => ({ default: m.SubWriteGuard })));
+const SubempreiteiroFormPage = lazy(() => import('@/features/obras/components/subempreitadas/SubempreiteiroFormPage').then(m => ({ default: m.SubempreiteiroFormPage })));
+const SubempreiteiroDetailPage = lazy(() => import('@/features/obras/components/subempreitadas/SubempreiteiroDetailPage').then(m => ({ default: m.SubempreiteiroDetailPage })));
+const AutoFormPage     = lazy(() => import('@/features/obras/components/subempreitadas/AutoFormPage').then(m => ({ default: m.AutoFormPage })));
+const AutoDetailPage   = lazy(() => import('@/features/obras/components/subempreitadas/AutoDetailPage').then(m => ({ default: m.AutoDetailPage })));
 
 const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPage').then(m => ({ default: m.AbastecimentoFormPage })));
 
@@ -129,7 +134,7 @@ const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ de
 const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
-const AutoPdfPage            = lazy(() => import('./pages/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
+const AutoPdfPage            = lazy(() => import('@/features/obras/components/subempreitadas/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
 const ObraRelatorioPage         = lazy(() => import('./pages/ObraRelatorioPage').then(m => ({ default: m.ObraRelatorioPage })));
 const ExportacaoContabilidadePage = lazy(() => import('./pages/ExportacaoContabilidadePage').then(m => ({ default: m.ExportacaoContabilidadePage })));
 const BackupPage                = lazy(() => import('./pages/BackupPage').then(m => ({ default: m.BackupPage })));
@@ -202,8 +207,13 @@ export const router = createBrowserRouter([
     children: [
       // Rotas full-page — autenticadas mas sem MainLayout (sem barra lateral, para impressão/PDF)
       {
-        path: '/autos/:autoId/pdf',
+        path: '/obras/auto/:autoId/pdf',
         element: <L><AutoPdfPage /></L>,
+        errorElement: <RouteErrorPage />,
+      },
+      {
+        path: '/autos/:autoId/pdf',
+        element: <Redirecionar para="/obras/auto/:autoId/pdf" />,
         errorElement: <RouteErrorPage />,
       },
       {
@@ -265,20 +275,39 @@ export const router = createBrowserRouter([
           { path: 'horarios',     element: <Navigate to="/rh" replace /> },
           { path: 'faltas',       element: <Navigate to="/rh" replace /> },
           { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },
-          { path: 'obras',                    element: <L><ObrasPage /></L> },
-          { path: 'obras/nova',               element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
-          { path: 'obras/:id',                element: <L><ObraDetailPage /></L> },
-          { path: 'obras/:id/editar',         element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
-          { path: 'obras/:id/custos',         element: <L><CustosObraPage /></L> },
-          { path: 'obras/:id/livro',          element: <L><LivroObraPage /></L> },
-          { path: 'obras/:id/guias',          element: <L><GuiasTransportePage /></L> },
-          { path: 'subempreiteiros',          element: <L><SubempreiteirosPage /></L> },
-          { path: 'subempreiteiros/novo',     element: <L><RoleGuard require="gestor"><SubempreiteiroFormPage /></RoleGuard></L> },
-          { path: 'subempreiteiros/:id',      element: <L><SubempreiteiroDetailPage /></L> },
-          { path: 'subempreiteiros/:id/editar', element: <L><RoleGuard require="gestor"><SubempreiteiroFormPage /></RoleGuard></L> },
-          { path: 'subempreiteiros/:subId/autos/novo', element: <L><RoleGuard require="gestor"><AutoFormPage /></RoleGuard></L> },
-          { path: 'autos/:autoId',            element: <L><AutoDetailPage /></L> },
-          { path: 'autos/:autoId/editar',     element: <L><RoleGuard require="gestor"><AutoFormPage /></RoleGuard></L> },
+          // ── Obras ── (um só módulo: obras, relatórios diários e subempreitadas)
+          {
+            path: 'obras',
+            element: <L><ObrasLayout /></L>,
+            children: [
+              { index: true,           element: <L><ObrasPainelPage /></L> },
+              { path: 'lista',         element: <L><ObrasListaPage /></L> },
+              { path: 'relatorios',    element: <L><RelatoriosDiariosPage /></L> },
+              { path: 'subempreitadas', element: <L><SubempreiteirosPage /></L> },
+            ],
+          },
+          { path: 'obras/nova',                          element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
+          { path: 'obras/:id',                           element: <L><ObraFichaPage /></L> },
+          { path: 'obras/:id/editar',                    element: <L><RoleGuard require="gestor"><ObraFormPage /></RoleGuard></L> },
+          { path: 'obras/:id/custos',                    element: <L><CustosObraPage /></L> },
+          { path: 'obras/:id/livro',                     element: <L><LivroObraPage /></L> },
+          { path: 'obras/:id/guias',                     element: <L><GuiasTransportePage /></L> },
+          { path: 'obras/:id/relatorio-diario/novo',     element: <L><RelatorioDiarioPage /></L> },
+          { path: 'obras/relatorio-diario/:rid',         element: <L><RelatorioDiarioPage /></L> },
+          { path: 'obras/subempreitada/novo',            element: <L><SubWriteGuard><SubempreiteiroFormPage /></SubWriteGuard></L> },
+          { path: 'obras/subempreitada/:id',             element: <L><SubempreiteiroDetailPage /></L> },
+          { path: 'obras/subempreitada/:id/editar',      element: <L><SubWriteGuard><SubempreiteiroFormPage /></SubWriteGuard></L> },
+          { path: 'obras/subempreitada/:subId/auto/novo', element: <L><SubWriteGuard><AutoFormPage /></SubWriteGuard></L> },
+          { path: 'obras/auto/:autoId',                  element: <L><AutoDetailPage /></L> },
+          { path: 'obras/auto/:autoId/editar',           element: <L><SubWriteGuard><AutoFormPage /></SubWriteGuard></L> },
+          // Endereços antigos das subempreitadas e autos (favoritos, notificações já enviadas)
+          { path: 'subempreiteiros',                     element: <Redirecionar para="/obras/subempreitadas" /> },
+          { path: 'subempreiteiros/novo',                element: <Redirecionar para="/obras/subempreitada/novo" /> },
+          { path: 'subempreiteiros/:id',                 element: <Redirecionar para="/obras/subempreitada/:id" /> },
+          { path: 'subempreiteiros/:id/editar',          element: <Redirecionar para="/obras/subempreitada/:id/editar" /> },
+          { path: 'subempreiteiros/:subId/autos/novo',   element: <Redirecionar para="/obras/subempreitada/:subId/auto/novo" /> },
+          { path: 'autos/:autoId',                       element: <Redirecionar para="/obras/auto/:autoId" /> },
+          { path: 'autos/:autoId/editar',                element: <Redirecionar para="/obras/auto/:autoId/editar" /> },
           // ── Abastecimento ──
           {
             path: 'abastecimento',

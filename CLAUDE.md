@@ -25,13 +25,13 @@ src/
   app/
     lib/          ← useAsync<T>, useMutation<TArgs,TResult>, stockUtils, exportCsv
     types.ts      ← tipos de domínio (Product, Movement, Tool, FuelEntry, etc.)
-    routes.tsx    ← React Router v7 (bundle único, sem lazy por rota — ver ADR-010)
+    routes.tsx    ← React Router v7 com lazy() por rota (ver ADR-010)
   features/       ← módulos por domínio (um por funcionalidade); um módulo nunca
                      importa de outro. Lista completa: `ls src/features`. Núcleo:
     auth/         ← useAuth, AuthGuard, RoleGuard, useRole
     produtos/     ← armazém: artigos + stock (ecrãs do módulo em app/pages/armazem, rota /armazem)
     movimentos/   ← entradas/saídas com tipo (compra, devolução de obra, venda…) + fila offline
-    obras/        ← gestão de obras (entidade central — ver ARCHITECTURE.md)
+    obras/        ← painel, ficha, relatórios diários e subempreitadas (docs/19-obras.md)
     subempreiteiros/ ← contratos + autos de medição
     ferramentas/  ← ferramentas (série, garantia, foto) + empréstimos com foto na entrega/devolução
     combustivel/  ← módulo Abastecimento (/abastecimento): pedidos, histórico, análise,

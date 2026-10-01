@@ -110,7 +110,7 @@ export interface DashboardStats {
 
 /* ─── Obras + Subempreiteiros (Fase 1) ─────────────────────────── */
 
-export type ObraStatus = 'ativa' | 'concluida';
+export type ObraStatus = 'planeada' | 'ativa' | 'suspensa' | 'concluida';
 
 export interface Obra {
   id: string;

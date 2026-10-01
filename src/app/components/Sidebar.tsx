@@ -8,7 +8,6 @@ import {
   Fuel,
   Truck,
   Building2,
-  HardHat,
   Users,
   CalendarDays,
   Bell,
@@ -80,9 +79,7 @@ const menuSections: MenuSection[] = [
     title: 'Obras',
     items: [
       { path: '/obras',           label: 'Obras',           icon: Building2,
-        prefetch: () => { void import('@/app/pages/ObrasPage') } },
-      { path: '/subempreiteiros', label: 'Subempreiteiros', icon: HardHat,
-        prefetch: () => { void import('@/app/pages/SubempreiteirosPage') } },
+        prefetch: () => { void import('@/features/obras') } },
     ],
   },
   {

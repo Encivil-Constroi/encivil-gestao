@@ -45,8 +45,9 @@ Postgres é a fonte real). Ver `docs/05-seguranca-e-acesso.md`.
 
 ## Módulos
 
-Armazém e stock · Obras (entidade central) · Subempreiteiros (contratos +
-autos de medição) · Ferramentas (empréstimos + termo de responsabilidade) ·
+Armazém e stock · Obras (painel, progresso, equipa, recursos e relatórios diários;
+ver `docs/19-obras.md`) · Subempreiteiros (contratos, ocorrências e autos de medição
+integrados em Obras) · Ferramentas (empréstimos + termo de responsabilidade) ·
 Combustível (abastecimentos por QR, viaturas, bomba Polo 2 automatizada) ·
 Frota (manutenção, checklists, prazos legais e condutor responsável por viatura) ·
 Colaboradores, horários, faltas, picagem de ponto (GPS/geofence), EPIs e
@@ -185,6 +186,7 @@ docs/
   16-jev-gateway.md             ← JEV no desenvolvimento (Claude Code): uso, riscos, medição
   17-armazem.md                 ← Módulo Armazém: entradas/saídas, ferramentas, obras, fotos
   18-frota.md                   ← Módulo Frota: viaturas e máquinas, entregas, manutenção
+  19-obras.md                   ← Módulo Obras: ficha, relatórios, subempreitadas e publicação
   plano-seguranca-desempenho.md ← Plano de correções em curso
   specs/SPEC-*.md               ← Spec funcional por módulo
   adrs/ADR-*.md                 ← Decisões arquiteturais

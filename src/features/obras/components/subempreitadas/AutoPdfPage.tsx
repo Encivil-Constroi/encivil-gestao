@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ChevronLeft, Printer } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '@/app/lib/format';
-import { useAuto } from '@/features/autos/hooks/useAutos';
-import { useSubempreiteiro } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
+import { useAuto } from '../../legacy/useAutos';
+import { useSubempreiteiro } from '../../legacy/useSubempreiteiros';
+import { AutoEvidenciasView } from './AutoEvidenciasView';
 
 const PT = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmt = (d?: Date | null) => d ? PT.format(d) : '—';
@@ -298,6 +299,8 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocPro
           </div>
         </div>
       </div>
+
+      <div className="mt-6 page-break-avoid"><AutoEvidenciasView autoId={auto.id} imprimivel /></div>
 
       {/* ━━━ Área de assinaturas ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="grid grid-cols-2 gap-10 mt-4 page-break-avoid">

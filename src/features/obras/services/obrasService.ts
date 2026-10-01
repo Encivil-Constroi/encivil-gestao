@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Obra, ObraStatus } from '@/app/types'
+import { obrasDb, type EstadoObra, type ObraResumoRow } from '../db'
 
 type GeoPoint = { type: 'Point'; coordinates: [number, number] }  // [lon, lat]
 
@@ -127,4 +128,72 @@ function geofencePayload(input: Pick<NovaObra, 'geofenceTipo' | 'geofenceCentroL
       : null,
     geofence_raio_m: input.geofenceRaioM ?? null,
   }
+}
+
+// ── Módulo Obras completo (migration 20261003000000) ─────────────────────────
+
+export async function listarPainel(): Promise<ObraResumoRow[]> {
+  const { data, error } = await obrasDb.rpc('obras_painel')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function buscarVisao(id: string): Promise<ObraResumoRow> {
+  const { data, error } = await obrasDb.rpc('obra_visao', { p_obra_id: id })
+  if (error) throw error
+  const linha = data?.[0]
+  if (!linha) throw new Error('Obra não encontrada')
+  return linha
+}
+
+export type ObraInput = {
+  id: string | null
+  nome: string
+  cliente: string
+  morada: string
+  localizacao: string
+  latitude: number | null
+  longitude: number | null
+  estado: EstadoObra
+  dataInicio: string
+  dataPrevistaFim: string
+  orcamento: number | null
+  responsavelId: string
+  engenheiroId: string
+  tipoObra: string
+  descricao: string
+  observacoes: string
+}
+
+const ouNulo = (s: string): string | null => (s.trim() === '' ? null : s.trim())
+
+export async function guardarObra(i: ObraInput): Promise<string> {
+  const { data, error } = await obrasDb.rpc('obra_guardar', {
+    p_id: i.id,
+    p_nome: i.nome.trim(),
+    p_cliente: ouNulo(i.cliente),
+    p_morada: ouNulo(i.morada),
+    p_localizacao: ouNulo(i.localizacao),
+    p_latitude: i.latitude,
+    p_longitude: i.longitude,
+    p_estado: i.estado,
+    p_data_inicio: ouNulo(i.dataInicio),
+    p_data_prevista_fim: ouNulo(i.dataPrevistaFim),
+    p_orcamento: i.orcamento,
+    p_responsavel_id: ouNulo(i.responsavelId),
+    p_engenheiro_id: ouNulo(i.engenheiroId),
+    p_tipo_obra: ouNulo(i.tipoObra),
+    p_descricao: ouNulo(i.descricao),
+    p_observacoes: ouNulo(i.observacoes),
+  })
+  if (error) throw error
+  return data as string
+}
+
+export type ColaboradorOpcao = { id: string; nome: string }
+
+export async function listarColaboradoresAtivos(): Promise<ColaboradorOpcao[]> {
+  const { data, error } = await supabase.from('colaboradores').select('id, nome').eq('ativo', true).order('nome')
+  if (error) throw error
+  return data ?? []
 }

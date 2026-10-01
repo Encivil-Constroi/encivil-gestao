@@ -6,17 +6,18 @@ import {
   Banknote, TrendingDown, AlertTriangle, X, TriangleAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { fmtEuro, fmtNumber } from '../lib/format';
+import { fmtEuro, fmtNumber } from '@/app/lib/format';
 import { useRole } from '@/features/auth/useRole';
 import {
   useSubempreiteiro,
   useValidarSubempreiteiro,
   useEliminarSubempreiteiro,
   useArquivarSubempreiteiro,
-} from '@/features/subempreiteiros/hooks/useSubempreiteiros';
-import { useAutos } from '@/features/autos/hooks/useAutos';
-import { useRetencaoTotais, useCriarLiberacao, useEliminarLiberacao } from '@/features/subempreiteiros/hooks/useRetencao';
-import type { LiberacaoRetencao } from '../types';
+} from '../../legacy/useSubempreiteiros';
+import { useAutos } from '../../legacy/useAutos';
+import { useRetencaoTotais, useCriarLiberacao, useEliminarLiberacao } from '../../legacy/useRetencao';
+import type { LiberacaoRetencao } from '@/app/types';
+import { SubFichaCEO } from './SubFichaCEO';
 
 const MOTIVO_LABEL: Record<LiberacaoRetencao['motivo'], string> = {
   conclusao_obra:  'Conclusão de obra',
@@ -77,13 +78,13 @@ export function SubempreiteiroDetailPage() {
 
   const handleDelete = async () => {
     const ok = await eliminar(sub.id);
-    if (ok) { toast.success('Contratação eliminada.'); navigate('/subempreiteiros'); }
+    if (ok) { toast.success('Contratação eliminada.'); navigate('/obras/subempreitadas'); }
     else toast.error('Não foi possível eliminar.');
   };
 
   const handleArchive = async () => {
     const ok = await arquivar(sub.id);
-    if (ok) { toast.success('Contratação arquivada.'); navigate('/subempreiteiros'); }
+    if (ok) { toast.success('Contratação arquivada.'); navigate('/obras/subempreitadas'); }
     else toast.error('Não foi possível arquivar.');
   };
 
@@ -141,6 +142,8 @@ export function SubempreiteiroDetailPage() {
           </span>
         )}
       </div>
+
+      <SubFichaCEO subId={sub.id} obraId={sub.obraId} />
 
       {isValidado && (
         <div className="bg-success/5 border border-success/20 rounded-2xl p-3 flex items-center gap-2.5 text-sm">
@@ -344,7 +347,7 @@ export function SubempreiteiroDetailPage() {
           <h2 className="font-semibold text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4" /> Autos de Medição</h2>
           {isValidado && podeSubempreitadas && (
             <button
-              onClick={() => navigate(`/subempreiteiros/${sub.id}/autos/novo`)}
+              onClick={() => navigate(`/obras/subempreitada/${sub.id}/auto/novo`)}
               className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
             >
               <Plus className="w-4 h-4" /> Novo Auto
@@ -362,7 +365,7 @@ export function SubempreiteiroDetailPage() {
         ) : (
           <div className="divide-y divide-border">
             {autos.map(a => (
-              <Link key={a.id} to={`/autos/${a.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors">
+              <Link key={a.id} to={`/obras/auto/${a.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-sm font-semibold shrink-0">Nº {a.number}</span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> {a.date.toLocaleDateString('pt-PT')}</span>
@@ -471,7 +474,7 @@ export function SubempreiteiroDetailPage() {
           )}
           {podeSubempreitadas && (
             <div className="flex gap-3">
-              <button onClick={() => navigate(`/subempreiteiros/${sub.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
+              <button onClick={() => navigate(`/obras/subempreitada/${sub.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
                 <Pencil className="w-4 h-4" /> Editar
               </button>
               {confirmDelete ? (

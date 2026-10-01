@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router'
 import { createPortal } from 'react-dom'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1934,6 +1935,12 @@ export function ReportsPage() {
           <Fuel className="w-4 h-4" /> Combustível
         </button>
       </div>
+
+      <Link to="/obras/relatorios" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40 transition-colors">
+        <span className="rounded-xl bg-primary/10 p-2 text-primary"><FileText className="w-5 h-5" aria-hidden="true" /></span>
+        <span className="flex-1"><strong className="block text-sm">Relatórios diários das obras</strong><span className="text-xs text-muted-foreground">Consulte presenças, trabalhos, fotografias e ocorrências por dia.</span></span>
+        <span className="text-sm font-medium text-primary">Abrir</span>
+      </Link>
 
       {reportType === 'obras' && (
         <ObrasReportSection loading={obrasLoading} linhas={obrasLinhas} />

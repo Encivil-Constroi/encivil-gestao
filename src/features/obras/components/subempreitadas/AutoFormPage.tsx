@@ -2,10 +2,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ChevronLeft, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { fmtEuro, fmtNumber, UNIDADES_OBRA } from '../lib/format';
-import { useSubempreiteiro } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
-import { useAutos, useAuto, useGuardarAuto } from '@/features/autos/hooks/useAutos';
-import type { LinhaInput } from '@/features/autos/services/autosService';
+import { fmtEuro, fmtNumber, UNIDADES_OBRA } from '@/app/lib/format';
+import { useSubempreiteiro } from '../../legacy/useSubempreiteiros';
+import { useAutos, useAuto, useGuardarAuto } from '../../legacy/useAutos';
+import type { LinhaInput } from '../../legacy/autosService';
+import type { ClimaObra, FotoObra } from '../../db';
+import { CLIMAS } from '../../lib/clima';
+import { FotoCapture } from '../FotoCapture';
+import { validarEvidencias } from './subData';
+import { useEvidenciasAuto, useGuardarEvidencias } from './useSubData';
 
 type ExtraLinha = { id: string; description: string; unit: string; unitPrice: string; quantity: string };
 
@@ -18,6 +23,7 @@ function novaExtra(): ExtraLinha {
 
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
 const smallInput = 'w-full px-2 py-2 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary';
+const hojeLisboa = (): string => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 export function AutoFormPage() {
   const navigate = useNavigate();
@@ -30,13 +36,29 @@ export function AutoFormPage() {
   const { sub, loading: subLoading } = useSubempreiteiro(subId);
   const { autos } = useAutos(subId);
   const { criar, atualizar, loading: saving } = useGuardarAuto();
+  const { evidencias } = useEvidenciasAuto(autoId);
+  const { guardar: guardarEvidencias, loading: savingEvidencias } = useGuardarEvidencias();
 
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(hojeLisboa);
   const [percentagem, setPercentagem] = useState('');
   const [notes, setNotes] = useState('');
   // quantidades por artigo (tipo unitário): artigoId -> quantidade string
   const [qtds, setQtds] = useState<Record<string, string>>({});
   const [extras, setExtras] = useState<ExtraLinha[]>([]);
+  const [fotos, setFotos] = useState<FotoObra[]>([]);
+  const [anotacoes, setAnotacoes] = useState('');
+  const [problemas, setProblemas] = useState('');
+  const [atraso, setAtraso] = useState('0');
+  const [clima, setClima] = useState<ClimaObra | ''>('');
+  const [climaDescricao, setClimaDescricao] = useState('');
+  const [progressoFisico, setProgressoFisico] = useState('');
+
+  useEffect(() => {
+    if (!evidencias) return;
+    setFotos(evidencias.fotos ?? []); setAnotacoes(evidencias.anotacoes ?? ''); setProblemas(evidencias.problemas ?? '');
+    setAtraso(String(evidencias.atraso_dias ?? 0)); setClima(evidencias.clima ?? ''); setClimaDescricao(evidencias.clima_descricao ?? '');
+    setProgressoFisico(evidencias.progresso_fisico_pct == null ? '' : String(evidencias.progresso_fisico_pct));
+  }, [evidencias]);
 
   // Já medido antes (autos validados anteriores), por artigo — ajuda a não medir a mais.
   const jaMedido = useMemo(() => {
@@ -54,7 +76,7 @@ export function AutoFormPage() {
     if (!isEdit || !auto) return;
     if (auto.status === 'validado') {
       toast.error('Este auto está validado e não pode ser editado.');
-      navigate(`/autos/${auto.id}`);
+      navigate(`/obras/auto/${auto.id}`);
       return;
     }
     setDate(auto.date.toISOString().split('T')[0]);
@@ -95,6 +117,9 @@ export function AutoFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const progresso = progressoFisico === '' ? null : Number(progressoFisico);
+    const erroEvidencias = validarEvidencias({ progresso, atraso: Number(atraso) });
+    if (erroEvidencias) { toast.error(erroEvidencias); return; }
     if (!sub) return;
     if (sub.type === 'global' && (!percentagem || parseFloat(percentagem) <= 0)) {
       toast.error('Indique a percentagem executada no período.'); return;
@@ -128,8 +153,10 @@ export function AutoFormPage() {
       : await criar({ subcontractorId: sub.id, ...payload });
 
     if (result) {
+      const ok = await guardarEvidencias(result.id, { fotos, anotacoes: anotacoes.trim() || null, problemas: problemas.trim() || null, atraso_dias: Number(atraso), clima: clima || null, clima_descricao: climaDescricao.trim() || null, progresso_fisico_pct: progresso });
+      if (ok === null) { toast.error('Auto guardado, mas as evidências não foram guardadas.'); navigate(`/obras/auto/${result.id}`); return; }
       toast.success(isEdit ? 'Auto atualizado.' : 'Auto criado como rascunho.');
-      navigate(`/autos/${result.id}`);
+      navigate(`/obras/auto/${result.id}`);
     } else {
       toast.error('Não foi possível guardar o auto.');
     }
@@ -155,6 +182,7 @@ export function AutoFormPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <section className="rounded-2xl border border-border bg-card p-4 space-y-3"><h2 className="font-semibold">Evidências da medição</h2><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Progresso físico (%)<input className={inputCls} type="number" min="0" max="100" step="0.01" value={progressoFisico} onChange={e => setProgressoFisico(e.target.value)} /></label><label className="text-sm">Dias de atraso<input className={inputCls} type="number" min="0" step="1" value={atraso} onChange={e => setAtraso(e.target.value)} /></label><label className="text-sm">Clima<select className={inputCls} value={clima} onChange={e => setClima(e.target.value as ClimaObra | '')}><option value="">Não registado</option>{CLIMAS.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}</select></label><label className="text-sm">Descrição do clima<input className={inputCls} value={climaDescricao} onChange={e => setClimaDescricao(e.target.value)} /></label><label className="text-sm sm:col-span-2">Anotações<textarea className={inputCls} value={anotacoes} onChange={e => setAnotacoes(e.target.value)} /></label><label className="text-sm sm:col-span-2">Problemas<textarea className={inputCls} value={problemas} onChange={e => setProblemas(e.target.value)} /></label></div>{sub && <FotoCapture obraId={sub.obraId} pasta="autos" valor={fotos} onChange={setFotos} />}</section>
         <div className="bg-card rounded-2xl border border-border p-4">
           <label className="block text-sm font-medium mb-2">Data da Medição</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} required />
@@ -256,8 +284,8 @@ export function AutoFormPage() {
         </div>
 
         <div className="sticky bottom-20 md:bottom-0 py-3 bg-background/80 backdrop-blur-sm md:bg-transparent flex gap-3">
-          <button type="submit" disabled={saving} className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
-            {saving ? 'A guardar…' : isEdit ? 'Guardar Alterações' : 'Criar Auto'}
+          <button type="submit" disabled={saving || savingEvidencias} className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            {saving || savingEvidencias ? 'A guardar…' : isEdit ? 'Guardar Alterações' : 'Criar Auto'}
           </button>
           <button type="button" onClick={() => navigate(-1)} disabled={saving} className="px-5 py-4 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all">
             Cancelar

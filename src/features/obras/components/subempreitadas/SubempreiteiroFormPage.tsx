@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ChevronLeft, Plus, Trash2, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import { fmtEuro, UNIDADES_OBRA } from '../lib/format';
+import { fmtEuro, UNIDADES_OBRA } from '@/app/lib/format';
 import { useObras } from '@/features/obras/hooks/useObras';
-import { useSubempreiteiro, useGuardarSubempreiteiro } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
-import type { ContractType } from '../types';
+import { useSubempreiteiro, useGuardarSubempreiteiro } from '../../legacy/useSubempreiteiros';
+import type { ContractType } from '@/app/types';
+import { useFichaSub, useGuardarFichaSub } from './useSubData';
 
 type LinhaArtigo = { id: string; description: string; unit: string; unitPrice: string; plannedQuantity: string };
 
@@ -21,14 +22,17 @@ const inputCls = 'w-full px-4 py-3 bg-input-background border border-input round
 export function SubempreiteiroFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [params] = useSearchParams();
   const isEdit = !!id;
 
   const { obras, loading: obrasLoading } = useObras(true);
   const { sub, loading: subLoading } = useSubempreiteiro(id);
   const { criar, atualizar, loading: saving } = useGuardarSubempreiteiro();
+  const { ficha } = useFichaSub(id);
+  const { guardar: guardarFicha, loading: savingFicha } = useGuardarFichaSub();
 
   const [form, setForm] = useState({
-    obraId: '',
+    obraId: params.get('obra') ?? '',
     name: '',
     contact: '',
     type: 'global' as ContractType,
@@ -37,13 +41,18 @@ export function SubempreiteiroFormPage() {
     conditions: '',
   });
   const [linhas, setLinhas] = useState<LinhaArtigo[]>([novaLinha()]);
+  const [dadosFicha, setDadosFicha] = useState({ nif: '', telefone: '', email: '', especialidade: '', data_inicio: '', data_fim_prevista: '' });
+
+  useEffect(() => {
+    if (ficha) setDadosFicha({ nif: ficha.nif ?? '', telefone: ficha.telefone ?? '', email: ficha.email ?? '', especialidade: ficha.especialidade ?? '', data_inicio: ficha.data_inicio ?? '', data_fim_prevista: ficha.data_fim_prevista ?? '' });
+  }, [ficha]);
 
   // Preenche o formulário ao editar (quando os dados chegam).
   useEffect(() => {
     if (!isEdit || !sub) return;
     if (sub.status === 'validado') {
       toast.error('Esta contratação está validada e não pode ser editada.');
-      navigate(`/subempreiteiros/${sub.id}`);
+      navigate(`/obras/subempreitada/${sub.id}`);
       return;
     }
     setForm({
@@ -87,6 +96,7 @@ export function SubempreiteiroFormPage() {
     e.preventDefault();
     if (!form.obraId) { toast.error('Selecione a obra.'); return; }
     if (!form.name.trim()) { toast.error('Indique o nome do subempreiteiro.'); return; }
+    if (dadosFicha.data_inicio && dadosFicha.data_fim_prevista && dadosFicha.data_fim_prevista < dadosFicha.data_inicio) { toast.error('O fim previsto deve ser posterior ao início.'); return; }
 
     let items;
     if (form.type === 'unitario') {
@@ -113,8 +123,10 @@ export function SubempreiteiroFormPage() {
 
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) {
+      const guardada = await guardarFicha(result.id, { nif: dadosFicha.nif.trim() || null, telefone: dadosFicha.telefone.trim() || null, email: dadosFicha.email.trim() || null, especialidade: dadosFicha.especialidade.trim() || null, data_inicio: dadosFicha.data_inicio || null, data_fim_prevista: dadosFicha.data_fim_prevista || null });
+      if (guardada === null) { toast.error('Contratação guardada, mas não foi possível guardar os dados da ficha.'); navigate(`/obras/subempreitada/${result.id}`); return; }
       toast.success(isEdit ? 'Contratação atualizada.' : 'Contratação criada como rascunho.');
-      navigate(`/subempreiteiros/${result.id}`);
+      navigate(`/obras/subempreitada/${result.id}`);
     } else {
       toast.error('Não foi possível guardar. Tente novamente.');
     }
@@ -137,6 +149,7 @@ export function SubempreiteiroFormPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3"><h2 className="font-semibold">Ficha do subempreiteiro</h2><div className="grid gap-3 sm:grid-cols-2">{([['nif','NIF','text'],['telefone','Telefone','tel'],['email','Email','email'],['especialidade','Especialidade','text'],['data_inicio','Data de início','date'],['data_fim_prevista','Fim previsto','date']] as const).map(([campo,rotulo,tipo]) => <label key={campo} className="text-sm">{rotulo}<input type={tipo} className={inputCls} value={dadosFicha[campo]} onChange={e => setDadosFicha(prev => ({ ...prev, [campo]: e.target.value }))} /></label>)}</div></div>
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <div>
             <label htmlFor="sub-obra" className="block text-sm font-medium mb-2">Obra <span className="text-destructive">*</span></label>
@@ -278,8 +291,8 @@ export function SubempreiteiroFormPage() {
         </div>
 
         <div className="sticky bottom-20 md:bottom-0 py-3 bg-background/80 backdrop-blur-sm md:bg-transparent flex gap-3">
-          <button type="submit" disabled={saving} className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
-            {saving ? 'A guardar…' : isEdit ? 'Guardar Alterações' : 'Criar Contratação'}
+          <button type="submit" disabled={saving || savingFicha} className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            {saving || savingFicha ? 'A guardar…' : isEdit ? 'Guardar Alterações' : 'Criar Contratação'}
           </button>
           <button type="button" onClick={() => navigate(-1)} disabled={saving} className="px-5 py-4 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all">
             Cancelar

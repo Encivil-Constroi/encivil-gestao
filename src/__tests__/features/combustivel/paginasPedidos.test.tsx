@@ -267,7 +267,7 @@ describe('novo pedido', () => {
     await waitFor(() => expect(m.criar).toHaveBeenCalledWith(expect.objectContaining({
       veiculoId: 'v1', tipoFonte: 'POLO2', tipoCombustivel: 'gasoleo', km: 10500, fotoKmPath: 'v1/2026-09-30_p_1.jpg', observacoes: null,
     })))
-    expect(await screen.findByTestId('onde')).toHaveTextContent(/^\/abastecimento\/pedido\//)
+    await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent(/^\/abastecimento\/pedido\//))
   })
 
   it('QR de outra viatura: escolhe essa viatura e o combustível dela', () => {

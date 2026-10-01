@@ -5,12 +5,13 @@ import {
   Banknote, TrendingDown, TriangleAlert, Clock, CreditCard, FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { fmtEuro, fmtNumber } from '../lib/format';
+import { fmtEuro, fmtNumber } from '@/app/lib/format';
 import { useRole } from '@/features/auth/useRole';
+import { AutoEvidenciasView } from './AutoEvidenciasView';
 import {
   useAuto, useValidarAuto, useEliminarAuto,
   useMarcarAutoPago, useMarcarAutoEmAtraso,
-} from '@/features/autos/hooks/useAutos';
+} from '../../legacy/useAutos';
 
 function BadgePagamento({ estado }: { estado: 'por_pagar' | 'pago' | 'em_atraso' }) {
   if (estado === 'pago')
@@ -71,7 +72,7 @@ export function AutoDetailPage() {
     const ok = await eliminar(auto.id);
     if (ok) {
       toast.success('Auto eliminado.');
-      navigate(`/subempreiteiros/${auto.subcontractorId}`);
+      navigate(`/obras/subempreitada/${auto.subcontractorId}`);
     } else {
       toast.error('Não foi possível eliminar.');
     }
@@ -128,7 +129,7 @@ export function AutoDetailPage() {
           {isValidado && <BadgePagamento estado={auto.estadoPagamento} />}
           {isValidado && (
             <button
-              onClick={() => window.open(`/autos/${auto.id}/pdf`, '_blank')}
+              onClick={() => window.open(`/obras/auto/${auto.id}/pdf`, '_blank')}
               className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
               title="Exportar PDF"
             >
@@ -146,6 +147,8 @@ export function AutoDetailPage() {
           </span>
         </div>
       )}
+
+      <AutoEvidenciasView autoId={auto.id} />
 
       {/* Valor do auto — bruto + retenção + líquido */}
       {isValidado && temRetencao ? (
@@ -383,7 +386,7 @@ export function AutoDetailPage() {
           )}
           {podeSubempreitadas && (
             <div className="flex gap-3">
-              <button onClick={() => navigate(`/autos/${auto.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
+              <button onClick={() => navigate(`/obras/auto/${auto.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
                 <Pencil className="w-4 h-4" /> Editar
               </button>
               {confirmDelete ? (
