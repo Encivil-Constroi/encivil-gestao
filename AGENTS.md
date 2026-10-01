@@ -11,6 +11,13 @@ por favor sinalizar a divergência em vez de escolher em silêncio.
 
 ## Antes de Qualquer Alteração
 
+**Superpowers é obrigatório neste projeto, em todas as sessões.** Antes de
+iniciar uma tarefa, ler `.agents/skills/using-superpowers/SKILL.md` e aplicar
+as skills relevantes de `.agents/skills/`. Se não aparecerem no catálogo do
+Codex, ler os ficheiros diretamente. A instalação e a versão estão em
+`docs/superpowers.md`. As instruções explícitas do utilizador e as regras do
+projeto prevalecem sobre as skills.
+
 1. **Ler `CLAUDE.md`** — stack, arquitetura, padrões obrigatórios, regras "nunca fazer".
 2. **Ler `docs/00-source-of-truth.md`** — a verdade principal do produto.
 3. **Ler a SPEC do módulo** que vai alterar, se existir (em `docs/specs/SPEC-*.md`
