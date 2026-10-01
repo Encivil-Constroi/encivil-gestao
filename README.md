@@ -182,6 +182,7 @@ docs/
   13-infraestrutura-e-contas.md ← Contas, segredos, assinaturas — para a Direção
   14-referencia-flutterflow.md  ← O que aproveitar do protótipo FlutterFlow
   15-abastecimento-v2.md        ← Pedido com conta, aprovação do CEO, bomba, relatório
+  16-jev-gateway.md             ← JEV no desenvolvimento (Claude Code): uso, riscos, medição
   plano-seguranca-desempenho.md ← Plano de correções em curso
   specs/SPEC-*.md               ← Spec funcional por módulo
   adrs/ADR-*.md                 ← Decisões arquiteturais
