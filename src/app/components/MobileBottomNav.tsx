@@ -23,9 +23,9 @@ export function MobileBottomNav() {
       { path: '/frota', label: 'Frota', icon: Truck, ativo: (p: string) => p.startsWith('/frota') },
       { path: '/ajuda', label: 'Ajuda', icon: CircleHelp, ativo: (p: string) => p.startsWith('/ajuda') },
     ] : [
-      { path: '/abastecer', label: 'Pedir', icon: Droplets, ativo: (p: string) => p === '/abastecer' || p === '/abastecer/' },
-      // Inclui o ecrã de cada pedido (/abastecer/pedido/:id)
-      { path: '/abastecer/pedidos', label: 'Pedidos', icon: ClipboardList, ativo: (p: string) => p.startsWith('/abastecer/pedido') },
+      { path: '/abastecimento/pedir', label: 'Pedir', icon: Droplets, ativo: (p: string) => p.startsWith('/abastecimento/pedir') },
+      // Inclui o ecrã de cada pedido (/abastecimento/pedido/:id)
+      { path: '/abastecimento', label: 'Pedidos', icon: ClipboardList, ativo: (p: string) => p === '/abastecimento' || p.startsWith('/abastecimento/pedido/') },
       { path: '/ajuda', label: 'Ajuda', icon: CircleHelp, ativo: (p: string) => p.startsWith('/ajuda') },
     ];
     return (

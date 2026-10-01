@@ -27,12 +27,13 @@ src/
     obras/        ← gestão de obras (entidade central — ver ARCHITECTURE.md)
     subempreiteiros/ ← contratos + autos de medição
     ferramentas/  ← ferramentas + empréstimos (com termo de responsabilidade)
-    combustivel/  ← abastecimentos + viaturas + bomba Polo 2 + pendentes QR
+    combustivel/  ← módulo Abastecimento (/abastecimento): pedidos, histórico, análise,
+                     bomba Polo 2, configuração — as viaturas vivem na Frota
     dashboard/    ← overview + alertas stock
     custos/       ← custos agregados por obra
     configuracoes/ ← configurações globais
     notificacoes/ ← sistema de notificações
-    frota/        ← manutenção, checklists, prazos e condutor por viatura (Fase 9)
+    frota/        ← viaturas e máquinas (cadastro, QR) + manutenção, checklists, prazos (Fase 9)
                      + colaboradores, horarios, picagens, epis, faturas,
                      livro-obra, autos, alertas, contabilidade, backup, search
                      (expansão ERP v3 — ver docs/12-plano-v3.md)
@@ -48,7 +49,7 @@ Postgres — a RLS é a segurança real, a UI é conforto):
 - `armazem` — regista em armazém/ferramentas/combustível; sem gestão
 - `medicoes` — regista em subempreitadas (contratos/autos); sem gestão
 - `mecanico` — só a Frota (manutenções, checklists, prazos); o site mostra-lhe só a Frota
-- `motorista` — só pede abastecimentos e vê os seus pedidos (`/abastecer`); aprovar é de
+- `motorista` — só pede abastecimentos e vê os seus pedidos (`/abastecimento`); aprovar é de
   `comb_aprovadores` (o CEO e quem ele designar), não de um papel — ver docs/15-abastecimento-v2.md
 - `leitura` — só consulta, em todos os módulos
 

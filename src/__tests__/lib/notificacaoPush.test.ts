@@ -5,7 +5,7 @@ const combustivel = {
   titulo: 'ENCIVIL · Combustível',
   opcoes: {
     body: 'Há um pedido de abastecimento para ver.', tag: 'abastecimento',
-    data: { url: '/abastecer/pedidos' }, icon: '/pwa-192x192.png', badge: '/pwa-64x64.png',
+    data: { url: '/abastecimento' }, icon: '/pwa-192x192.png', badge: '/pwa-64x64.png',
   },
   contagem: null,
 }

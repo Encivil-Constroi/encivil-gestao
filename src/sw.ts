@@ -74,7 +74,7 @@ self.addEventListener('push', (event: PushEvent) => {
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
-  const url = (event.notification.data as { url?: string } | null)?.url ?? '/abastecer/pedidos'
+  const url = (event.notification.data as { url?: string } | null)?.url ?? '/abastecimento'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       for (const client of clients) {

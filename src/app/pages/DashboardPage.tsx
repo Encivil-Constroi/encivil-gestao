@@ -64,7 +64,10 @@ function SkeletonCard() {
 export function DashboardPage() {
   const { stats, loading } = useDashboard();
   const { resumo, loading: obrasLoading } = useResumoObras();
-  const { podeArmazem, podeCombustivel, podeValidar } = useRole();
+  const { role, podeArmazem, podeValidar } = useRole();
+  // Pedir combustível é para todos os que trabalham; a leitura só consulta
+  const podePedirCombustivel = role != null && role !== 'leitura';
+  const nAtalhos = (podeArmazem ? 2 : 0) + (podePedirCombustivel ? 1 : 0);
 
   const porValidar = (resumo?.contratosPorValidar ?? 0) + (resumo?.autosPorValidar ?? 0);
 
@@ -78,8 +81,8 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {(podeArmazem || podeCombustivel) && (
-        <div className={`grid gap-3 enc-fade-up ${podeArmazem && podeCombustivel ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {nAtalhos > 0 && (
+        <div className={`grid gap-3 enc-fade-up ${nAtalhos === 3 ? 'grid-cols-3' : nAtalhos === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {podeArmazem && (
             <Link
               to="/novo-movimento?tipo=saida"
@@ -98,13 +101,13 @@ export function DashboardPage() {
               <span>Registar Entrada</span>
             </Link>
           )}
-          {podeCombustivel && (
+          {podePedirCombustivel && (
             <Link
-              to="/combustivel/abastecimento"
+              to="/abastecimento/pedir"
               className="flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all font-medium shadow-sm"
             >
               <Fuel className="w-5 h-5" />
-              <span>Abastecimento</span>
+              <span>Pedir combustível</span>
             </Link>
           )}
         </div>

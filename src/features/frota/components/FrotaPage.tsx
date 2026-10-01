@@ -1,10 +1,10 @@
 import { Link } from 'react-router'
-import { Truck, ListChecks, BellRing, RefreshCw, ChevronRight, User, Gauge } from 'lucide-react'
+import { Truck, ListChecks, BellRing, RefreshCw, ChevronRight, User, Gauge, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRole } from '@/features/auth/useRole'
 import { formatarData } from '@/app/lib/prazoFrota'
 import { useResumoFrota, useAvaliarFrota } from '../hooks/useFrota'
-import { BadgeEstado, botaoSecundario, formatarKm } from './ui'
+import { BadgeEstado, botaoPrimario, botaoSecundario, formatarKm } from './ui'
 import type { ResumoViaturaRow } from '../db'
 
 function CartaoViatura({ v }: { v: ResumoViaturaRow }) {
@@ -57,7 +57,7 @@ function CartaoViatura({ v }: { v: ResumoViaturaRow }) {
 
 export function FrotaPage() {
   const { viaturas, loading, error, reload } = useResumoFrota()
-  const { podeFrota, isAdmin } = useRole()
+  const { podeFrota, podeCombustivel, isAdmin } = useRole()
   const { avaliar, loading: aAvaliar } = useAvaliarFrota()
 
   const urgentes = viaturas.reduce((n, v) => n + v.alertas_urgentes, 0)
@@ -73,9 +73,15 @@ export function FrotaPage() {
       <div className="flex items-start gap-3 flex-wrap">
         <div className="flex-1 min-w-0">
           <h1 className="text-xl md:text-2xl font-semibold">Frota</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manutenção, checklists e prazos das viaturas</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Viaturas e máquinas: cadastro, manutenção, checklists e prazos</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {/* Criar viatura segue a RLS de comb_veiculos (admin/gestor/armazém), não a da frota */}
+          {podeCombustivel && (
+            <Link to="/frota/viatura/nova" className={botaoPrimario}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Nova viatura
+            </Link>
+          )}
           {podeFrota && (
             <>
               <button onClick={avaliarAgora} disabled={aAvaliar} className={botaoSecundario}>
@@ -112,9 +118,15 @@ export function FrotaPage() {
       {loading && viaturas.length === 0 ? (
         <div className="space-y-3">{[0, 1, 2].map(i => <div key={i} className="h-28 rounded-2xl bg-muted animate-pulse" />)}</div>
       ) : viaturas.length === 0 && !error ? (
-        <p className="text-sm text-muted-foreground text-center py-10">
-          Sem viaturas ativas. As viaturas criam-se em Combustível → Viaturas.
-        </p>
+        <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-3">
+          <Truck className="w-8 h-8 text-muted-foreground mx-auto" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Ainda não há viaturas nem máquinas ativas.</p>
+          {podeCombustivel && (
+            <Link to="/frota/viatura/nova" className={botaoPrimario}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Criar a primeira viatura
+            </Link>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">{viaturas.map(v => <CartaoViatura key={v.id} v={v} />)}</div>
       )}

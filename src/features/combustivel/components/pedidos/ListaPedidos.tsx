@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Plus, Fuel, ChevronRight, AlertTriangle, Loader2, Settings, BarChart3 } from 'lucide-react'
+import { Fuel, ChevronRight, AlertTriangle, Loader2 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useRole } from '@/features/auth/useRole'
 import type { EstadoPedido, PedidoRow } from '../../db'
 import {
   ROTULO_COMBUSTIVEL, ROTULO_FONTE, formatarDataHora, formatarEuros, formatarNumero, minutosDesde, nivelEspera,
 } from '../../lib/pedido'
 import { usePedidos, usePodeAprovar } from '../../hooks/usePedidos'
 import { AcoesAprovador } from './AcoesAprovador'
-import { AtivarNotificacoes } from './AtivarNotificacoes'
-import { Aviso, BadgeEspera, BadgeEstado, Cabecalho, botaoPrimario, botaoSecundario } from './ui'
+import { Aviso, BadgeEspera, BadgeEstado } from './ui'
 
 type Filtro = 'aguardam' | 'em_curso' | 'concluidos' | 'recusados' | 'todos'
 
@@ -22,39 +20,6 @@ const FILTROS: { valor: Filtro; rotulo: string; estados?: EstadoPedido[] }[] = [
   { valor: 'todos',      rotulo: 'Todos' },
 ]
 
-export function PedidosPage() {
-  const { isMotorista, isAdmin } = useRole()
-  const { podeAprovar } = usePodeAprovar()
-  // Quem aprova vê e controla todos; os outros só os seus (o motorista já é limitado pela RLS)
-  const veTodos = !isMotorista && podeAprovar
-
-  return (
-    <div className="max-w-3xl mx-auto space-y-4 pb-24">
-      <Cabecalho titulo={veTodos ? 'Pedidos de combustível' : 'Os meus pedidos'} voltar={false}
-        subtitulo={veTodos ? 'Controle de todos os pedidos: a aguardar, em curso e o histórico.' : 'Os seus pedidos de abastecimento.'}
-        acoes={<>
-          {veTodos && (
-            <Link to="/combustivel/relatorio" className={botaoSecundario} aria-label="Relatório de combustível">
-              <BarChart3 className="w-4 h-4" aria-hidden="true" /><span className="hidden sm:inline">Relatório</span>
-            </Link>
-          )}
-          {isAdmin && (
-            <Link to="/combustivel/configuracao" className={botaoSecundario} aria-label="Configurar aprovação e preços">
-              <Settings className="w-4 h-4" aria-hidden="true" />
-            </Link>
-          )}
-          <Link to="/abastecer" className={botaoPrimario}><Plus className="w-4 h-4" aria-hidden="true" /> Pedir</Link>
-        </>} />
-
-      {podeAprovar && <AtivarNotificacoes motivo="para receber os pedidos na hora" />}
-
-      {/* key: ao saber que aprova, a lista recomeça com o filtro "A aguardar" */}
-      <ListaPedidos key={String(veTodos)} veTodos={veTodos} />
-    </div>
-  )
-}
-
-// Também usada no separador "Pedidos" da página de Combustível
 export function ListaPedidos({ veTodos }: { veTodos: boolean }) {
   const { user } = useAuth()
   const { podeAprovar } = usePodeAprovar()
@@ -142,7 +107,7 @@ function CartaoPedido({ pedido: p, destacado, mostrarAcoes }: { pedido: PedidoRo
 
   return (
     <div className={`bg-card rounded-2xl border ${borda} overflow-hidden`}>
-      <Link to={`/abastecer/pedido/${p.id}`} className="flex items-start gap-3 p-4 hover:bg-accent/40 transition-colors">
+      <Link to={`/abastecimento/pedido/${p.id}`} className="flex items-start gap-3 p-4 hover:bg-accent/40 transition-colors">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold truncate">{p.veiculo_nome}</p>

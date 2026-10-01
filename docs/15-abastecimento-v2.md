@@ -8,10 +8,10 @@
 
 ## O fluxo
 
-1. **Pedir** (`/abastecer`) — com sessão iniciada. O nome e a viatura vêm
+1. **Pedir** (`/abastecimento/pedir`) — com sessão iniciada. O nome e a viatura vêm
    preenchidos: nome do colaborador ligado à conta (ou do perfil), viatura
    atribuída na Frota, ou a viatura do QR colado no carro (`/pub/combustivel?v=`
-   redireciona para `/abastecer?v=`). O motorista escolhe onde abastece
+   redireciona para `/abastecimento/pedir?v=`). O motorista escolhe onde abastece
    (Polo 2, carrinha, posto de rua) e gasóleo/gasolina, e **fotografa os km na
    hora** (a câmara abre direto; fotos com mais de 10 min são recusadas). A IA
    lê os km e o motorista confirma ou corrige.
@@ -40,8 +40,8 @@
 | Ver pedidos | os seus | todos | todos (sem decidir) | todos |
 | Autorizar / recusar / cancelar | — | ✅ | — | só se não houver designados |
 | Corte de emergência da bomba | — | ✅ | gestor e armazém, como antes | ✅ |
-| Designar aprovadores, preço por litro | — | — | — | ✅ (`/combustivel/configuracao`) |
-| Relatório (`/combustivel/relatorio`) | — | ✅ | ✅ | ✅ |
+| Designar aprovadores, preço por litro | — | — | — | ✅ (`/abastecimento/configuracao`) |
+| Relatório (`/abastecimento/analise`) | — | ✅ | ✅ | ✅ |
 
 O papel **motorista** fica isolado como o mecânico: o site só lhe mostra o
 pedido, os seus pedidos e a ajuda. A segurança real está no banco (RLS e RPCs):
@@ -53,7 +53,7 @@ admin): é isso que faz a viatura atribuída na Frota aparecer sozinha.
 
 ## "Os meus pedidos" e o controlo do CEO
 
-`/abastecer/pedidos`: o aprovador vê todos, com filtros (a aguardar,
+`/abastecimento`: o aprovador vê todos, com filtros (a aguardar,
 autorizados, concluídos, recusados/cancelados). Os que aguardam aparecem do
 mais antigo para o mais recente, com o tempo de espera: até 30 min normal,
 30–60 min atenção, **mais de 1 h crítico** (com aviso no topo). Decide ali
@@ -61,7 +61,7 @@ mesmo, sem abrir o pedido.
 
 ## Relatório — o analista de dados
 
-`/combustivel/relatorio`: período (esta semana, este mês, 30/90 dias, este
+`/abastecimento/analise`: período (esta semana, este mês, 30/90 dias, este
 ano) e viatura, sempre comparado com o período anterior do mesmo tamanho.
 
 - Indicadores: custo, litros, abastecimentos, preço médio, consumo médio
@@ -106,7 +106,7 @@ ano) e viatura, sempre comparado com o período anterior do mesmo tamanho.
    - `admin-utilizadores` (aceita o papel motorista);
    - apagar a `send-push`.
 3. Site: push para `main` (Cloudflare Pages).
-4. Na app, como admin: Combustível → Pedidos → ⚙ → escolher o CEO como
+4. Na app, como admin: Abastecimento → Configuração → escolher o CEO como
    aprovador e pôr o preço por litro do gasóleo/gasolina.
 5. Criar as contas dos motoristas (papel **Motorista**, com nome) e ligá-las
    aos colaboradores.
@@ -132,3 +132,17 @@ ano) e viatura, sempre comparado com o período anterior do mesmo tamanho.
 - A regra "foto na hora" confia na data do ficheiro que o telemóvel entrega —
   trava a galeria, não trava uma manipulação deliberada; a foto fica guardada
   e visível para quem aprova.
+
+## Organização em módulos (2026-10-01)
+
+- **Abastecimento** (`/abastecimento`, um só item no menu): Pedidos · Histórico ·
+  Análise · Bomba Polo 2 · Configuração, conforme o papel. "Pedir combustível" no
+  topo. O motorista vê só "Pedir combustível" e "Os meus pedidos".
+- O registo manual sai do dia a dia: só o admin lança ou corrige registos
+  (Histórico → "Lançar registo manual" / clicar num registo sem pedido).
+- **Viaturas e máquinas** passaram para a **Frota**: "Nova viatura", e na ficha
+  de cada viatura "Editar", "QR" (imprimir para colar no carro) e "Consumo"
+  (abre a Análise filtrada por essa viatura).
+- Endereços antigos continuam a funcionar e redirecionam (`/combustivel…`,
+  `/abastecer…`, `/pub/combustivel?v=`), incluindo as notificações já enviadas.
+- Plano: `docs/plans/2026-10-01-modulos-abastecimento-frota.md`.

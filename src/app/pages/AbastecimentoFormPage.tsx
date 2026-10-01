@@ -82,14 +82,14 @@ export function AbastecimentoFormPage() {
       notes: form.notes || undefined,
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
-    if (result) { toast.success(isEdit ? 'Abastecimento atualizado.' : 'Abastecimento registado.'); navigate('/combustivel'); }
+    if (result) { toast.success(isEdit ? 'Abastecimento atualizado.' : 'Abastecimento registado.'); navigate('/abastecimento/historico'); }
     else toast.error('Não foi possível guardar o abastecimento.');
   };
 
   const handleDelete = async () => {
     if (!id) return;
     const ok = await eliminar(id);
-    if (ok) { toast.success('Abastecimento eliminado.'); navigate('/combustivel'); }
+    if (ok) { toast.success('Abastecimento eliminado.'); navigate('/abastecimento/historico'); }
     else toast.error('Não foi possível eliminar.');
   };
 
@@ -100,8 +100,8 @@ export function AbastecimentoFormPage() {
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"><ChevronLeft className="w-5 h-5" aria-hidden="true" /></button>
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar Abastecimento' : 'Novo Abastecimento'}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Registo de combustível</p>
+          <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Corrigir registo manual' : 'Lançar registo manual'}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Registo manual de abastecimento (administrador). O dia a dia faz-se pelos pedidos.</p>
         </div>
       </div>
 

@@ -25,7 +25,6 @@ import {
   Receipt,
   Droplets,
   ClipboardList,
-  BarChart3,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
 import { usePodeAprovar, useContagemAguardam } from '@/features/combustivel/hooks/useAprovacao';
@@ -46,6 +45,8 @@ type MenuItem = {
   mecanico?: boolean;
   // Visível para o motorista, que só vê o abastecimento (e a Ajuda)
   motorista?: boolean;
+  // Só o motorista vê (os outros entram pelo item do módulo)
+  soMotorista?: boolean;
   // Mostra quantos pedidos de combustível esperam decisão (só a quem aprova)
   contaPedidos?: boolean;
 };
@@ -71,11 +72,11 @@ const menuSections: MenuSection[] = [
         prefetch: () => { void import('@/app/pages/HistoryPage') } },
       { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench,
         prefetch: () => { void import('@/app/pages/ToolsPage') } },
-      { path: '/combustivel',    label: 'Combustível',    icon: Fuel,
-        prefetch: () => { void import('@/app/pages/CombustivelPage') } },
-      { path: '/abastecer',      label: 'Pedir combustível', icon: Droplets, motorista: true,
+      { path: '/abastecimento',  label: 'Abastecimento',  icon: Fuel, contaPedidos: true,
         prefetch: () => { void import('@/features/combustivel/pedidos') } },
-      { path: '/abastecer/pedidos', label: 'Pedidos combustível', icon: ClipboardList, motorista: true, contaPedidos: true,
+      { path: '/abastecimento/pedir', label: 'Pedir combustível', icon: Droplets, motorista: true, soMotorista: true,
+        prefetch: () => { void import('@/features/combustivel/pedidos') } },
+      { path: '/abastecimento', label: 'Os meus pedidos', icon: ClipboardList, motorista: true, soMotorista: true,
         prefetch: () => { void import('@/features/combustivel/pedidos') } },
       { path: '/frota',          label: 'Frota',          icon: Truck, mecanico: true,
         prefetch: () => { void import('@/features/frota') } },
@@ -112,8 +113,6 @@ const menuSections: MenuSection[] = [
     items: [
       { path: '/relatorios',               label: 'Relatórios',   icon: FileBarChart,
         prefetch: () => { void import('@/app/pages/ReportsPage') } },
-      { path: '/combustivel/relatorio', label: 'Relatório combustível', icon: BarChart3, gestorOnly: true,
-        prefetch: () => { void import('@/features/combustivel/pedidos') } },
       { path: '/faturas',                 label: 'Faturas',       icon: Receipt,   gestorOnly: true,
         prefetch: () => { void import('@/features/faturas') }, hidden: true },
       { path: '/exportacao-contabilidade', label: 'Contabilidade', icon: BookOpen, gestorOnly: true,
@@ -154,12 +153,18 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         if (item.hidden)                              return false;
         if (isMecanico)                               return !!item.mecanico;
         if (isMotorista)                              return !!item.motorista;
+        if (item.soMotorista)                         return false;
         if (item.adminOnly  && !isAdmin)              return false;
         if (item.gestorOnly && !isAdmin && !isGestor) return false;
         return true;
       }),
     }))
     .filter(section => section.items.length > 0);
+
+  // Item ativo = o de caminho mais longo que corresponde (os módulos têm sub-páginas)
+  const ativo = visibleSections.flatMap(s => s.items)
+    .filter(i => location.pathname === i.path || (i.path !== '/' && location.pathname.startsWith(`${i.path}/`)))
+    .sort((a, b) => b.path.length - a.path.length)[0];
 
   const sidebarContent = (
     <aside className="w-64 bg-sidebar text-sidebar-foreground h-full flex flex-col border-r border-sidebar-border">
@@ -200,9 +205,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             <ul className="space-y-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path;
+                const isActive = item === ativo;
                 return (
-                  <li key={item.path}>
+                  <li key={`${item.path}-${item.label}`}>
                     <Link
                       to={item.path}
                       onClick={onMobileClose}

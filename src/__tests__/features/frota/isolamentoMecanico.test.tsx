@@ -32,7 +32,7 @@ function abrir(caminho: string) {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<p>DASHBOARD</p>} />
           <Route path="produtos" element={<p>PRODUTOS</p>} />
-          <Route path="combustivel" element={<p>COMBUSTIVEL</p>} />
+          <Route path="abastecimento" element={<p>COMBUSTIVEL</p>} />
           <Route path="frota" element={<p>FROTA</p>} />
           <Route path="frota/viatura/:id" element={<p>FICHA</p>} />
           <Route path="ajuda" element={<p>AJUDA</p>} />
@@ -45,7 +45,7 @@ function abrir(caminho: string) {
 afterEach(cleanup)
 
 describe('isolamento do mecânico', () => {
-  it.each(['/', '/produtos', '/combustivel'])('mecânico em %s vai para a Frota', async caminho => {
+  it.each(['/', '/produtos', '/abastecimento'])('mecânico em %s vai para a Frota', async caminho => {
     papel.atual = 'mecanico'
     abrir(caminho)
     expect(await screen.findByText('FROTA')).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe('isolamento do mecânico', () => {
     expect(await screen.findByText(texto)).toBeInTheDocument()
   })
 
-  it.each([['admin', '/produtos', 'PRODUTOS'], ['gestor', '/', 'DASHBOARD'], ['armazem', '/combustivel', 'COMBUSTIVEL']])(
+  it.each([['admin', '/produtos', 'PRODUTOS'], ['gestor', '/', 'DASHBOARD'], ['armazem', '/abastecimento', 'COMBUSTIVEL']])(
     '%s continua a navegar como antes (%s)', async (p, caminho, texto) => {
       papel.atual = p
       abrir(caminho)

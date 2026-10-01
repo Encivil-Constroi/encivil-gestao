@@ -23,7 +23,12 @@ const m = vi.hoisted(() => ({
 
 vi.mock('@/features/auth/AuthContext', () => ({ useAuth: () => ({ user: { id: m.uid } }) }))
 vi.mock('@/features/auth/useRole', () => ({
-  useRole: () => ({ role: m.papel, isMotorista: m.papel === 'motorista', isAdmin: m.papel === 'admin', isGestor: m.papel === 'gestor' }),
+  useRole: () => ({ role: m.papel, isMotorista: m.papel === 'motorista', isAdmin: m.papel === 'admin', isGestor: m.papel === 'gestor',
+    podeCombustivel: ['admin', 'gestor', 'armazem'].includes(m.papel) }),
+}))
+vi.mock('@/features/combustivel/hooks/useAprovacao', () => ({
+  usePodeAprovar: () => ({ podeAprovar: m.podeAprovar, loading: false }),
+  useContagemAguardam: () => 0,
 }))
 vi.mock('@/features/combustivel/hooks/usePedidos', () => ({
   usePedido: () => ({ pedido: m.pedido, loading: false, error: m.pedido ? null : 'Pedido não encontrado' }),
@@ -55,9 +60,10 @@ vi.mock('@/features/combustivel/services/fotosService', () => ({
 vi.mock('@/app/lib/push', () => ({ estadoPush: () => 'ativo', pedirNotificacoes: vi.fn() }))
 
 import { PedidoPage } from '@/features/combustivel/components/pedidos/PedidoPage'
-import { PedidosPage } from '@/features/combustivel/components/pedidos/PedidosPage'
+import { AbastecimentoLayout } from '@/features/combustivel/components/modulo/AbastecimentoLayout'
+import { SeparadorPedidos } from '@/features/combustivel/components/modulo/separadores'
 import { NovoPedidoPage } from '@/features/combustivel/components/pedidos/NovoPedidoPage'
-import { QrCombustivel } from '@/app/pages/pub/QrCombustivel'
+import { Redirecionar } from '@/app/components/Redirecionar'
 
 function pedido(o: Partial<PedidoRow> = {}): PedidoRow {
   return {
@@ -80,10 +86,14 @@ function abrir(caminho: string) {
     <MemoryRouter initialEntries={[caminho]}>
       <Onde />
       <Routes>
-        <Route path="/abastecer" element={<NovoPedidoPage />} />
-        <Route path="/abastecer/pedidos" element={<PedidosPage />} />
-        <Route path="/abastecer/pedido/:id" element={<PedidoPage />} />
-        <Route path="/pub/combustivel" element={<QrCombustivel />} />
+        <Route path="/abastecimento/pedir" element={<NovoPedidoPage />} />
+        <Route path="/abastecimento/pedido/:id" element={<PedidoPage />} />
+        <Route path="/abastecimento" element={<AbastecimentoLayout />}>
+          <Route index element={<SeparadorPedidos />} />
+        </Route>
+        <Route path="/abastecer" element={<Redirecionar para="/abastecimento/pedir" />} />
+        <Route path="/abastecer/pedido/:id" element={<Redirecionar para="/abastecimento/pedido/:id" />} />
+        <Route path="/pub/combustivel" element={<Redirecionar para="/abastecimento/pedir" />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -102,7 +112,7 @@ afterEach(cleanup)
 
 describe('ecrã do pedido — motorista', () => {
   it('à espera: mostra há quanto tempo e deixa cancelar', async () => {
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('À espera de aprovação')).toBeInTheDocument()
     expect(screen.getByText(/há 5 min/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Cancelar pedido/ }))
@@ -113,21 +123,21 @@ describe('ecrã do pedido — motorista', () => {
 
   it('recusado: mostra o motivo', () => {
     m.pedido = pedido({ estado: 'REJEITADO', motivo_recusa: 'Já abasteceu hoje' })
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('Pedido recusado')).toBeInTheDocument()
     expect(screen.getByText('Já abasteceu hoje')).toBeInTheDocument()
   })
 
   it('autorizado na Polo 2: primeiro a foto do contador', () => {
     m.pedido = pedido({ estado: 'AUTORIZADO' })
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('1. Foto do contador da bomba')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /LIGAR BOMBA/ })).not.toBeInTheDocument()
   })
 
   it('com a leitura inicial: o botão LIGAR BOMBA chama o servidor', async () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 1000 })
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     fireEvent.click(screen.getByRole('button', { name: /LIGAR BOMBA/ }))
     await waitFor(() => expect(m.ligar).toHaveBeenCalledWith('p1'))
   })
@@ -135,7 +145,7 @@ describe('ecrã do pedido — motorista', () => {
   it('bomba bloqueada: botão desativado com o motivo', () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 1000 })
     m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: 'Depósito em manutenção' }
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('Depósito em manutenção')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /LIGAR BOMBA/ })).toBeDisabled()
   })
@@ -144,7 +154,7 @@ describe('ecrã do pedido — motorista', () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 1000, bomba_ligada_em: new Date().toISOString(),
       pump_auth_expires_at: new Date(Date.now() + 60_000).toISOString() })
     m.estadoBomba = { sessaoAtiva: false, bombaOcupada: true, bloqueioMotivo: null }
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('A ligar a bomba…')).toBeInTheDocument()
     expect(screen.getByText(/Liga assim que ficar livre/)).toBeInTheDocument()
   })
@@ -152,14 +162,14 @@ describe('ecrã do pedido — motorista', () => {
   it('a abastecer: contagem e botão Terminei', () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 1000, pump_activated_at: new Date().toISOString() })
     m.estadoBomba = { sessaoAtiva: true, bombaOcupada: false, bloqueioMotivo: null }
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByRole('button', { name: /Terminei/ })).toBeInTheDocument()
   })
 
   it('bomba parada: foto final, litros pela diferença com custo estimado, concluir', async () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 700_000).toISOString() })
     m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null }
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('4. Foto do contador no fim')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('4. Foto do contador no fim'), {
       target: { files: [new File(['x'], 'f.jpg', { type: 'image/jpeg', lastModified: Date.now() })] },
@@ -172,14 +182,14 @@ describe('ecrã do pedido — motorista', () => {
 
   it('concluído: litros e custo', () => {
     m.pedido = pedido({ estado: 'CONCLUIDO', litros: 45.2, custo_total: 67.8 })
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('Abastecimento registado')).toBeInTheDocument()
     expect(screen.getAllByText('45,2 L').length).toBeGreaterThan(0)
   })
 
   it('km suspeitos aparecem no detalhe', () => {
     m.pedido = pedido({ km_suspeito: true, km_anterior: 12000 })
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.getByText(/Km fora do normal/)).toHaveTextContent('12')
   })
 })
@@ -188,14 +198,14 @@ describe('ecrã do pedido — quem aprova', () => {
   beforeEach(() => { m.uid = 'ceo'; m.papel = 'admin'; m.podeAprovar = true })
 
   it('não executa o pedido de outro; autoriza', async () => {
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.queryByText('À espera de aprovação')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Autorizar/ }))
     await waitFor(() => expect(m.autorizar).toHaveBeenCalledWith('p1'))
   })
 
   it('recusa com um motivo rápido', async () => {
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     fireEvent.click(screen.getByRole('button', { name: /Recusar/ }))
     const dialogo = screen.getByRole('dialog')
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Km incorretos' }))
@@ -205,7 +215,7 @@ describe('ecrã do pedido — quem aprova', () => {
 
   it('sem permissão de aprovar (gestor): só vê, sem botões', () => {
     m.podeAprovar = false; m.papel = 'gestor'
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     expect(screen.queryByRole('button', { name: /Autorizar/ })).not.toBeInTheDocument()
     expect(screen.getByText('Zé Gaitas')).toBeInTheDocument()
   })
@@ -214,7 +224,7 @@ describe('ecrã do pedido — quem aprova', () => {
 describe('lista de pedidos', () => {
   it('motorista: "Os meus pedidos", só os seus, sem filtros', () => {
     m.pedidos = [pedido()]
-    abrir('/abastecer/pedidos')
+    abrir('/abastecimento')
     expect(screen.getByRole('heading', { name: 'Os meus pedidos' })).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     expect(m.filtros.at(-1)).toMatchObject({ solicitanteId: 'motorista-1' })
@@ -227,8 +237,9 @@ describe('lista de pedidos', () => {
       pedido({ id: 'b', solicitante_id: 'outro', funcionario_nome: 'Rui' }),
       pedido({ id: 'a', criado_em: new Date(Date.now() - 90 * 60_000).toISOString() }),
     ]
-    abrir('/abastecer/pedidos')
-    expect(screen.getByRole('heading', { name: 'Pedidos de combustível' })).toBeInTheDocument()
+    abrir('/abastecimento')
+    expect(screen.getByRole('heading', { name: 'Abastecimento' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Pedidos/ })).toHaveAttribute('aria-current', 'page')
     expect(m.filtros.at(-1)).toMatchObject({ estados: ['AGUARDA_AUTORIZACAO', 'AGUARDA_APROVACAO'], solicitanteId: undefined })
     expect(screen.getByText(/1 motorista espera há mais de 1 hora/)).toBeInTheDocument()
     expect(screen.getByText(/à espera há 1 h 30 min/)).toBeInTheDocument()
@@ -245,7 +256,7 @@ describe('lista de pedidos', () => {
 
 describe('novo pedido', () => {
   it('preenche o nome e a viatura atribuída; envia com a foto dos km', async () => {
-    abrir('/abastecer')
+    abrir('/abastecimento/pedir')
     expect(screen.getByText('Zé Gaitas')).toBeInTheDocument()
     expect(screen.getByLabelText('Viatura')).toHaveValue('v1')
     expect(screen.getByRole('radio', { name: 'Gasóleo' })).toHaveAttribute('aria-checked', 'true')
@@ -256,30 +267,30 @@ describe('novo pedido', () => {
     await waitFor(() => expect(m.criar).toHaveBeenCalledWith(expect.objectContaining({
       veiculoId: 'v1', tipoFonte: 'POLO2', tipoCombustivel: 'gasoleo', km: 10500, fotoKmPath: 'v1/2026-09-30_p_1.jpg', observacoes: null,
     })))
-    expect(await screen.findByTestId('onde')).toHaveTextContent(/^\/abastecer\/pedido\//)
+    expect(await screen.findByTestId('onde')).toHaveTextContent(/^\/abastecimento\/pedido\//)
   })
 
   it('QR de outra viatura: escolhe essa viatura e o combustível dela', () => {
-    abrir('/abastecer?v=22222222-2222-2222-2222-222222222222')
+    abrir('/abastecimento/pedir?v=22222222-2222-2222-2222-222222222222')
     expect(screen.getByLabelText('Viatura')).toHaveValue('22222222-2222-2222-2222-222222222222')
     expect(screen.getByRole('radio', { name: 'Gasolina' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('já tem um pedido em curso: vai direto para ele', () => {
     m.contexto = { ...m.contexto!, pedido_aberto_id: 'p1' }
-    abrir('/abastecer')
-    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedir')
+    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecimento/pedido/p1')
   })
 
   it('conta sem nome: aviso e sem foto', () => {
     m.contexto = { ...m.contexto!, nome: null }
-    abrir('/abastecer')
+    abrir('/abastecimento/pedir')
     expect(screen.getByText(/A sua conta não tem nome/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Foto dos km')).not.toBeInTheDocument()
   })
 
   it('km fora do normal: avisa antes de enviar', async () => {
-    abrir('/abastecer')
+    abrir('/abastecimento/pedir')
     fireEvent.change(screen.getByLabelText('Foto dos km'), {
       target: { files: [new File(['x'], 'km.jpg', { type: 'image/jpeg', lastModified: Date.now() })] },
     })
@@ -288,9 +299,20 @@ describe('novo pedido', () => {
   })
 })
 
-describe('QR antigo da viatura', () => {
-  it('/pub/combustivel?v=… segue para /abastecer?v=…', () => {
+describe('endereços antigos (Redirecionar)', () => {
+  it('QR antigo /pub/combustivel?v=… segue para /abastecimento/pedir?v=…', () => {
     abrir('/pub/combustivel?v=22222222-2222-2222-2222-222222222222')
-    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecer?v=22222222-2222-2222-2222-222222222222')
+    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecimento/pedir?v=22222222-2222-2222-2222-222222222222')
+  })
+
+  it('/abastecer?v=… mantém a query', () => {
+    abrir('/abastecer?v=v1')
+    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecimento/pedir?v=v1')
+  })
+
+  it('notificação antiga /abastecer/pedido/:id?… mantém o :id e a query', () => {
+    abrir('/abastecer/pedido/p1?origem=push')
+    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecimento/pedido/p1?origem=push')
+    expect(screen.getByText('À espera de aprovação')).toBeInTheDocument()
   })
 })

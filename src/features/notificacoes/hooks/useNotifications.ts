@@ -117,7 +117,7 @@ export function useNotifications() {
         title: `${pendCount} pedido${pendCount !== 1 ? 's' : ''} de abastecimento à espera`,
         subtitle: 'Autorização do responsável',
         severity: 'info',
-        link: '/abastecer/pedidos',
+        link: '/abastecimento',
       })
     }
 

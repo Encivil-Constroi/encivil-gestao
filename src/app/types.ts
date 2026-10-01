@@ -227,6 +227,8 @@ export interface FuelEntry {
   pricePerLiter: number;
   /** Foto do medidor/talão enviada pelo motorista (URL público). */
   photoUrl?: string;
+  /** Pedido que gerou este registo (ausente nos registos manuais). */
+  pedidoId?: string;
 }
 
 /* ─── Colaboradores (Fase 0) ────────────────────────────────────── */

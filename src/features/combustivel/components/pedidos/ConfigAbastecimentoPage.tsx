@@ -11,10 +11,12 @@ const PAPEL: Record<string, string> = {
 }
 
 // Só o admin chega aqui (RoleGuard na rota; as RPCs verificam de novo no servidor)
-export function ConfigAbastecimentoPage() {
+export function ConfigAbastecimentoPage({ embutido = false }: { embutido?: boolean } = {}) {
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-24">
-      <Cabecalho titulo="Abastecimento — configuração" subtitulo="Quem autoriza os pedidos e o preço por litro do combustível da empresa" />
+    <div className={embutido ? 'space-y-4' : 'max-w-2xl mx-auto space-y-4 pb-24'}>
+      {!embutido && (
+        <Cabecalho titulo="Abastecimento — configuração" subtitulo="Quem autoriza os pedidos e o preço por litro do combustível da empresa" />
+      )}
       <Aprovadores />
       <Precos />
     </div>

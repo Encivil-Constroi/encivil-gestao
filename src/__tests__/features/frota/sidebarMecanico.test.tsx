@@ -34,7 +34,7 @@ describe('menu lateral', () => {
 
   it('admin vê a Frota e tudo o que já via', () => {
     const o = opcoes('admin')
-    for (const x of ['Dashboard', 'Produtos', 'Combustível', 'Frota', 'Alertas', 'Obras', 'Utilizadores', 'Configurações']) {
+    for (const x of ['Dashboard', 'Produtos', 'Abastecimento', 'Frota', 'Alertas', 'Obras', 'Utilizadores', 'Configurações']) {
       expect(o).toContain(x)
     }
   })

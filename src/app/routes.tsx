@@ -94,7 +94,7 @@ import { MainLayout }   from './layouts/MainLayout';
 import { AuthGuard }    from '@/features/auth/AuthGuard';
 import { RoleGuard }    from '@/features/auth/RoleGuard';
 import { LoginPage }    from './pages/LoginPage';
-import { QrCombustivel } from './pages/pub/QrCombustivel';
+import { Redirecionar } from './components/Redirecionar';
 const ImprimirQrPage          = lazy(() => import('./pages/pub/ImprimirQrPage').then(m => ({ default: m.ImprimirQrPage })));
 
 // ── Imports lazy (carregados só quando a rota é visitada) ────────────────────
@@ -118,7 +118,6 @@ const SubempreiteiroDetailPage = lazy(() => import('./pages/SubempreiteiroDetail
 const AutoFormPage     = lazy(() => import('./pages/AutoFormPage').then(m => ({ default: m.AutoFormPage })));
 const AutoDetailPage   = lazy(() => import('./pages/AutoDetailPage').then(m => ({ default: m.AutoDetailPage })));
 
-const CombustivelPage          = lazy(() => import('./pages/CombustivelPage').then(m => ({ default: m.CombustivelPage })));
 const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPage').then(m => ({ default: m.AbastecimentoFormPage })));
 const VeiculoFormPage          = lazy(() => import('./pages/VeiculoFormPage').then(m => ({ default: m.VeiculoFormPage })));
 
@@ -159,7 +158,10 @@ const ChecklistPage         = lazy(() => import('@/features/frota').then(m => ({
 const CatalogoFrotaPage     = lazy(() => import('@/features/frota').then(m => ({ default: m.CatalogoPage })));
 const DestinatariosFrotaPage = lazy(() => import('@/features/frota').then(m => ({ default: m.DestinatariosPage })));
 const NovoPedidoPage          = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.NovoPedidoPage })));
-const PedidosPage             = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.PedidosPage })));
+const AbastecimentoLayout     = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.AbastecimentoLayout })));
+const SeparadorPedidos        = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.SeparadorPedidos })));
+const SeparadorBomba          = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.SeparadorBomba })));
+const HistoricoAbastecimentos = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.HistoricoAbastecimentos })));
 const PedidoPage              = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.PedidoPage })));
 const ConfigAbastecimentoPage = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.ConfigAbastecimentoPage })));
 const RelatorioCombustivelPage = lazy(() => import('@/features/combustivel/pedidos').then(m => ({ default: m.RelatorioCombustivelPage })));
@@ -176,7 +178,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/pub/combustivel',
-    element: <QrCombustivel />,
+    element: <Redirecionar para="/abastecimento/pedir" />,
     errorElement: <RouteErrorPage />,
   },
   {
@@ -242,16 +244,36 @@ export const router = createBrowserRouter([
           { path: 'subempreiteiros/:subId/autos/novo', element: <L><RoleGuard require="gestor"><AutoFormPage /></RoleGuard></L> },
           { path: 'autos/:autoId',            element: <L><AutoDetailPage /></L> },
           { path: 'autos/:autoId/editar',     element: <L><RoleGuard require="gestor"><AutoFormPage /></RoleGuard></L> },
-          { path: 'combustivel',                       element: <L><CombustivelPage /></L> },
-          { path: 'combustivel/abastecimento',         element: <L><AbastecimentoFormPage /></L> },
-          { path: 'combustivel/abastecimento/:id/editar', element: <L><AbastecimentoFormPage /></L> },
-          { path: 'combustivel/veiculo',               element: <L><VeiculoFormPage /></L> },
-          { path: 'combustivel/relatorio',             element: <L><RelatorioCombustivelPage /></L> },
-          { path: 'combustivel/configuracao',          element: <L><RoleGuard require="admin"><ConfigAbastecimentoPage /></RoleGuard></L> },
-          { path: 'abastecer',                         element: <L><NovoPedidoPage /></L> },
-          { path: 'abastecer/pedidos',                 element: <L><PedidosPage /></L> },
-          { path: 'abastecer/pedido/:id',              element: <L><PedidoPage /></L> },
-          { path: 'combustivel/veiculo/:id/editar',    element: <L><VeiculoFormPage /></L> },
+          // ── Abastecimento ──
+          {
+            path: 'abastecimento',
+            element: <L><AbastecimentoLayout /></L>,
+            children: [
+              { index: true,           element: <L><SeparadorPedidos /></L> },
+              { path: 'historico',     element: <L><HistoricoAbastecimentos /></L> },
+              { path: 'analise',       element: <L><RelatorioCombustivelPage embutido /></L> },
+              { path: 'bomba',         element: <L><SeparadorBomba /></L> },
+              { path: 'configuracao',  element: <L><RoleGuard require="admin"><ConfigAbastecimentoPage embutido /></RoleGuard></L> },
+            ],
+          },
+          { path: 'abastecimento/pedir',               element: <L><NovoPedidoPage /></L> },
+          { path: 'abastecimento/pedido/:id',          element: <L><PedidoPage /></L> },
+          { path: 'abastecimento/registo/novo',        element: <L><RoleGuard require="admin"><AbastecimentoFormPage /></RoleGuard></L> },
+          { path: 'abastecimento/registo/:id',         element: <L><RoleGuard require="admin"><AbastecimentoFormPage /></RoleGuard></L> },
+          // Endereços antigos (favoritos, QR, notificações enviadas)
+          { path: 'abastecer',                         element: <Redirecionar para="/abastecimento/pedir" /> },
+          { path: 'abastecer/pedidos',                 element: <Redirecionar para="/abastecimento" /> },
+          { path: 'abastecer/pedido/:id',              element: <Redirecionar para="/abastecimento/pedido/:id" /> },
+          { path: 'combustivel',                       element: <Redirecionar para="/abastecimento" /> },
+          { path: 'combustivel/relatorio',             element: <Redirecionar para="/abastecimento/analise" /> },
+          { path: 'combustivel/configuracao',          element: <Redirecionar para="/abastecimento/configuracao" /> },
+          { path: 'combustivel/abastecimento/*',       element: <Redirecionar para="/abastecimento/historico" /> },
+          { path: 'combustivel/abastecimento',         element: <Redirecionar para="/abastecimento/historico" /> },
+          { path: 'combustivel/veiculo',               element: <Redirecionar para="/frota/viatura/nova" /> },
+          { path: 'combustivel/veiculo/:id/editar',    element: <Redirecionar para="/frota/viatura/:id/editar" /> },
+          // ── Frota ──
+          { path: 'frota/viatura/nova',                element: <L><VeiculoFormPage /></L> },
+          { path: 'frota/viatura/:id/editar',          element: <L><VeiculoFormPage /></L> },
           { path: 'frota',                             element: <L><FrotaPage /></L> },
           { path: 'frota/catalogo',                    element: <L><CatalogoFrotaPage /></L> },
           { path: 'frota/notificacoes',                element: <L><RoleGuard require="admin"><DestinatariosFrotaPage /></RoleGuard></L> },

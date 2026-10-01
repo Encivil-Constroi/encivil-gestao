@@ -20,7 +20,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function NovoPedidoPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // QR colado na viatura (/pub/combustivel?v=… → /abastecer?v=…)
+  // QR colado na viatura (/pub/combustivel?v=… → /abastecimento/pedir?v=…)
   const viaturaQr = params.get('v') && UUID.test(params.get('v')!) ? params.get('v')! : null
 
   const { contexto, loading, error } = useContextoAbastecimento()
@@ -44,7 +44,7 @@ export function NovoPedidoPage() {
   const { estado: bomba } = useEstadoBomba(fonte === 'POLO2')
   const bombaBloqueada = fonte === 'POLO2' ? bomba?.bloqueioMotivo ?? null : null
 
-  if (contexto?.pedido_aberto_id) return <Navigate to={`/abastecer/pedido/${contexto.pedido_aberto_id}`} replace />
+  if (contexto?.pedido_aberto_id) return <Navigate to={`/abastecimento/pedido/${contexto.pedido_aberto_id}`} replace />
 
   const enviar = async (l: LeituraConfirmada) => {
     if (!veiculoId || !tipoCombustivel) return
@@ -52,7 +52,7 @@ export function NovoPedidoPage() {
       id: pedidoId, veiculoId, tipoFonte: fonte, tipoCombustivel,
       km: Math.round(l.valor), fotoKmPath: l.fotoPath, observacoes: obs.trim() || null,
     })
-    if (id) navigate(`/abastecer/pedido/${id}`, { replace: true })
+    if (id) navigate(`/abastecimento/pedido/${id}`, { replace: true })
   }
 
   return (

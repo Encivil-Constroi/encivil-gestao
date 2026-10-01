@@ -17,6 +17,7 @@ type AbastecimentoRow = {
   foto_url: string | null
   // Abastecimento v2 (20260930010000): caminho no bucket; ainda não está nos tipos gerados
   foto_path?: string | null
+  pedido_id?: string | null
   created_at: string
   comb_veiculos: { nome: string; codigo: string; unidade_contador: CounterUnit } | null
   obras: { nome: string } | null
@@ -43,6 +44,7 @@ function toFuelEntry(row: AbastecimentoRow): FuelEntry {
     createdAt: new Date(row.created_at),
     pricePerLiter: liters > 0 ? totalCost / liters : 0,
     photoUrl: row.foto_url ?? (row.foto_path ? urlFotoCombustivel(row.foto_path) : undefined),
+    pedidoId: row.pedido_id ?? undefined,
   }
 }
 

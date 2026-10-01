@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import {
-  ClipboardCheck, Wrench, Settings2, Printer, User, CalendarClock, History,
+  ClipboardCheck, Wrench, Settings2, Printer, User, CalendarClock, History, Pencil, QrCode, Fuel,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRole } from '@/features/auth/useRole'
@@ -58,7 +58,7 @@ export function FichaViaturaPage() {
   const { id } = useParams()
   const { ficha, loading, error, reload } = useFichaViatura(id)
   const { catalogo } = useCatalogo()
-  const { podeFrota } = useRole()
+  const { podeFrota, podeCombustivel, isMecanico } = useRole()
 
   const porItem = useMemo(() => new Map(catalogo.map(i => [i.id, i])), [catalogo])
   const prazos = useMemo(() => {
@@ -78,6 +78,11 @@ export function FichaViaturaPage() {
   const { viatura } = ficha
   const atual = ficha.atribuicoes.find(a => a.ate === null) ?? null
   const nome = (colabId: string | null) => (colabId ? ficha.colaboradores.get(colabId) ?? '—' : '—')
+  // Nova janela: a página do QR abre o diálogo de impressão e não deve tirar o utilizador da ficha
+  const imprimirQr = () => window.open(
+    `/pub/imprimir-qr?v=${viatura.id}&vn=${encodeURIComponent(viatura.nome)}&vc=${encodeURIComponent(viatura.codigo)}`,
+    '_blank',
+  )
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
@@ -85,9 +90,26 @@ export function FichaViaturaPage() {
         titulo={viatura.nome}
         subtitulo={`${viatura.identificacao ?? viatura.codigo} · ${formatarKm(ficha.kmAtual)}`}
         acoes={
-          <Link to={`/frota/viatura/${viatura.id}/imprimir`} className={botaoSecundario}>
-            <Printer className="w-4 h-4" aria-hidden="true" /> Imprimir ficha
-          </Link>
+          <>
+            {podeCombustivel && (
+              <>
+                <Link to={`/frota/viatura/${viatura.id}/editar`} className={botaoSecundario}>
+                  <Pencil className="w-4 h-4" aria-hidden="true" /> Editar
+                </Link>
+                <button type="button" onClick={imprimirQr} className={botaoSecundario} title="Imprimir o QR do abastecimento">
+                  <QrCode className="w-4 h-4" aria-hidden="true" /> QR
+                </button>
+              </>
+            )}
+            {!isMecanico && (
+              <Link to={`/abastecimento/analise?viatura=${viatura.id}`} className={botaoSecundario}>
+                <Fuel className="w-4 h-4" aria-hidden="true" /> Consumo
+              </Link>
+            )}
+            <Link to={`/frota/viatura/${viatura.id}/imprimir`} className={botaoSecundario}>
+              <Printer className="w-4 h-4" aria-hidden="true" /> Imprimir ficha
+            </Link>
+          </>
         }
       />
 

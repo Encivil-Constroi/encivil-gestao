@@ -18,7 +18,7 @@ const ICONES = { icon: '/pwa-192x192.png', badge: '/pwa-64x64.png' }
 
 const COMBUSTIVEL: Notificacao = {
   titulo: 'ENCIVIL · Combustível',
-  opcoes: { ...ICONES, body: 'Há um pedido de abastecimento para ver.', tag: 'abastecimento', data: { url: '/abastecer/pedidos' } },
+  opcoes: { ...ICONES, body: 'Há um pedido de abastecimento para ver.', tag: 'abastecimento', data: { url: '/abastecimento' } },
   contagem: null,
 }
 

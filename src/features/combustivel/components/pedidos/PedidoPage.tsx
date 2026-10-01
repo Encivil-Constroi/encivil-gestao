@@ -44,7 +44,7 @@ export function PedidoPage() {
       <div className="max-w-lg mx-auto space-y-4">
         <Cabecalho titulo="Pedido" />
         <Aviso tipo="erro">{error ?? 'Pedido não encontrado'}</Aviso>
-        <Link to="/abastecer/pedidos" className={botaoSecundario}>Ver os pedidos</Link>
+        <Link to="/abastecimento" className={botaoSecundario}>Ver os pedidos</Link>
       </div>
     )
   }
@@ -121,7 +121,7 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
             <p className="text-lg font-bold">Pedido recusado</p>
             <p className="text-sm">{pedido.motivo_recusa ? <>Motivo: <strong>{pedido.motivo_recusa}</strong></> : 'Fale com o responsável.'}</p>
           </div>
-          <Link to="/abastecer" className={`w-full ${botaoSecundario}`}>Fazer outro pedido</Link>
+          <Link to="/abastecimento/pedir" className={`w-full ${botaoSecundario}`}>Fazer outro pedido</Link>
         </Cartao>
       )
     case 'CANCELADO':

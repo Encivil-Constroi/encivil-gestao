@@ -11,7 +11,8 @@ import { useRole } from '@/features/auth/useRole';
 // É conforto de navegação — o que ele pode escrever decide-se na RLS.
 const ROTAS_MECANICO = /^\/(frota|ajuda)(\/|$)/;
 // O motorista só pede abastecimentos e acompanha os seus pedidos
-const ROTAS_MOTORISTA = /^\/(abastecer|ajuda)(\/|$)/;
+// (/abastecer: endereços antigos, que redirecionam mantendo o pedido)
+const ROTAS_MOTORISTA = /^\/(abastecimento|abastecer|ajuda)(\/|$)/;
 
 export function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,7 +23,7 @@ export function MainLayout() {
     return <Navigate to="/frota" replace />;
   }
   if (isMotorista && !ROTAS_MOTORISTA.test(location.pathname)) {
-    return <Navigate to="/abastecer" replace />;
+    return <Navigate to="/abastecimento/pedir" replace />;
   }
 
   return (

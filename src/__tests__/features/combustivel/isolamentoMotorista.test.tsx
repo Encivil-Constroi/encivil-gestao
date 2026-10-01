@@ -22,6 +22,7 @@ vi.mock('react-router', async orig => ({ ...(await orig<typeof import('react-rou
 
 import { MainLayout } from '@/app/layouts/MainLayout'
 import { Sidebar } from '@/app/components/Sidebar'
+import { Redirecionar } from '@/app/components/Redirecionar'
 
 function Onde() { return <p data-testid="onde">{useLocation().pathname}</p> }
 
@@ -32,11 +33,13 @@ function abrir(caminho: string) {
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<p>DASHBOARD</p>} />
-          <Route path="combustivel" element={<p>COMBUSTIVEL</p>} />
+          <Route path="produtos" element={<p>PRODUTOS</p>} />
           <Route path="frota" element={<p>FROTA</p>} />
-          <Route path="abastecer" element={<p>PEDIR</p>} />
-          <Route path="abastecer/pedidos" element={<p>PEDIDOS</p>} />
-          <Route path="abastecer/pedido/:id" element={<p>PEDIDO</p>} />
+          <Route path="abastecimento/pedir" element={<p>PEDIR</p>} />
+          <Route path="abastecimento" element={<p>PEDIDOS</p>} />
+          <Route path="abastecimento/historico" element={<p>HISTORICO</p>} />
+          <Route path="abastecimento/pedido/:id" element={<p>PEDIDO</p>} />
+          <Route path="abastecer/pedido/:id" element={<Redirecionar para="/abastecimento/pedido/:id" />} />
           <Route path="ajuda" element={<p>AJUDA</p>} />
         </Route>
       </Routes>
@@ -53,21 +56,21 @@ function menu(papel: string) {
 afterEach(() => { cleanup(); m.podeAprovar = false; m.aguardam = 0; m.contagemPedida = [] })
 
 describe('isolamento do motorista', () => {
-  it.each(['/', '/combustivel', '/frota'])('motorista em %s vai para o pedido de abastecimento', async caminho => {
+  it.each(['/', '/produtos', '/frota'])('motorista em %s vai para o pedido de abastecimento', async caminho => {
     m.papel = 'motorista'
     abrir(caminho)
     expect(await screen.findByText('PEDIR')).toBeInTheDocument()
-    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecer')
+    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecimento/pedir')
   })
 
-  it.each([['/abastecer', 'PEDIR'], ['/abastecer/pedidos', 'PEDIDOS'], ['/abastecer/pedido/p1', 'PEDIDO'], ['/ajuda', 'AJUDA']])(
+  it.each([['/abastecimento/pedir', 'PEDIR'], ['/abastecimento', 'PEDIDOS'], ['/abastecimento/pedido/p1', 'PEDIDO'], ['/ajuda', 'AJUDA']])(
     'motorista fica em %s', async (caminho, texto) => {
       m.papel = 'motorista'
       abrir(caminho)
       expect(await screen.findByText(texto)).toBeInTheDocument()
     })
 
-  it.each([['admin', '/combustivel', 'COMBUSTIVEL'], ['gestor', '/', 'DASHBOARD'], ['armazem', '/abastecer', 'PEDIR'], ['mecanico', '/frota', 'FROTA']])(
+  it.each([['admin', '/abastecimento/historico', 'HISTORICO'], ['gestor', '/', 'DASHBOARD'], ['armazem', '/abastecimento/pedir', 'PEDIR'], ['mecanico', '/frota', 'FROTA']])(
     '%s continua a navegar como antes (%s)', async (p, caminho, texto) => {
       m.papel = p
       abrir(caminho)
@@ -76,10 +79,10 @@ describe('isolamento do motorista', () => {
 
   it('navegação móvel do motorista: Pedir, Pedidos, Ajuda', async () => {
     m.papel = 'motorista'
-    abrir('/abastecer/pedido/p1')
+    abrir('/abastecimento/pedido/p1')
     const nav = screen.getAllByRole('navigation').at(-1)!
     const links = within(nav).getAllByRole('link')
-    expect(links.map(l => l.getAttribute('href'))).toEqual(['/abastecer', '/abastecer/pedidos', '/ajuda'])
+    expect(links.map(l => l.getAttribute('href'))).toEqual(['/abastecimento/pedir', '/abastecimento', '/ajuda'])
     // No ecrã de um pedido, o separador ativo é "Pedidos"
     expect(links[1].firstElementChild?.className).toMatch(/text-primary/)
     expect(links[0].firstElementChild?.className).not.toMatch(/text-primary/)
@@ -88,19 +91,33 @@ describe('isolamento do motorista', () => {
 
 describe('menu lateral do abastecimento', () => {
   it('motorista vê só o pedido, os pedidos e a ajuda', () => {
-    expect(menu('motorista')).toEqual(['Pedir combustível', 'Pedidos combustível', 'Ajuda'])
+    expect(menu('motorista')).toEqual(['Pedir combustível', 'Os meus pedidos', 'Ajuda'])
   })
 
   it('o mecânico continua só com a Frota e a Ajuda', () => {
     expect(menu('mecanico')).toEqual(['Frota', 'Ajuda'])
   })
 
-  it('outros papéis também podem pedir; o relatório é para gestão', () => {
-    const armazem = menu('armazem')
-    expect(armazem).toEqual(expect.arrayContaining(['Pedir combustível', 'Pedidos combustível', 'Combustível']))
-    expect(armazem).not.toContain('Relatório combustível')
-    cleanup()
-    expect(menu('gestor')).toContain('Relatório combustível')
+  it('os outros papéis têm um só item "Abastecimento" (sem duplicados de combustível)', () => {
+    for (const p of ['admin', 'gestor', 'armazem', 'leitura']) {
+      const itens = menu(p)
+      expect(itens.filter(i => /abastec|combust/i.test(i))).toEqual(['Abastecimento'])
+      cleanup()
+    }
+  })
+
+  it('o item do módulo fica ativo nas sub-páginas', () => {
+    m.papel = 'admin'
+    render(<MemoryRouter initialEntries={['/abastecimento/analise']}><Sidebar /></MemoryRouter>)
+    const link = within(screen.getAllByRole('navigation')[0]).getByRole('link', { name: /Abastecimento/ })
+    expect(link.className).toMatch(/bg-primary/)
+  })
+
+  it('endereço antigo de um pedido leva ao mesmo pedido', async () => {
+    m.papel = 'motorista'
+    abrir('/abastecer/pedido/p9?x=1')
+    expect(await screen.findByText('PEDIDO')).toBeInTheDocument()
+    expect(screen.getByTestId('onde')).toHaveTextContent('/abastecimento/pedido/p9')
   })
 
   it('quem aprova vê quantos pedidos esperam; os outros não pedem a contagem', () => {

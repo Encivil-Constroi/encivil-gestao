@@ -58,14 +58,17 @@ export function VeiculoFormPage() {
       notes: form.notes || undefined,
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
-    if (result) { toast.success(isEdit ? 'Viatura atualizada.' : 'Viatura criada.'); navigate('/combustivel'); }
-    else toast.error('Não foi possível guardar.');
+    if (result) {
+      toast.success(isEdit ? 'Viatura atualizada.' : 'Viatura criada.');
+      // A ficha da Frota é onde se configuram os prazos e se imprime o QR da viatura nova
+      navigate(`/frota/viatura/${result.id}`);
+    } else toast.error('Não foi possível guardar.');
   };
 
   const handleArchive = async () => {
     if (!id) return;
     const ok = await atualizar(id, { active: false });
-    if (ok) { toast.success('Viatura arquivada.'); navigate('/combustivel'); }
+    if (ok) { toast.success('Viatura arquivada.'); navigate('/frota'); }
     else toast.error('Não foi possível arquivar.');
   };
 
@@ -76,7 +79,7 @@ export function VeiculoFormPage() {
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"><ChevronLeft className="w-5 h-5" aria-hidden="true" /></button>
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar Viatura' : 'Nova Viatura / Máquina'}</h1>
+          <h1 className="text-xl md:text-2xl font-semibold">{isEdit ? 'Editar viatura' : 'Nova viatura / máquina'}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{isEdit ? vehicle?.code : (codigoPreview ? `Código: ${codigoPreview}` : 'Registo de equipamento')}</p>
         </div>
       </div>

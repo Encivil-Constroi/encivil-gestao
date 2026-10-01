@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts'
 import {
   AlertOctagon, AlertTriangle, ArrowDownRight, ArrowUpRight, Brain, CheckCircle2, Download, Info, Loader2,
@@ -24,9 +25,17 @@ const compacto = (m: Medida, v: number) =>
     ? v >= 1000 ? `${formatarNumero(v / 1000, 1)} mil €` : `${formatarNumero(v, 0)} €`
     : v >= 1000 ? `${formatarNumero(v / 1000, 1)} mil L` : `${formatarNumero(v, 0)} L`
 
-export function RelatorioCombustivelPage() {
+export function RelatorioCombustivelPage({ embutido = false }: { embutido?: boolean } = {}) {
   const [preset, setPreset] = useState<Preset>('mes')
-  const [viatura, setViatura] = useState('')
+  // A viatura vive na URL: a ficha da Frota liga para aqui já filtrada (?viatura=) e o link pode ser partilhado
+  const [searchParams, setSearchParams] = useSearchParams()
+  const viatura = searchParams.get('viatura') ?? ''
+  const setViatura = (id: string) => setSearchParams(prev => {
+    const p = new URLSearchParams(prev)
+    if (id) p.set('viatura', id)
+    else p.delete('viatura')
+    return p
+  }, { replace: true })
   const [medida, setMedida] = useState<Medida>('custo')
   const [granEscolhida, setGranEscolhida] = useState<Granularidade | null>(null)
 
@@ -73,9 +82,11 @@ export function RelatorioCombustivelPage() {
   const aCarregar = dados.loading && dados.abastecimentos != null
 
   return (
-    <div className="viz-root max-w-6xl mx-auto space-y-5 pb-24">
-      <Cabecalho titulo="Relatório de combustível" voltar={false}
-        subtitulo="O analista de dados da frota: custos, consumos, viaturas e motoristas." />
+    <div className={embutido ? 'viz-root space-y-5' : 'viz-root max-w-6xl mx-auto space-y-5 pb-24'}>
+      {!embutido && (
+        <Cabecalho titulo="Relatório de combustível" voltar={false}
+          subtitulo="O analista de dados da frota: custos, consumos, viaturas e motoristas." />
+      )}
 
       {/* Filtros: uma linha, acima de tudo o que filtram */}
       <div className="flex flex-wrap items-center gap-2">
@@ -92,6 +103,10 @@ export function RelatorioCombustivelPage() {
           className="bg-card border border-border rounded-lg px-3 py-2 text-sm">
           <option value="">Todas as viaturas</option>
           {todasViaturas.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+          {/* Viatura vinda da URL sem abastecimentos no período: sem esta opção o select mostraria 'Todas' a filtrar uma */}
+          {viatura && dados.abastecimentos != null && !todasViaturas.some(v => v.id === viatura) && (
+            <option value={viatura}>Viatura sem abastecimentos no período</option>
+          )}
         </select>
         <button type="button" onClick={exportar} disabled={aExportar || rows.length === 0}
           className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-lg text-sm font-medium hover:bg-accent disabled:opacity-40">
