@@ -6,7 +6,7 @@ import type { ItemCatalogoRow, Categoria, Natureza } from '@/features/frota/db'
 
 const mocks = vi.hoisted(() => ({
   role: 'mecanico' as string,
-  registar: vi.fn(async () => 'nova-id' as string),
+  registar: vi.fn(async (_a: Record<string, unknown>) => 'nova-id' as string),
   editar: vi.fn(async () => true as const),
   contexto: {} as Record<string, unknown>,
   paraEditar: null as unknown,
@@ -55,7 +55,7 @@ const hoje = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 const clicar = (el: Element) => act(async () => { fireEvent.click(el) })
-const gravar = () => clicar(screen.getByRole('button', { name: /Gravar intervenção|Guardar correção/ }))
+const gravar = () => clicar(screen.getByRole('button', { name: /Gravar \d* ?intervenç|Guardar correção/ }))
 
 function abrir(caminho: string) {
   render(
@@ -75,7 +75,8 @@ async function escolherViatura(rotulo: RegExp) {
   await act(async () => { fireEvent.focus(campo) })
   await clicar(screen.getByRole('option', { name: rotulo }))
 }
-const tipo = (valor: string) => fireEvent.change(screen.getByLabelText(/Tipo de manutenção/), { target: { value: valor } })
+const marcar = (rotulo: string) => clicar(screen.getByRole('checkbox', { name: rotulo }))
+const outroTrabalho = () => clicar(screen.getByRole('button', { name: /Outro trabalho/ }))
 
 beforeEach(() => {
   invalidateCache('frota-*')
@@ -112,12 +113,13 @@ describe('ManutencaoFormPage — registar', () => {
     expect(screen.getAllByText(/Horas atuais/).length).toBe(2)
   })
 
-  it('a viatura vem pré-escolhida do link e a lista só tem itens de manutenção mais "Outro"', async () => {
+  it('a viatura vem pré-escolhida do link e a lista só tem itens de manutenção, todos marcáveis', async () => {
     abrir('/frota/manutencao/nova?viatura=v1')
     expect(await screen.findByLabelText('Ponto de partida')).toBeInTheDocument()
-    const opcoes = screen.getAllByRole('option').map(o => o.textContent)
-    expect(opcoes).toEqual(expect.arrayContaining(['Óleo', 'Seguro', 'Outro (especificar)']))
-    expect(opcoes).not.toContain('Luzes')
+    const caixas = screen.getAllByRole('checkbox').map(c => c.closest('label')?.textContent)
+    expect(caixas).toEqual(expect.arrayContaining(['Óleo', 'Seguro']))
+    expect(caixas).not.toContain('Luzes')
+    expect(screen.getByRole('button', { name: /Outro trabalho/ })).toBeInTheDocument()
   })
 
   it('sem viatura ou sem tipo não grava', async () => {
@@ -126,14 +128,14 @@ describe('ManutencaoFormPage — registar', () => {
     expect(toast.error).toHaveBeenLastCalledWith('Escolha a viatura ou máquina.')
     await escolherViatura(/00-AA-00/)
     await gravar()
-    expect(toast.error).toHaveBeenLastCalledWith('Escolha o tipo de manutenção.')
+    expect(toast.error).toHaveBeenLastCalledWith('Escolha pelo menos um tipo de manutenção.')
     expect(mocks.registar).not.toHaveBeenCalled()
   })
 
   it('item com prazo em km exige os km; data futura é recusada', async () => {
     abrir('/frota/manutencao/nova?viatura=v1')
     await screen.findByLabelText('Ponto de partida')
-    tipo(oleo.id)
+    await marcar('Óleo')
     await gravar()
     expect(toast.error).toHaveBeenLastCalledWith('Indique os km: este item tem prazo em km.')
     fireEvent.change(screen.getByLabelText(/Data da intervenção/), { target: { value: '2999-01-01' } })
@@ -152,9 +154,9 @@ describe('ManutencaoFormPage — registar', () => {
   it('grava com os argumentos certos (tipo do catálogo, vírgula decimal, recomeça o prazo)', async () => {
     abrir('/frota/manutencao/nova?viatura=v1')
     await screen.findByLabelText('Ponto de partida')
-    tipo(oleo.id)
+    await marcar('Óleo')
     fireEvent.change(screen.getByPlaceholderText(/Última leitura/), { target: { value: '126000' } })
-    fireEvent.change(screen.getByPlaceholderText('Ex: 85,50'), { target: { value: '85,50' } })
+    fireEvent.change(screen.getByLabelText('Custo — Óleo'), { target: { value: '85,50' } })
     fireEvent.change(screen.getByPlaceholderText(/Polo 2/), { target: { value: ' Polo 2 ' } })
     await gravar()
     expect(mocks.registar).toHaveBeenCalledWith({
@@ -168,15 +170,50 @@ describe('ManutencaoFormPage — registar', () => {
     abrir('/frota/manutencao/nova')
     await escolherViatura(/00-AA-00/)
     await screen.findByLabelText('Ponto de partida')
-    tipo('outro')
+    await outroTrabalho()
     await gravar()
     expect(toast.error).toHaveBeenLastCalledWith('Descreva o trabalho feito.')
-    fireEvent.change(screen.getByPlaceholderText(/substituição da lâmpada/), { target: { value: 'Lâmpada do farol' } })
+    fireEvent.change(screen.getByLabelText('Outro trabalho 1'), { target: { value: 'Lâmpada do farol' } })
     await gravar()
     expect(mocks.registar).toHaveBeenCalledWith(expect.objectContaining({
       veiculoId: 'v1', itemId: null, descricao: 'Lâmpada do farol', atualizaProxima: false, proximaData: null,
     }))
     expect(await screen.findByText('HISTORICO')).toBeInTheDocument()
+  })
+
+  it('várias coisas de uma só vez: uma intervenção por item, com custo próprio, mais um trabalho avulso', async () => {
+    abrir('/frota/manutencao/nova?viatura=v1')
+    await screen.findByLabelText('Ponto de partida')
+    await marcar('Óleo')
+    await marcar('Seguro')
+    await outroTrabalho()
+    fireEvent.change(screen.getByPlaceholderText(/Última leitura/), { target: { value: '126000' } })
+    fireEvent.change(screen.getByLabelText('Custo — Óleo'), { target: { value: '80' } })
+    fireEvent.change(screen.getByLabelText('Custo — Seguro'), { target: { value: '300,5' } })
+    fireEvent.change(screen.getByLabelText('Outro trabalho 1'), { target: { value: 'Farol' } })
+    fireEvent.change(screen.getByLabelText('Custo — outro trabalho 1'), { target: { value: '12' } })
+    await gravar()
+    expect(mocks.registar).toHaveBeenCalledTimes(3)
+    const chamadas = mocks.registar.mock.calls.map(c => c[0])
+    expect(chamadas.map(c => [c.itemId, c.custo, c.atualizaProxima])).toEqual([
+      [oleo.id, 80, true], [seguro.id, 300.5, true], [null, 12, false],
+    ])
+    expect(chamadas.every(c => c.veiculoId === 'v1' && c.km === 126000 && c.data === hoje())).toBe(true)
+    expect(await screen.findByText('FICHA')).toBeInTheDocument()
+  })
+
+  it('se uma falhar a meio, o que já ficou gravado sai da lista (sem duplicar ao repetir)', async () => {
+    mocks.registar.mockResolvedValueOnce('a').mockResolvedValueOnce(undefined as unknown as string)
+    abrir('/frota/manutencao/nova?viatura=v1')
+    await screen.findByLabelText('Ponto de partida')
+    await marcar('Seguro')
+    await marcar('Óleo')
+    fireEvent.change(screen.getByPlaceholderText(/Última leitura/), { target: { value: '126000' } })
+    await gravar()
+    expect(mocks.registar).toHaveBeenCalledTimes(2)
+    expect(toast.error).toHaveBeenLastCalledWith('Foram gravados 1 trabalho; os restantes falharam — tente de novo.')
+    expect(screen.getByRole('checkbox', { name: 'Óleo' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Seguro' })).toBeChecked()
   })
 
   it('quem só consulta não tem acesso ao formulário', () => {

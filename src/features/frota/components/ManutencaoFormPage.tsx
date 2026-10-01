@@ -15,6 +15,8 @@ import { Cabecalho, Seccao, inputCls, botaoPrimario } from './ui'
 
 const OUTRO = 'outro'
 
+type Linha = { descricao: string; custo: string }
+
 type Campos = {
   itemId: string; descricao: string; data: string; km: string; custo: string; oficina: string
   observacoes: string; atualiza: boolean; proximaData: string
@@ -34,6 +36,8 @@ function camposIniciais(m?: ManutencaoParaEditar['manutencao']): Campos {
   }
 }
 
+const rotuloDe = (n: number) => (n === 1 ? '1 trabalho' : `${n} trabalhos`)
+
 function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
   editar?: ManutencaoParaEditar
   viaturaInicial: string | null
@@ -46,6 +50,9 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
   const { contexto } = useContextoViatura(veiculoId ?? undefined)
   const [f, setF] = useState<Campos>(() => camposIniciais(editar?.manutencao))
   const [procura, setProcura] = useState('')
+  // Registo novo: várias intervenções de uma só vez (uma por tipo escolhido, mais trabalhos avulsos)
+  const [sel, setSel] = useState<Record<string, Linha>>({})
+  const [outros, setOutros] = useState<Linha[]>([])
   const set = (p: Partial<Campos>) => setF(prev => ({ ...prev, ...p }))
 
   const viatura = viaturas.find(v => v.id === veiculoId)
@@ -61,11 +68,25 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
   }, [catalogo, procura, f.itemId])
   const grupos = useMemo(() => agruparPorCategoria(opcoes), [opcoes])
 
-  const item = catalogo.find(i => i.id === f.itemId)
-  const config = contexto?.itens.find(c => c.item_id === f.itemId)
-  const intervaloKm = config?.intervalo_km ?? item?.intervalo_km_padrao ?? null
-  const intervaloMeses = config?.intervalo_meses ?? item?.intervalo_meses_padrao ?? null
-  const kmObrigatorio = !editar && !!item && f.atualiza && intervaloKm !== null
+  const itensEscolhidos = editar
+    ? catalogo.filter(i => i.id === f.itemId)
+    : catalogo.filter(i => i.id in sel)
+  const item = itensEscolhidos.length === 1 ? itensEscolhidos[0] : undefined
+  const intervaloDe = (i: ItemCatalogoRow) => {
+    const c = contexto?.itens.find(x => x.item_id === i.id)
+    return { km: c?.intervalo_km ?? i.intervalo_km_padrao ?? null, meses: c?.intervalo_meses ?? i.intervalo_meses_padrao ?? null }
+  }
+  const intervaloKm = item ? intervaloDe(item).km : null
+  const intervaloMeses = item ? intervaloDe(item).meses : null
+  const kmObrigatorio = !editar && f.atualiza && itensEscolhidos.some(i => intervaloDe(i).km !== null)
+  const totalLinhas = Object.keys(sel).length + outros.length
+
+  const alternar = (id: string) => setSel(prev => {
+    const { [id]: existe, ...resto } = prev
+    return existe ? resto : { ...prev, [id]: { descricao: '', custo: '' } }
+  })
+  const mudarLinha = (id: string, p: Partial<Linha>) => setSel(prev => ({ ...prev, [id]: { ...prev[id], ...p } }))
+  const mudarOutro = (n: number, p: Partial<Linha>) => setOutros(prev => prev.map((l, i) => i === n ? { ...l, ...p } : l))
 
   const kmN = numeroOuNulo(f.km)
   const abaixoDoConhecido = !editar && kmN !== null && Number.isFinite(kmN) && contexto?.kmAtual != null && kmN < contexto.kmAtual
@@ -73,11 +94,19 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!veiculoId) { toast.error('Escolha a viatura ou máquina.'); return }
-    if (!f.itemId) { toast.error('Escolha o tipo de manutenção.'); return }
-    if (f.itemId === OUTRO && !f.descricao.trim()) { toast.error('Descreva o trabalho feito.'); return }
+    if (editar) {
+      if (!f.itemId) { toast.error('Escolha o tipo de manutenção.'); return }
+      if (f.itemId === OUTRO && !f.descricao.trim()) { toast.error('Descreva o trabalho feito.'); return }
+    } else {
+      if (totalLinhas === 0) { toast.error('Escolha pelo menos um tipo de manutenção.'); return }
+      if (outros.some(l => !l.descricao.trim())) { toast.error('Descreva o trabalho feito.'); return }
+    }
     if (!f.data) { toast.error('Indique a data da intervenção.'); return }
     if (f.data > hojeIso()) { toast.error('A data da intervenção não pode ser futura.'); return }
-    const custo = numeroOuNulo(f.custo)
+    const custo = editar ? numeroOuNulo(f.custo) : null
+    const custoLinha = (l: Linha) => numeroOuNulo(l.custo)
+    const linhasCusto = editar ? [] : [...Object.values(sel), ...outros].map(custoLinha)
+    if (linhasCusto.some(c => c !== null && (!Number.isFinite(c) || c < 0))) { toast.error('Custo inválido.'); return }
     if (kmN !== null && (!Number.isFinite(kmN) || kmN < 0)) { toast.error(`${rotuloLeitura} inválidos.`); return }
     if (custo !== null && (!Number.isFinite(custo) || custo < 0)) { toast.error('Custo inválido.'); return }
     if (kmObrigatorio && kmN === null) { toast.error('Indique os km: este item tem prazo em km.'); return }
@@ -97,13 +126,31 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
       }
       return
     }
-    const atualiza = f.itemId !== OUTRO && f.atualiza
-    const novo = await registar({
-      veiculoId, ...comum, atualizaProxima: atualiza, proximaData: atualiza && f.proximaData ? f.proximaData : null,
-    })
-    if (novo) {
-      toast.success('Intervenção registada.')
+    const base = { veiculoId, data: f.data, km: kmN, oficina: comum.oficina, observacoes: comum.observacoes }
+    const pedidos = [
+      ...itensEscolhidos.map(i => ({
+        chave: i.id, itemId: i.id as string | null, descricao: sel[i.id].descricao.trim() || null,
+        custo: custoLinha(sel[i.id]), atualizaProxima: f.atualiza,
+        proximaData: f.atualiza && f.proximaData && itensEscolhidos.length === 1 ? f.proximaData : null,
+      })),
+      ...outros.map((l, n) => ({
+        chave: `outro-${n}`, itemId: null, descricao: l.descricao.trim(), custo: custoLinha(l), atualizaProxima: false, proximaData: null,
+      })),
+    ]
+    const feitos = new Set<string>()
+    for (const p of pedidos) {
+      const novo = await registar({ ...base, itemId: p.itemId, descricao: p.descricao, custo: p.custo, atualizaProxima: p.atualizaProxima, proximaData: p.proximaData })
+      if (!novo) break
+      feitos.add(p.chave)
+    }
+    if (feitos.size === pedidos.length) {
+      toast.success(pedidos.length === 1 ? 'Intervenção registada.' : `${pedidos.length} intervenções registadas.`)
       navigate(viaturaInicial ? `/frota/viatura/${veiculoId}` : '/frota/manutencao?vista=historico')
+    } else if (feitos.size > 0) {
+      // O que já ficou gravado sai da lista, para não duplicar ao tentar de novo
+      setSel(prev => Object.fromEntries(Object.entries(prev).filter(([id]) => !feitos.has(id))))
+      setOutros(prev => prev.filter((_, n) => !feitos.has(`outro-${n}`)))
+      toast.error(`Foram gravados ${rotuloDe(feitos.size)}; os restantes falharam — tente de novo.`)
     }
   }
 
@@ -154,25 +201,79 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
             <input value={procura} onChange={e => setProcura(e.target.value)} className={inputCls}
               placeholder="Procurar na lista…" aria-label="Procurar tipo de manutenção" />
           )}
-          <label className="block text-sm font-medium space-y-2">
-            <span>Tipo de manutenção <span className="text-destructive">*</span></span>
-            <select value={f.itemId} onChange={e => set({ itemId: e.target.value })} className={inputCls}>
-              <option value="">— Escolher —</option>
+          {editar ? (
+            <>
+              <label className="block text-sm font-medium space-y-2">
+                <span>Tipo de manutenção <span className="text-destructive">*</span></span>
+                <select value={f.itemId} onChange={e => set({ itemId: e.target.value })} className={inputCls}>
+                  <option value="">— Escolher —</option>
+                  {grupos.map(g => (
+                    <optgroup key={g.categoria} label={rotuloCategoria(g.categoria)}>
+                      {g.itens.map(i => <option key={i.id} value={i.id}>{i.rotulo}</option>)}
+                    </optgroup>
+                  ))}
+                  <option value={OUTRO}>Outro (especificar)</option>
+                </select>
+              </label>
+              {(f.itemId === OUTRO || item) && (
+                <label className="block text-sm font-medium space-y-2">
+                  {f.itemId === OUTRO ? <>Descrição <span className="text-destructive">*</span></> : 'Descrição (opcional)'}
+                  <input value={f.descricao} onChange={e => set({ descricao: e.target.value })} className={inputCls}
+                    placeholder={f.itemId === OUTRO ? 'Ex: substituição da lâmpada do farol esquerdo' : 'Ex: óleo 5W30, filtro Mann'} />
+                </label>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">Marque tudo o que foi feito nesta passagem pela oficina.</p>
               {grupos.map(g => (
-                <optgroup key={g.categoria} label={rotuloCategoria(g.categoria)}>
-                  {g.itens.map(i => <option key={i.id} value={i.id}>{i.rotulo}</option>)}
-                </optgroup>
+                <fieldset key={g.categoria} className="space-y-1">
+                  <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{rotuloCategoria(g.categoria)}</legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {g.itens.map(i => (
+                      <label key={i.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted/50 cursor-pointer">
+                        <input type="checkbox" checked={i.id in sel} onChange={() => alternar(i.id)} className="w-4 h-4" />
+                        {i.rotulo}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
               ))}
-              <option value={OUTRO}>Outro (especificar)</option>
-            </select>
-          </label>
+              <button type="button" onClick={() => setOutros(prev => [...prev, { descricao: '', custo: '' }])}
+                className="text-sm font-semibold text-primary hover:underline">
+                + Outro trabalho (especificar)
+              </button>
 
-          {(f.itemId === OUTRO || item) && (
-            <label className="block text-sm font-medium space-y-2">
-              {f.itemId === OUTRO ? <>Descrição <span className="text-destructive">*</span></> : 'Descrição (opcional)'}
-              <input value={f.descricao} onChange={e => set({ descricao: e.target.value })} className={inputCls}
-                placeholder={f.itemId === OUTRO ? 'Ex: substituição da lâmpada do farol esquerdo' : 'Ex: óleo 5W30, filtro Mann'} />
-            </label>
+              {totalLinhas > 0 && (
+                <div className="rounded-2xl bg-muted/40 p-3 space-y-3" aria-label="Trabalhos escolhidos">
+                  <p className="text-xs font-semibold text-muted-foreground">{rotuloDe(totalLinhas)} a registar — descrição e custo são opcionais</p>
+                  {itensEscolhidos.map(i => (
+                    <div key={i.id} className="grid grid-cols-[1fr_6.5rem] gap-2 items-end">
+                      <label className="block text-xs font-medium space-y-1">
+                        {i.rotulo}
+                        <input value={sel[i.id].descricao} onChange={e => mudarLinha(i.id, { descricao: e.target.value })}
+                          className={inputCls} placeholder="Ex: óleo 5W30, filtro Mann" aria-label={`Descrição — ${i.rotulo}`} />
+                      </label>
+                      <input inputMode="decimal" value={sel[i.id].custo} onChange={e => mudarLinha(i.id, { custo: e.target.value })}
+                        className={inputCls} placeholder="€" aria-label={`Custo — ${i.rotulo}`} />
+                    </div>
+                  ))}
+                  {outros.map((l, n) => (
+                    <div key={n} className="grid grid-cols-[1fr_6.5rem_auto] gap-2 items-end">
+                      <label className="block text-xs font-medium space-y-1">
+                        Outro <span className="text-destructive">*</span>
+                        <input value={l.descricao} onChange={e => mudarOutro(n, { descricao: e.target.value })} className={inputCls}
+                          placeholder="Ex: substituição da lâmpada do farol esquerdo" aria-label={`Outro trabalho ${n + 1}`} />
+                      </label>
+                      <input inputMode="decimal" value={l.custo} onChange={e => mudarOutro(n, { custo: e.target.value })}
+                        className={inputCls} placeholder="€" aria-label={`Custo — outro trabalho ${n + 1}`} />
+                      <button type="button" onClick={() => setOutros(prev => prev.filter((_, i) => i !== n))}
+                        className="px-3 py-2 text-sm text-muted-foreground hover:text-destructive" aria-label={`Remover outro trabalho ${n + 1}`}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </Seccao>
 
@@ -187,10 +288,12 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
               <input inputMode="numeric" value={f.km} onChange={e => set({ km: e.target.value })} className={inputCls}
                 placeholder={contexto?.kmAtual != null ? `Última leitura: ${contexto.kmAtual}` : 'Ex: 125430'} />
             </label>
-            <label className="block text-sm font-medium space-y-2">
-              <span>Custo (€) <span className="text-muted-foreground font-normal text-xs">(opcional)</span></span>
-              <input inputMode="decimal" value={f.custo} onChange={e => set({ custo: e.target.value })} className={inputCls} placeholder="Ex: 85,50" />
-            </label>
+            {editar && (
+              <label className="block text-sm font-medium space-y-2">
+                <span>Custo (€) <span className="text-muted-foreground font-normal text-xs">(opcional)</span></span>
+                <input inputMode="decimal" value={f.custo} onChange={e => set({ custo: e.target.value })} className={inputCls} placeholder="Ex: 85,50" />
+              </label>
+            )}
             <label className="block text-sm font-medium space-y-2">
               <span>Oficina <span className="text-muted-foreground font-normal text-xs">(opcional)</span></span>
               <input value={f.oficina} onChange={e => set({ oficina: e.target.value })} className={inputCls} placeholder="Ex: Polo 2 / oficina externa" />
@@ -207,21 +310,23 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
           </label>
         </Seccao>
 
-        {!editar && item && (
+        {!editar && itensEscolhidos.length > 0 && (
           <div className="rounded-2xl bg-muted/40 p-4 space-y-3">
             <label className="flex items-start gap-3 text-sm">
               <input type="checkbox" checked={f.atualiza} onChange={e => set({ atualiza: e.target.checked })} className="mt-1 w-4 h-4" />
               <span>
                 Atualizar o próximo prazo a partir desta manutenção
                 <span className="block text-xs text-muted-foreground">
-                  {intervaloKm || intervaloMeses
-                    ? `Próximo prazo calculado sozinho: ${textoIntervalo(intervaloKm, intervaloMeses)}.`
-                    : 'Este item não tem intervalo — indique a próxima data abaixo.'}
+                  {itensEscolhidos.length > 1
+                    ? 'Cada item recalcula o seu próprio prazo.'
+                    : intervaloKm || intervaloMeses
+                      ? `Próximo prazo calculado sozinho: ${textoIntervalo(intervaloKm, intervaloMeses)}.`
+                      : 'Este item não tem intervalo — indique a próxima data abaixo.'}
                   {' '}Desligue para reparações que não reiniciam o prazo.
                 </span>
               </span>
             </label>
-            {f.atualiza && (
+            {f.atualiza && itensEscolhidos.length === 1 && (
               <label className="block text-xs font-medium space-y-1">
                 Próxima data <span className="text-muted-foreground font-normal">(opcional — substitui o cálculo; ex.: seguro renovado até…)</span>
                 <input type="date" value={f.proximaData} min={f.data} onChange={e => set({ proximaData: e.target.value })} className={inputCls} />
@@ -248,7 +353,7 @@ function Formulario({ editar, viaturaInicial, viaturas, catalogo }: {
         )}
 
         <button type="submit" disabled={loading} className={`${botaoPrimario} w-full py-4 text-base`}>
-          {loading ? 'A guardar…' : editar ? 'Guardar correção' : 'Gravar intervenção'}
+          {loading ? 'A guardar…' : editar ? 'Guardar correção' : totalLinhas > 1 ? `Gravar ${totalLinhas} intervenções` : 'Gravar intervenção'}
         </button>
       </form>
     </div>
