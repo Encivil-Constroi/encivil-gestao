@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Trash2, Archive, CheckCircle2, FileEdit, ShieldCheck,
   Phone, Building2, Lock, Plus, Calendar, ClipboardList,
-  Banknote, TrendingDown, AlertTriangle, X, TriangleAlert,
+  Banknote, TrendingDown, AlertTriangle, X, TriangleAlert, Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtEuro, fmtNumber } from '@/app/lib/format';
@@ -18,6 +18,8 @@ import { useAutos } from '../../legacy/useAutos';
 import { useRetencaoTotais, useCriarLiberacao, useEliminarLiberacao } from '../../legacy/useRetencao';
 import type { LiberacaoRetencao } from '@/app/types';
 import { SubFichaCEO } from './SubFichaCEO';
+import { SubDocumentos } from './SubDocumentos';
+import { ConfigSubsDialog } from './ConfigSubsDialog';
 
 const MOTIVO_LABEL: Record<LiberacaoRetencao['motivo'], string> = {
   conclusao_obra:  'Conclusão de obra',
@@ -56,6 +58,7 @@ export function SubempreiteiroDetailPage() {
   const [confirmDelete,   setConfirmDelete]   = useState(false);
   const [confirmArchive,  setConfirmArchive]  = useState(false);
   const [showLibForm,     setShowLibForm]     = useState(false);
+  const [configAberta,    setConfigAberta]    = useState(false);
   const [libForm, setLibForm] = useState({
     valor: '', motivo: 'conclusao_obra' as LiberacaoRetencao['motivo'], observacoes: '',
   });
@@ -132,6 +135,11 @@ export function SubempreiteiroDetailPage() {
             <Building2 className="w-3.5 h-3.5 shrink-0" /> {sub.obraName ?? '—'}
           </p>
         </div>
+        {isAdmin && (
+          <button type="button" onClick={() => setConfigAberta(true)} aria-label="Configuração das subempreitadas" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0 text-muted-foreground">
+            <Settings className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )}
         {isValidado ? (
           <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-success/10 text-success shrink-0">
             <CheckCircle2 className="w-3.5 h-3.5" /> Validado
@@ -389,6 +397,10 @@ export function SubempreiteiroDetailPage() {
           </div>
         )}
       </div>
+
+      <SubDocumentos subId={sub.id} />
+
+      <ConfigSubsDialog aberto={configAberta} onFechar={() => setConfigAberta(false)} />
 
       {/* Dados da contratação */}
       <div className="bg-card rounded-2xl border border-border divide-y divide-border">

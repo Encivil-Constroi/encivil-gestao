@@ -12,6 +12,7 @@ import { Equipa } from './ficha/Equipa'
 import { Frota } from './ficha/Frota'
 import { Ferramentas } from './ficha/Ferramentas'
 import { Materiais } from './ficha/Materiais'
+import { Orcamento } from './ficha/Orcamento'
 import { Subempreitadas } from './ficha/Subempreitadas'
 import { Relatorios } from './ficha/Relatorios'
 import { Fotos } from './ficha/Fotos'
@@ -26,6 +27,7 @@ export const SECOES: Secao[] = [
   { chave: 'frota', rotulo: 'Frota', Componente: Frota, contagem: o => o.viaturas_n },
   { chave: 'ferramentas', rotulo: 'Ferramentas', Componente: Ferramentas, contagem: o => o.ferramentas_n },
   { chave: 'materiais', rotulo: 'Materiais', Componente: Materiais },
+  { chave: 'orcamento', rotulo: 'Orçamento', Componente: Orcamento },
   { chave: 'subempreitadas', rotulo: 'Subempreitadas', Componente: Subempreitadas, contagem: o => o.subs_n },
   { chave: 'relatorios', rotulo: 'Relatórios', Componente: Relatorios, contagem: o => o.relatorios_n },
   { chave: 'fotos', rotulo: 'Fotos', Componente: Fotos, contagem: o => o.fotos_n },

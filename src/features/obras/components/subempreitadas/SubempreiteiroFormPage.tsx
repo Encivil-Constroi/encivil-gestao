@@ -1,20 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ChevronLeft, Plus, Trash2, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import { fmtEuro, UNIDADES_OBRA } from '@/app/lib/format';
+import { supabase } from '@/integrations/supabase/client';
+import { useAsync } from '@/app/lib/useAsync';
+import { fmtEuro, fmtNumber, UNIDADES_OBRA } from '@/app/lib/format';
 import { useObras } from '@/features/obras/hooks/useObras';
 import { useSubempreiteiro, useGuardarSubempreiteiro } from '../../legacy/useSubempreiteiros';
 import type { ContractType } from '@/app/types';
+import type { OrcamentoItemRow, OrcamentoResumoRow } from '../../db';
+import { useItensOrcamento, useResumoOrcamento, useConfigSubs } from '../../hooks/useSubsControlo';
 import { useFichaSub, useGuardarFichaSub } from './useSubData';
 
-type LinhaArtigo = { id: string; description: string; unit: string; unitPrice: string; plannedQuantity: string };
+type LinhaArtigo = { id: string; description: string; unit: string; unitPrice: string; plannedQuantity: string; itemId: string };
+
+type LigacaoArtigos = {
+  from(tabela: 'subempreiteiro_artigos'): {
+    select(colunas: 'id, orcamento_item_id'): {
+      eq(coluna: 'subempreiteiro_id', valor: string): PromiseLike<{ data: { id: string; orcamento_item_id: string | null }[] | null; error: { message: string } | null }>;
+    };
+    update(valores: { orcamento_item_id: string | null }): { eq(coluna: 'id', valor: string): PromiseLike<{ error: { message: string } | null }> };
+  };
+};
+const ligacaoArtigos = supabase as unknown as LigacaoArtigos;
+
+export type AvisoExcesso = { itemId: string; codigo: string; contratado: number; orcado: number; limite: number };
+
+export function avisosExcesso(
+  linhas: { itemId: string; plannedQuantity: string }[],
+  resumo: OrcamentoResumoRow[],
+  itens: OrcamentoItemRow[],
+): AvisoExcesso[] {
+  const somas = new Map<string, number>();
+  for (const l of linhas) {
+    if (!l.itemId) continue;
+    const q = parseFloat(l.plannedQuantity || '0');
+    somas.set(l.itemId, (somas.get(l.itemId) ?? 0) + (Number.isFinite(q) ? q : 0));
+  }
+  const avisos: AvisoExcesso[] = [];
+  for (const [itemId, qtd] of somas) {
+    const r = resumo.find(x => x.item_id === itemId);
+    if (!r) continue;
+    const tol = itens.find(i => i.id === itemId)?.tolerancia_pct ?? 0;
+    const limite = r.orcado_qtd * (1 + tol / 100);
+    const contratado = r.contratado_qtd + qtd;
+    if (contratado - limite > 0.0005) avisos.push({ itemId, codigo: r.codigo, contratado, orcado: r.orcado_qtd, limite });
+  }
+  return avisos;
+}
+
+const chaveArtigo = (descricao: string, unidade: string, preco: number, qtd: number) => `${descricao}|${unidade}|${preco}|${qtd}`;
 
 function novaLinha(): LinhaArtigo {
   const id = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return { id, description: '', unit: 'm²', unitPrice: '', plannedQuantity: '' };
+  return { id, description: '', unit: 'm²', unitPrice: '', plannedQuantity: '', itemId: '' };
 }
 
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
@@ -40,6 +81,14 @@ export function SubempreiteiroFormPage() {
     retencaoPercentagem: '5',
     conditions: '',
   });
+  const { config: cfgSubs } = useConfigSubs();
+  const retencaoAplicada = useRef(false);
+  useEffect(() => {
+    if (!isEdit && cfgSubs && !retencaoAplicada.current) {
+      retencaoAplicada.current = true;
+      setForm(prev => ({ ...prev, retencaoPercentagem: String(cfgSubs.retencao_padrao_pct) }));
+    }
+  }, [isEdit, cfgSubs]);
   const [linhas, setLinhas] = useState<LinhaArtigo[]>([novaLinha()]);
   const [dadosFicha, setDadosFicha] = useState({ nif: '', telefone: '', email: '', especialidade: '', data_inicio: '', data_fim_prevista: '' });
 
@@ -71,9 +120,30 @@ export function SubempreiteiroFormPage() {
         unit: i.unit,
         unitPrice: String(i.unitPrice),
         plannedQuantity: String(i.plannedQuantity),
+        itemId: '',
       })));
     }
   }, [isEdit, sub, navigate]);
+
+  const { resumo: resumoEap } = useResumoOrcamento(form.obraId || undefined);
+  const { itens: itensEap } = useItensOrcamento(form.obraId || undefined);
+  const { data: ligacoes } = useAsync(
+    async () => {
+      const { data, error } = await ligacaoArtigos.from('subempreiteiro_artigos').select('id, orcamento_item_id').eq('subempreiteiro_id', id!);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    [id],
+    { enabled: isEdit, errorMsg: 'Erro ao carregar a ligação ao orçamento' },
+  );
+  useEffect(() => {
+    if (!ligacoes?.length) return;
+    setLinhas(prev => prev.map(l => {
+      const lig = ligacoes.find(x => x.id === l.id);
+      return lig?.orcamento_item_id && !l.itemId ? { ...l, itemId: lig.orcamento_item_id } : l;
+    }));
+  }, [ligacoes, sub]);
+  const excessos = form.type === 'unitario' ? avisosExcesso(linhas, resumoEap, itensEap) : [];
 
   const set = (patch: Partial<typeof form>) => setForm(prev => ({ ...prev, ...patch }));
 
@@ -98,10 +168,17 @@ export function SubempreiteiroFormPage() {
     if (!form.name.trim()) { toast.error('Indique o nome do subempreiteiro.'); return; }
     if (dadosFicha.data_inicio && dadosFicha.data_fim_prevista && dadosFicha.data_fim_prevista < dadosFicha.data_inicio) { toast.error('O fim previsto deve ser posterior ao início.'); return; }
 
+    if (excessos.length > 0) {
+      toast.error(`Excede o orçamento de controlo em ${excessos.map(x => x.codigo).join(', ')}. Reduza as quantidades ou ajuste o orçamento.`);
+      return;
+    }
+
     let items;
+    let validasLinhas: LinhaArtigo[] = [];
     if (form.type === 'unitario') {
       const validas = linhas.filter(l => l.description.trim() && parseFloat(l.unitPrice || '0') >= 0 && parseFloat(l.plannedQuantity || '0') > 0);
       if (validas.length === 0) { toast.error('Adicione pelo menos um artigo com descrição, preço e quantidade.'); return; }
+      validasLinhas = validas;
       items = validas.map(l => ({
         description: l.description.trim(),
         unit: l.unit,
@@ -123,6 +200,20 @@ export function SubempreiteiroFormPage() {
 
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) {
+      const porLigar = validasLinhas.filter(l => l.itemId);
+      if (porLigar.length > 0) {
+        const disponiveis = [...(result.items ?? [])];
+        let falhou = false;
+        for (const l of porLigar) {
+          const chave = chaveArtigo(l.description.trim(), l.unit, parseFloat(l.unitPrice || '0'), parseFloat(l.plannedQuantity));
+          const idx = disponiveis.findIndex(a => chaveArtigo(a.description, a.unit, a.unitPrice, a.plannedQuantity) === chave);
+          if (idx === -1) { falhou = true; continue; }
+          const [artigo] = disponiveis.splice(idx, 1);
+          const { error } = await ligacaoArtigos.from('subempreiteiro_artigos').update({ orcamento_item_id: l.itemId }).eq('id', artigo.id);
+          if (error) falhou = true;
+        }
+        if (falhou) toast.warning('Contratação guardada, mas não foi possível ligar alguns artigos ao orçamento. Edite e tente de novo.');
+      }
       const guardada = await guardarFicha(result.id, { nif: dadosFicha.nif.trim() || null, telefone: dadosFicha.telefone.trim() || null, email: dadosFicha.email.trim() || null, especialidade: dadosFicha.especialidade.trim() || null, data_inicio: dadosFicha.data_inicio || null, data_fim_prevista: dadosFicha.data_fim_prevista || null });
       if (guardada === null) { toast.error('Contratação guardada, mas não foi possível guardar os dados da ficha.'); navigate(`/obras/subempreitada/${result.id}`); return; }
       toast.success(isEdit ? 'Contratação atualizada.' : 'Contratação criada como rascunho.');
@@ -264,6 +355,28 @@ export function SubempreiteiroFormPage() {
                         <input type="number" inputMode="decimal" min="0" step="0.001" value={l.plannedQuantity} onChange={e => setLinha(l.id, { plannedQuantity: e.target.value })}
                           className="px-2 py-2 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Qtd" />
                       </div>
+                      {itensEap.length > 0 && (
+                        <label className="block text-xs text-muted-foreground">
+                          Item do orçamento (EAP)
+                          <select
+                            value={l.itemId}
+                            onChange={e => setLinha(l.id, { itemId: e.target.value })}
+                            className="mt-1 w-full px-2 py-2 bg-input-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Sem ligação ao orçamento</option>
+                            {itensEap.filter(i => i.ativo || i.id === l.itemId).map(i => <option key={i.id} value={i.id}>{i.codigo} — {i.descricao} ({i.unidade})</option>)}
+                          </select>
+                        </label>
+                      )}
+                      {excessos.filter(x => x.itemId === l.itemId).map(x => (
+                        <p key={x.itemId} role="alert" className="text-xs text-destructive font-medium">
+                          Excede o orçamento de controlo em {x.codigo}: contratado {fmtNumber(x.contratado)}, orçado {fmtNumber(x.orcado)}
+                          {x.limite > x.orcado ? ` (limite com tolerância ${fmtNumber(x.limite)})` : ''}.
+                        </p>
+                      ))}
+                      {itensEap.length > 0 && !l.itemId && (
+                        <p className="text-xs text-warning">Artigo sem ligação ao orçamento: não conta para o controlo de excesso.</p>
+                      )}
                       {subtotal > 0 && <p className="text-xs text-right text-muted-foreground">Subtotal: <strong className="text-foreground">{fmtEuro(subtotal)}</strong></p>}
                     </div>
                   );
