@@ -264,6 +264,31 @@ describe('exportarAutos', () => {
     expect(row['Valor Líquido (€)']).toBe('1000.00')
   })
 
+  it('retenção e líquido sobre o certificado quando há glosas', async () => {
+    mockData = [{ ...autoRow, valor_glosado: 200 }]
+    const [row] = await exportarAutos()
+    // certificado 800; 5% = 40 retido; 760 líquido
+    expect(row).toMatchObject({
+      'Valor Bruto (€)':        '1000.00',
+      'Glosado (€)':            '200.00',
+      'Valor Certificado (€)':  '800.00',
+      'Valor Retido (€)':       '40.00',
+      'Valor Líquido (€)':      '760.00',
+    })
+  })
+
+  it('sem valor_glosado (dados antigos) o certificado é o bruto', async () => {
+    mockData = [autoRow]
+    const [row] = await exportarAutos()
+    expect(row['Glosado (€)']).toBe('0.00')
+    expect(row['Valor Certificado (€)']).toBe('1000.00')
+  })
+
+  it('seleciona valor_glosado', async () => {
+    await exportarAutos()
+    expect(builder.select).toHaveBeenCalledWith(expect.stringContaining('valor_glosado'))
+  })
+
   it('filtra só autos validados (eq estado=validado)', async () => {
     await exportarAutos()
     expect(builder.eq).toHaveBeenCalledWith('estado', 'validado')

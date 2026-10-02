@@ -168,6 +168,22 @@ describe('listarSubempreiteiros', () => {
     expect(sub.items![1].isExtra).toBe(true)
   })
 
+  it('devolve o item do orçamento (EAP) ligado a cada artigo', async () => {
+    b.order.mockResolvedValueOnce({
+      data: [makeSubRow({
+        tipo: 'unitario',
+        subempreiteiro_artigos: [
+          makeArtigoRow({ id: 'a1', orcamento_item_id: 'eap-1' }),
+          makeArtigoRow({ id: 'a2', orcamento_item_id: null }),
+          makeArtigoRow({ id: 'a3' }),
+        ],
+      })],
+      error: null,
+    })
+    const [sub] = await listarSubempreiteiros()
+    expect(sub.items.map(i => i.orcamentoItemId)).toEqual(['eap-1', undefined, undefined])
+  })
+
   it('agreedValue=0 para unitario sem artigos', async () => {
     b.order.mockResolvedValueOnce({
       data: [makeSubRow({ tipo: 'unitario', valor_global: null, subempreiteiro_artigos: [] })],
@@ -244,6 +260,31 @@ describe('listarSubempreiteirosComExecutado', () => {
     expect(result.find(s => s.id === 's2')!.executed).toBeCloseTo(20000)
   })
 
+  it('o executado é o certificado: valor do período menos glosas', async () => {
+    b.order.mockResolvedValueOnce({ data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })], error: null })
+    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({
+      data: [
+        { subempreiteiro_id: 's1', valor_periodo: 10000, valor_glosado: 1500, estado: 'validado' },
+        { subempreiteiro_id: 's1', valor_periodo: 5000,  valor_glosado: 0,    estado: 'validado' },
+        { subempreiteiro_id: 's2', valor_periodo: 2000,  valor_glosado: 2000, estado: 'validado' },
+      ],
+      error: null,
+    })
+
+    const result = await listarSubempreiteirosComExecutado()
+
+    expect(result.find(s => s.id === 's1')!.executed).toBeCloseTo(13500)
+    expect(result.find(s => s.id === 's2')!.executed).toBe(0)
+  })
+
+  it('seleciona valor_glosado e só autos validados', async () => {
+    b.order.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
+    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({ data: [], error: null })
+    await listarSubempreiteirosComExecutado()
+    expect(b.select).toHaveBeenCalledWith(expect.stringContaining('valor_glosado'))
+    expect(b.eq).toHaveBeenCalledWith('estado', 'validado')
+  })
+
   it('executed=0 para subempreiteiros sem autos validados', async () => {
     b.order.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
     b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({ data: [], error: null })
@@ -303,6 +344,33 @@ describe('criarSubempreiteiro', () => {
     expect(b.delete).toHaveBeenCalled()
     // 2 inserts: 1 para o subempreiteiro + 1 para artigos
     expect(b.insert).toHaveBeenCalledTimes(2)
+  })
+
+  it('grava orcamento_item_id em cada artigo (null quando não há ligação)', async () => {
+    b.single
+      .mockResolvedValueOnce({ data: { id: 'new-sub' }, error: null })
+      .mockResolvedValueOnce({ data: makeSubRow({ id: 'new-sub', tipo: 'unitario' }), error: null })
+
+    await criarSubempreiteiro({
+      obraId: 'obra-1', name: 'Sub Y', type: 'unitario',
+      items: [
+        { description: 'Escavação', unit: 'm³', unitPrice: 25, plannedQuantity: 100, orcamentoItemId: 'eap-1' },
+        { description: 'Aterro', unit: 'm³', unitPrice: 10, plannedQuantity: 50 },
+      ],
+    })
+
+    const artigos = b.insert.mock.calls[1][0] as Record<string, unknown>[]
+    expect(artigos.map(a => a.orcamento_item_id)).toEqual(['eap-1', null])
+  })
+
+  it('atualizar substitui artigos mantendo a ligação ao orçamento', async () => {
+    b.eq.mockReturnValue(b)
+    b.single.mockResolvedValueOnce({ data: makeSubRow({ tipo: 'unitario' }), error: null })
+    await atualizarSubempreiteiro('sub-1', {
+      items: [{ description: 'Escavação', unit: 'm³', unitPrice: 25, plannedQuantity: 100, orcamentoItemId: 'eap-9' }],
+    })
+    const artigos = b.insert.mock.calls[0][0] as Record<string, unknown>[]
+    expect(artigos[0]).toMatchObject({ subempreiteiro_id: 'sub-1', orcamento_item_id: 'eap-9' })
   })
 
   it('envia valor_global=null para tipo unitario', async () => {

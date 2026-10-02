@@ -38,7 +38,7 @@ export function useCriarLiberacao() {
   const { mutate: criar, loading, error } = useMutation(
     (input: NovaLiberacao) => criarLiberacao(input),
     'Erro ao registar libertação',
-    { invalidates: ['liberacoes-*'] }
+    { invalidates: ['liberacoes-*', 'subs-resumo-*', 'sub-painel-*', 'subs-ceo-*', 'subs-fluxo-*'] }
   )
   return { criar, loading, error }
 }

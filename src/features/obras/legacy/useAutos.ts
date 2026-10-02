@@ -2,8 +2,8 @@ import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import {
   listarAutos, buscarAuto, criarAuto, atualizarAuto, eliminarAuto, validarAuto,
-  marcarAutoPago, marcarAutoEmAtraso,
-  type AtualizarAuto,
+  marcarAutoPago, marcarAutoEmAtraso, listarAprovadores,
+  type AtualizarAuto, type MedicaoAuto,
 } from './autosService'
 
 export function useAutos(subId: string | undefined) {
@@ -22,6 +22,14 @@ export function useAuto(id: string | undefined) {
   return { auto, loading, error, reload }
 }
 
+export function useAprovadoresAuto(auto: MedicaoAuto | undefined) {
+  const { data, loading } = useAsync(
+    () => listarAprovadores(auto!), [auto],
+    { enabled: !!auto, errorMsg: 'Erro ao carregar aprovadores' }
+  )
+  return { aprovadores: data ?? [], loading }
+}
+
 export function useGuardarAuto() {
   const criador    = useMutation(criarAuto, 'Erro ao guardar', { invalidates: INV_AUTOS })
   const atualizador = useMutation(
@@ -37,11 +45,15 @@ export function useGuardarAuto() {
   }
 }
 
-const INV_AUTOS = ['autos-*', 'subs-executado-*', 'resumo-obras']
+const INV_AUTOS = [
+  'autos-*', 'auto-*', 'subs-executado-*', 'resumo-obras',
+  'subs-resumo-*', 'sub-painel-*', 'subs-ceo-*', 'subs-fluxo-*', 'liberacoes-*',
+]
 
 export function useValidarAuto() {
   const { mutate: validar, loading, error } = useMutation(
-    validarAuto, 'Erro ao validar',
+    (id: string, excecaoDocsMotivo?: string) => validarAuto(id, excecaoDocsMotivo),
+    'Erro ao validar',
     { invalidates: INV_AUTOS }
   )
   return { validar, loading, error }
@@ -59,14 +71,15 @@ export function useEliminarAuto() {
 
 export function useMarcarAutoPago() {
   const { mutate, loading, error } = useMutation(
-    async (id: string, referencia?: string): Promise<true> => {
-      await marcarAutoPago(id, referencia)
+    async (id: string, referencia?: string, excecaoMotivo?: string): Promise<true> => {
+      await marcarAutoPago(id, referencia, excecaoMotivo)
       return true
     },
     'Erro ao marcar auto como pago',
     { invalidates: INV_AUTOS }
   )
-  const marcar = async (id: string, referencia?: string) => (await mutate(id, referencia)) === true
+  const marcar = async (id: string, referencia?: string, excecaoMotivo?: string) =>
+    (await mutate(id, referencia, excecaoMotivo)) === true
   return { marcar, loading, error }
 }
 

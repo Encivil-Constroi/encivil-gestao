@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client'
 import { obrasDb } from '../db'
 import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
-import type { TablesUpdate } from '@/integrations/supabase/types'
+import { certificado } from '../lib/medicao'
+import type { TablesInsert, TablesUpdate } from '@/integrations/supabase/types'
 import type { Subcontractor, SubcontractItem, ContractType } from '@/app/types'
 
 type ArtigoRow = {
@@ -12,6 +13,7 @@ type ArtigoRow = {
   preco_unitario: number
   quantidade_prevista: number
   is_extra: boolean
+  orcamento_item_id?: string | null
 }
 
 type SubRow = {
@@ -32,8 +34,12 @@ type SubRow = {
   subempreiteiro_artigos?: ArtigoRow[]
 }
 
-function toItem(row: ArtigoRow): SubcontractItem {
+export type ArtigoContrato = SubcontractItem & { orcamentoItemId?: string }
+export type SubcontractorComArtigos = Omit<Subcontractor, 'items'> & { items: ArtigoContrato[] }
+
+function toItem(row: ArtigoRow): ArtigoContrato {
   return {
+    orcamentoItemId: row.orcamento_item_id ?? undefined,
     id: row.id,
     subcontractorId: row.subempreiteiro_id,
     description: row.descricao,
@@ -44,7 +50,7 @@ function toItem(row: ArtigoRow): SubcontractItem {
   }
 }
 
-function toSubcontractor(row: SubRow): Subcontractor {
+function toSubcontractor(row: SubRow): SubcontractorComArtigos {
   const items = (row.subempreiteiro_artigos ?? []).map(toItem)
   const agreedValue = row.tipo === 'global'
     ? Number(row.valor_global ?? 0)
@@ -72,7 +78,7 @@ function toSubcontractor(row: SubRow): Subcontractor {
 
 const SELECT = '*, obras(nome), subempreiteiro_artigos(*)'
 
-export async function listarSubempreiteiros(obraId?: string): Promise<Subcontractor[]> {
+export async function listarSubempreiteiros(obraId?: string): Promise<SubcontractorComArtigos[]> {
   let query = obrasDb.from('subempreiteiros')
     .select(SELECT)
     .eq('ativo', true)
@@ -83,16 +89,17 @@ export async function listarSubempreiteiros(obraId?: string): Promise<Subcontrac
   return (data as unknown as SubRow[]).map(toSubcontractor)
 }
 
-export async function buscarSubempreiteiro(id: string): Promise<Subcontractor> {
+export async function buscarSubempreiteiro(id: string): Promise<SubcontractorComArtigos> {
   const { data, error } = await supabase.from('subempreiteiros').select(SELECT).eq('id', id).single()
   if (error) throw error
   return toSubcontractor(data as unknown as SubRow)
 }
 
-export type SubcontractorComExecutado = Subcontractor & { executed: number }
+export type SubcontractorComExecutado = SubcontractorComArtigos & { executed: number }
 
-// Lista subempreiteiros já com o executado (soma dos autos validados de cada
-// um) — numa única query extra aos autos. Com obraId filtra por obra (Ficha de
+// Lista subempreiteiros já com o executado (soma do certificado — valor do
+// período menos glosas — dos autos validados de cada um) — numa única query
+// extra aos autos. Com obraId filtra por obra (Ficha de
 // Obra); sem obraId devolve todos (dashboard e relatório de obras).
 export async function listarSubempreiteirosComExecutado(obraId?: string): Promise<SubcontractorComExecutado[]> {
   const subs = await listarSubempreiteiros(obraId)
@@ -101,14 +108,15 @@ export async function listarSubempreiteirosComExecutado(obraId?: string): Promis
   const ids = subs.map(s => s.id)
   const { data, error } = await supabase
     .from('autos_medicao')
-    .select('subempreiteiro_id, valor_periodo, estado')
+    .select('subempreiteiro_id, valor_periodo, valor_glosado, estado')
     .in('subempreiteiro_id', ids)
     .eq('estado', 'validado')
   if (error) throw error
 
   const exec: Record<string, number> = {}
-  ;(data as { subempreiteiro_id: string; valor_periodo: number }[]).forEach(r => {
-    exec[r.subempreiteiro_id] = (exec[r.subempreiteiro_id] ?? 0) + Number(r.valor_periodo)
+  ;(data as unknown as { subempreiteiro_id: string; valor_periodo: number; valor_glosado?: number | null }[]).forEach(r => {
+    exec[r.subempreiteiro_id] =
+      (exec[r.subempreiteiro_id] ?? 0) + certificado(Number(r.valor_periodo), Number(r.valor_glosado ?? 0))
   })
 
   return subs.map(s => ({ ...s, executed: exec[s.id] ?? 0 }))
@@ -120,6 +128,7 @@ export type ItemInput = {
   unitPrice: number
   plannedQuantity: number
   isExtra?: boolean
+  orcamentoItemId?: string | null
 }
 
 export type NovoSubempreiteiro = {
@@ -133,7 +142,7 @@ export type NovoSubempreiteiro = {
   items?: ItemInput[]
 }
 
-export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<Subcontractor> {
+export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<SubcontractorComArtigos> {
   const { data, error } = await supabase
     .from('subempreiteiros')
     .insert({
@@ -158,7 +167,7 @@ export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<Su
 
 export type AtualizarSubempreiteiro = Partial<NovoSubempreiteiro>
 
-export async function atualizarSubempreiteiro(id: string, input: AtualizarSubempreiteiro): Promise<Subcontractor> {
+export async function atualizarSubempreiteiro(id: string, input: AtualizarSubempreiteiro): Promise<SubcontractorComArtigos> {
   const update: Record<string, unknown> = {}
   if (input.obraId !== undefined)     update.obra_id = input.obraId
   if (input.name !== undefined)       update.nome = input.name
@@ -197,16 +206,18 @@ async function substituirArtigos(subId: string, items: ItemInput[]): Promise<voi
   if (delError) throw delError
 
   if (!items.length) return
-  const { error: insError } = await supabase
-    .from('subempreiteiro_artigos')
-    .insert(items.map(i => ({
+  const linhas = items.map(i => ({
       subempreiteiro_id: subId,
       descricao: i.description,
       unidade: i.unit,
       preco_unitario: i.unitPrice,
       quantidade_prevista: i.plannedQuantity,
       is_extra: i.isExtra ?? false,
-    })))
+      orcamento_item_id: i.orcamentoItemId ?? null,
+    }))
+  const { error: insError } = await supabase
+    .from('subempreiteiro_artigos')
+    .insert(linhas as TablesInsert<'subempreiteiro_artigos'>[])
   if (insError) throw insError
 }
 
@@ -219,7 +230,7 @@ export async function arquivarSubempreiteiro(id: string): Promise<void> {
   await rpcSemTipos('arquivar_subempreiteiro', { p_id: id })
 }
 
-export async function validarSubempreiteiro(id: string): Promise<Subcontractor> {
+export async function validarSubempreiteiro(id: string): Promise<SubcontractorComArtigos> {
   const { error } = await supabase.rpc('validar_subempreiteiro', { p_id: id })
   if (error) throw error
   return buscarSubempreiteiro(id)

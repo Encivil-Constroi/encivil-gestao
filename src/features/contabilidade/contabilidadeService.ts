@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client'
 import { listarObras } from '@/features/obras/services/obrasService'
+import { certificado, retencao } from '@/features/obras/lib/medicao'
 import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
 
@@ -113,11 +114,13 @@ export async function exportarCombustivel(filtros: FiltrosExport = {}): Promise<
 }
 
 // ─── 3. Autos de medição validados ────────────────────────────────────────────
+// Retenção e líquido calculados sobre o certificado (bruto − glosas).
 
 type AutoRow = {
   numero: number
   data_medicao: string
   valor_periodo: number
+  valor_glosado?: number | null
   estado: string
   estado_pagamento: string
   data_pagamento: string | null
@@ -133,7 +136,7 @@ type AutoRow = {
 export async function exportarAutos(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
   let query = db
     .from('autos_medicao')
-    .select('numero, data_medicao, valor_periodo, estado, estado_pagamento, data_pagamento, referencia_pagamento, validado_em, subempreiteiros(nome, percentagem_retencao, obras(nome))')
+    .select('numero, data_medicao, valor_periodo, valor_glosado, estado, estado_pagamento, data_pagamento, referencia_pagamento, validado_em, subempreiteiros(nome, percentagem_retencao, obras(nome))')
     .eq('estado', 'validado')
     .order('data_medicao', { ascending: true })
 
@@ -161,16 +164,20 @@ export async function exportarAutos(filtros: FiltrosExport = {}): Promise<Export
   }
 
   return rows.map(r => {
-    const bruto   = Number(r.valor_periodo)
-    const pct     = Number(r.subempreiteiros?.percentagem_retencao ?? 0)
-    const retido  = bruto * pct / 100
-    const liquido = bruto - retido
+    const bruto    = Number(r.valor_periodo)
+    const glosado  = Number(r.valor_glosado ?? 0)
+    const cert     = certificado(bruto, glosado)
+    const pct      = Number(r.subempreiteiros?.percentagem_retencao ?? 0)
+    const retido   = retencao(cert, pct)
+    const liquido  = cert - retido
     return {
       'Nº Auto':           r.numero,
       'Data Medição':      fmtData(r.data_medicao),
       'Subempreiteiro':    r.subempreiteiros?.nome ?? '',
       'Obra':              r.subempreiteiros?.obras?.nome ?? '',
       'Valor Bruto (€)':   num2(bruto),
+      'Glosado (€)':       num2(glosado),
+      'Valor Certificado (€)': num2(cert),
       'Retenção (%)':      pct,
       'Valor Retido (€)':  num2(retido),
       'Valor Líquido (€)': num2(liquido),

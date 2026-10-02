@@ -1,6 +1,7 @@
 import { useAsync } from '@/app/lib/useAsync'
 import { supabase } from '@/integrations/supabase/client'
 import { listarObras } from '@/features/obras/services/obrasService'
+import { certificado } from '@/features/obras/lib/medicao'
 import { listarSubempreiteiros } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
 
@@ -19,15 +20,15 @@ async function fetchResumoObras(): Promise<ResumoObras> {
   const [obras, subs, autosRes, matComb] = await Promise.all([
     listarObras(false),
     listarSubempreiteiros(),
-    supabase.from('autos_medicao').select('valor_periodo, estado'),
+    supabase.from('autos_medicao').select('valor_periodo, valor_glosado, estado'),
     custosMateriaisCombustivelPorObra(),
   ])
 
   if (autosRes.error) throw autosRes.error
-  const autos = (autosRes.data ?? []) as { valor_periodo: number; estado: string }[]
+  const autos = (autosRes.data ?? []) as unknown as { valor_periodo: number; valor_glosado?: number | null; estado: string }[]
   const executado = autos
     .filter(a => a.estado === 'validado')
-    .reduce((s, a) => s + Number(a.valor_periodo), 0)
+    .reduce((s, a) => s + certificado(Number(a.valor_periodo), Number(a.valor_glosado ?? 0)), 0)
 
   const parciais = Object.values(matComb)
   const materiais = parciais.reduce((s, p) => s + p.materiais, 0)

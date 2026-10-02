@@ -2,12 +2,30 @@ import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ChevronLeft, Printer } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '@/app/lib/format';
-import { useAuto } from '../../legacy/useAutos';
+import { useAuto, useAprovadoresAuto } from '../../legacy/useAutos';
 import { useSubempreiteiro } from '../../legacy/useSubempreiteiros';
+import { useGlosasAuto, useEvidenciasAutoLista } from '../../hooks/useSubsControlo';
+import type { AutoGlosaRow, WorkflowAuto } from '../../db';
 import { AutoEvidenciasView } from './AutoEvidenciasView';
 
 const PT = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmt = (d?: Date | null) => d ? PT.format(d) : '—';
+
+const ROTULO_WORKFLOW: Record<WorkflowAuto, string> = {
+  rascunho:   'Rascunho',
+  submetido:  'Submetido',
+  verificado: 'Verificado',
+  validado:   '✓ Aprovado',
+};
+
+const ROTULO_GLOSA: Record<AutoGlosaRow['motivo'], string> = {
+  QUALIDADE:                 'Qualidade',
+  QUANTIDADE_NAO_CONFIRMADA: 'Quantidade não confirmada',
+  ATRASO:                    'Atraso',
+  SEGURANCA:                 'Segurança',
+  DOCUMENTACAO:              'Documentação',
+  OUTRO:                     'Outro',
+};
 
 const ESTADO_PAGAMENTO: Record<string, string> = {
   por_pagar: 'Por Pagar',
@@ -21,7 +39,13 @@ export function AutoPdfPage() {
   const { auto,  loading: loadAuto } = useAuto(autoId);
   const { sub,   loading: loadSub  } = useSubempreiteiro(auto?.subcontractorId);
 
+  const { glosas }       = useGlosasAuto(autoId);
+  const { evidencias }   = useEvidenciasAutoLista(autoId);
+  const { aprovadores }  = useAprovadoresAuto(auto ?? undefined);
+
   const loading = loadAuto || loadSub;
+  const glosasAplicadas = glosas.filter(g => g.estado === 'aplicada');
+  const evidenciasValidas = evidencias.filter(e => e.valida).length;
 
   // Título do separador
   useEffect(() => {
@@ -97,12 +121,14 @@ export function AutoPdfPage() {
 
       {/* ── Área de fundo (só ecrã) ── */}
       <div className="no-print bg-muted min-h-screen pt-16 pb-10 px-4">
-        <Document auto={auto} sub={sub} baseLines={baseLines} extraLines={extraLines} temRetencao={temRetencao} fmt={fmt} />
+        <Document auto={auto} sub={sub} baseLines={baseLines} extraLines={extraLines} temRetencao={temRetencao} fmt={fmt}
+          glosas={glosasAplicadas} aprovadores={aprovadores} evidenciasValidas={evidenciasValidas} evidenciasTotal={evidencias.length} />
       </div>
 
       {/* ── Documento imprimível (só impressão — versão sem wrapper de fundo) ── */}
       <div className="hidden print:block">
-        <Document auto={auto} sub={sub} baseLines={baseLines} extraLines={extraLines} temRetencao={temRetencao} fmt={fmt} />
+        <Document auto={auto} sub={sub} baseLines={baseLines} extraLines={extraLines} temRetencao={temRetencao} fmt={fmt}
+          glosas={glosasAplicadas} aprovadores={aprovadores} evidenciasValidas={evidenciasValidas} evidenciasTotal={evidencias.length} />
       </div>
     </>
   );
@@ -111,6 +137,10 @@ export function AutoPdfPage() {
 // ── Componente do documento ────────────────────────────────────────────────────
 type DocProps = {
   auto: ReturnType<typeof useAuto>['auto'] & {};
+  glosas: AutoGlosaRow[];
+  aprovadores: ReturnType<typeof useAprovadoresAuto>['aprovadores'];
+  evidenciasValidas: number;
+  evidenciasTotal: number;
   sub:  ReturnType<typeof useSubempreiteiro>['sub'] & {};
   baseLines:  { id: string; description: string; unit: string; quantity: number; unitPrice: number }[];
   extraLines: { id: string; description: string; unit: string; quantity: number; unitPrice: number }[];
@@ -118,7 +148,7 @@ type DocProps = {
   fmt: (d?: Date | null) => string;
 };
 
-function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocProps) {
+function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt, glosas, aprovadores, evidenciasValidas, evidenciasTotal }: DocProps) {
   return (
     <div className="pdf-page bg-white mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
 
@@ -139,11 +169,11 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocPro
           <p className="text-3xl font-black text-primary leading-none">Nº {auto.number}</p>
           <div className="flex items-center justify-end gap-1.5 mt-1">
             <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-              auto.status === 'validado'
+              auto.workflow === 'validado'
                 ? 'bg-green-100 text-green-700'
                 : 'bg-amber-100 text-amber-700'
             }`}>
-              {auto.status === 'validado' ? '✓ Validado' : 'Rascunho'}
+              {ROTULO_WORKFLOW[auto.workflow]}
             </span>
             {auto.estadoPagamento && (
               <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${
@@ -179,7 +209,7 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocPro
             </p>
             {auto.validatedAt && (
               <p className="text-sm text-gray-600">
-                <span className="text-gray-400">Validado em: </span>{fmt(auto.validatedAt)}
+                <span className="text-gray-400">Aprovado em: </span>{fmt(auto.validatedAt)}
               </p>
             )}
             {auto.dataPagamento && (
@@ -270,6 +300,31 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocPro
         </div>
       )}
 
+      {/* ━━━ Glosas ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {glosas.length > 0 && (
+        <div className="mb-4 page-break-avoid">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-red-600 mb-2">Glosas aplicadas</p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-red-700 text-white">
+                <th className="text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide w-40">Motivo</th>
+                <th className="text-left px-3 py-2 font-semibold text-xs uppercase tracking-wide">Descrição</th>
+                <th className="text-right px-3 py-2 font-semibold text-xs uppercase tracking-wide w-28">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {glosas.map((g, i) => (
+                <tr key={g.id} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
+                  <td className="px-3 py-2 border-b border-red-100">{ROTULO_GLOSA[g.motivo]}</td>
+                  <td className="px-3 py-2 border-b border-red-100">{g.descricao}</td>
+                  <td className="px-3 py-2 border-b border-red-100 text-right font-semibold tabular-nums">− {fmtEuro(g.valor)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* ━━━ Resumo de valores ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="flex justify-end mb-8 page-break-avoid">
         <div className="w-80 border border-gray-200 rounded-lg overflow-hidden">
@@ -278,10 +333,23 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocPro
             <span className="text-sm font-semibold tabular-nums">{fmtEuro(auto.periodValue)}</span>
           </div>
 
+          {auto.valorGlosado > 0 && (
+            <>
+              <div className="flex items-center justify-between px-4 py-2.5 bg-red-50 border-b border-red-200">
+                <span className="text-sm text-red-700">Glosas</span>
+                <span className="text-sm font-semibold text-red-700 tabular-nums">− {fmtEuro(auto.valorGlosado)}</span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                <span className="text-sm text-gray-600">Valor certificado</span>
+                <span className="text-sm font-semibold tabular-nums">{fmtEuro(auto.valorCertificado)}</span>
+              </div>
+            </>
+          )}
+
           {temRetencao && (
             <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 border-b border-amber-200">
               <span className="text-sm text-amber-700">
-                Retenção de garantia ({fmtNumber(auto.retencaoPercentagem)}%)
+                Retenção de garantia ({fmtNumber(auto.retencaoPercentagem)}% do certificado)
               </span>
               <span className="text-sm font-semibold text-amber-700 tabular-nums">
                 − {fmtEuro(auto.valorRetido)}
@@ -299,6 +367,44 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt }: DocPro
           </div>
         </div>
       </div>
+
+      {auto.fatura && (
+        <div className="mb-5 p-4 border border-gray-200 rounded-lg bg-gray-50 page-break-avoid">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Fatura do subempreiteiro (guardada)</p>
+          <p className="text-sm text-gray-700">
+            Nº <span className="font-mono">{auto.fatura.numero}</span>
+            {auto.fatura.data && <> · {fmt(new Date(auto.fatura.data))}</>}
+            {auto.fatura.valor != null && <> · {fmtEuro(auto.fatura.valor)}</>}
+          </p>
+          {auto.fatura.valor != null && Math.abs(auto.fatura.valor - auto.valorLiquido) > 0.01 && (
+            <p className="text-xs text-amber-700 mt-1">
+              O valor da fatura difere do valor líquido aprovado ({fmtEuro(auto.valorLiquido)}).
+            </p>
+          )}
+        </div>
+      )}
+
+      {aprovadores.length > 0 && (
+        <div className="mb-5 p-4 border border-gray-200 rounded-lg bg-gray-50 page-break-avoid">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Circuito de aprovação</p>
+          <ul className="text-sm text-gray-700 space-y-0.5">
+            {aprovadores.map(a => (
+              <li key={a.etapa}>
+                <span className="text-gray-400">{a.etapa}: </span>
+                {a.nome ?? '—'}{a.em && <> · {fmt(a.em)}</>}
+              </li>
+            ))}
+          </ul>
+          {auto.excecaoMotivo && (
+            <p className="text-xs text-amber-700 mt-2">Exceção autorizada pelo administrador: {auto.excecaoMotivo}</p>
+          )}
+        </div>
+      )}
+
+      <p className="mb-2 text-xs text-gray-500">
+        Evidências fotográficas válidas: <strong>{evidenciasValidas}</strong>
+        {evidenciasTotal > evidenciasValidas && <> (de {evidenciasTotal} registadas)</>}
+      </p>
 
       <div className="mt-6 page-break-avoid"><AutoEvidenciasView autoId={auto.id} imprimivel /></div>
 

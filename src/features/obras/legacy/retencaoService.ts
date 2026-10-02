@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { LiberacaoRetencao } from '@/app/types'
+import { libertarRetencao } from '../services/subsControloService'
 
 const db = supabase
 
@@ -39,28 +40,25 @@ export async function listarLiberacoes(subId: string): Promise<LiberacaoRetencao
   return (data as LiberacaoRow[]).map(toLiberacao)
 }
 
+// A RPC deduz a obra do subempreiteiro e regista a data no servidor; os campos
+// obraId e dataLiberacao mantêm-se só por compatibilidade com os chamadores.
 export type NovaLiberacao = {
   subcontractorId: string
   obraId?: string
   valor: number
-  dataLiberacao: string
+  dataLiberacao?: string
   motivo: LiberacaoRetencao['motivo']
   observacoes?: string
 }
 
 export async function criarLiberacao(input: NovaLiberacao): Promise<LiberacaoRetencao> {
-  const { data, error } = await db
-    .from('liberacoes_retencao')
-    .insert({
-      subempreiteiro_id: input.subcontractorId,
-      obra_id:           input.obraId ?? null,
-      valor:             input.valor,
-      data_liberacao:    input.dataLiberacao,
-      motivo:            input.motivo,
-      observacoes:       input.observacoes ?? null,
-    })
-    .select('*')
-    .single()
+  const id = await libertarRetencao({
+    subId:  input.subcontractorId,
+    valor:  input.valor,
+    motivo: input.motivo,
+    obs:    input.observacoes ?? null,
+  })
+  const { data, error } = await db.from('liberacoes_retencao').select('*').eq('id', id).single()
   if (error) throw error
   return toLiberacao(data as LiberacaoRow)
 }
