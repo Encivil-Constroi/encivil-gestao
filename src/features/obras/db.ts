@@ -243,6 +243,17 @@ export type SubPainel = {
   prazo: { inicio: string | null; fim_previsto: string | null; dias_restantes: number | null }
   saude: Saude
   motivos: string[]
+  // Migration B (20261004010000): ausentes enquanto não estiver aplicada
+  glosado?: number
+  taxa_glosa_pct?: number
+  em_aprovacao_n?: number
+  em_aprovacao_valor?: number
+  progresso_fisico_pct?: number | null
+  desvio_fisico_financeiro_pp?: number | null
+  retencao_libertada?: number
+  artigos_sem_eap?: number
+  docs_estado?: DocsEstadoGlobal
+  bloqueios?: string[]
 }
 
 export type EventoRow = {
@@ -353,6 +364,287 @@ export type AutoEvidenciasObraRow = {
   progresso_fisico_pct: number | null
 }
 
+// ── Controlo de subempreitadas (migrations 20261004000000 e 20261004010000) ──
+// Desenho: docs/superpowers/specs/2026-10-04-controlo-subempreitadas-design.md, §2.
+
+export type DocsEstadoGlobal = 'ok' | 'a_expirar' | 'critico'
+export type TipoDocSub = 'CERT_SS' | 'CERT_AT' | 'ALVARA' | 'SEGURO_AT' | 'SEGURO_RC' | 'OUTRO'
+export type EstadoDocSub = 'ok' | 'a_expirar' | 'expirado' | 'em_falta'
+export type EstadoOrcamentoItem = 'ok' | 'atencao' | 'excedido'
+export type WorkflowAuto = 'rascunho' | 'submetido' | 'verificado' | 'validado'
+export type ResultadoVerificacao = 'pendente' | 'conforme' | 'nao_conforme' | 'na'
+export type MotivoGlosa = 'QUALIDADE' | 'QUANTIDADE_NAO_CONFIRMADA' | 'ATRASO' | 'SEGURANCA' | 'DOCUMENTACAO' | 'OUTRO'
+export type EstadoGlosa = 'aplicada' | 'levantada'
+export type MotivoLiberacaoRetencao = 'conclusao_obra' | 'periodo_garantia' | 'acordo_parcial' | 'outro'
+
+export type ChecklistItemCfg = { item: string } | string
+
+export type SubsConfigRow = {
+  id: boolean
+  retencao_padrao_pct: number
+  prazo_pagamento_dias: number
+  alcada_gestor_ate: number
+  docs_obrigatorios: TipoDocSub[]
+  bloquear_pagamento_sem_docs: boolean
+  exigir_fatura_para_pagar: boolean
+  aviso_validade_dias: number
+  raio_padrao_m: number
+  precisao_max_m: number
+  foto_idade_max_min: number
+  min_fotos_verificacao: number
+  checklist_padrao: ChecklistItemCfg[]
+  atualizado_em: string
+  atualizado_por: string | null
+}
+
+export type SubsConfigGuardar = Partial<Omit<SubsConfigRow, 'id' | 'atualizado_em' | 'atualizado_por'>>
+
+export type OrcamentoItemRow = {
+  id: string
+  obra_id: string
+  codigo: string
+  descricao: string
+  unidade: string
+  quantidade: number
+  preco_unitario: number
+  tolerancia_pct: number
+  ativo: boolean
+  criado_em: string
+  atualizado_em: string
+}
+
+export type OrcamentoResumoRow = {
+  item_id: string
+  codigo: string
+  descricao: string
+  unidade: string
+  orcado_qtd: number
+  orcado_valor: number
+  contratado_qtd: number
+  contratado_valor: number
+  medido_qtd: number
+  medido_valor: number
+  saldo_qtd: number
+  saldo_valor: number
+  perc_contratado: number
+  perc_medido: number
+  n_artigos: number
+  estado: EstadoOrcamentoItem
+}
+
+export type SubDocumentoRow = {
+  id: string
+  subempreiteiro_id: string
+  tipo: TipoDocSub
+  referencia: string | null
+  emitido_em: string | null
+  validade: string | null
+  path: string
+  nome: string | null
+  criado_por: string | null
+  criado_em: string
+}
+
+export type SubDocEstadoRow = {
+  tipo: TipoDocSub
+  obrigatorio: boolean
+  estado: EstadoDocSub
+  validade: string | null
+  dias_restantes: number | null
+  doc_id: string | null
+  referencia: string | null
+}
+
+export type AutoEvidenciaRow = {
+  id: string
+  auto_id: string
+  linha_id: string | null
+  path: string
+  legenda: string | null
+  latitude: number | null
+  longitude: number | null
+  precisao_m: number | null
+  tirada_em: string
+  enviada_em: string
+  hash_sha256: string
+  distancia_obra_m: number | null
+  dentro_obra: boolean | null
+  precisao_ok: boolean | null
+  valida: boolean
+  motivo_invalida: string | null
+  autor_id: string | null
+}
+
+export type EvidenciaResultado = {
+  id: string
+  valida: boolean
+  dentro_obra: boolean | null
+  distancia_m: number | null
+  precisao_ok: boolean | null
+  motivo: string | null
+}
+
+export type AutoVerificacaoRow = {
+  id: string
+  auto_id: string
+  ordem: number
+  item: string
+  resultado: ResultadoVerificacao
+  observacao: string | null
+  verificado_por: string | null
+  verificado_em: string | null
+}
+
+export type AutoVerificacaoItem = { ordem: number; resultado: ResultadoVerificacao; observacao: string | null }
+
+export type AutoGlosaRow = {
+  id: string
+  auto_id: string
+  linha_id: string | null
+  motivo: MotivoGlosa
+  descricao: string
+  valor: number
+  estado: EstadoGlosa
+  ocorrencia_id: string | null
+  criado_por: string | null
+  criado_em: string
+  levantada_por: string | null
+  levantada_em: string | null
+  motivo_levantamento: string | null
+}
+
+export type AutoWorkflowRow = {
+  id: string
+  workflow: WorkflowAuto
+  valor_periodo: number
+  valor_glosado: number
+  data_vencimento: string | null
+  fatura_numero: string | null
+  fatura_data: string | null
+  fatura_valor: number | null
+  fatura_path: string | null
+  fatura_nome: string | null
+  fatura_registada_em: string | null
+  excecao_motivo: string | null
+  submetido_por: string | null
+  submetido_em: string | null
+  verificado_por: string | null
+  verificado_em: string | null
+}
+
+export type AutoLinhaMedicaoRow = {
+  id: string
+  auto_id: string
+  artigo_id: string | null
+  quantidade: number
+  qtd_pedida: number | null
+  justificacao: string | null
+}
+
+export type LiberacaoRetencaoRow = {
+  id: string
+  subempreiteiro_id: string
+  obra_id: string | null
+  valor: number
+  data_liberacao: string
+  motivo: MotivoLiberacaoRetencao
+  observacoes: string | null
+  registado_por: string | null
+  created_at: string
+}
+
+export type SubArtigoOrcamentoRow = { id: string; orcamento_item_id: string | null }
+
+export type OrcamentoItemGuardarArgs = {
+  p_obra_id: string
+  p_id: string | null
+  p_codigo: string
+  p_descricao: string
+  p_unidade: string
+  p_quantidade: number
+  p_preco_unitario: number
+  p_tolerancia_pct: number
+}
+
+export type EvidenciaRegistarArgs = {
+  p_auto_id: string
+  p_path: string
+  p_legenda: string | null
+  p_lat: number | null
+  p_lon: number | null
+  p_precisao_m: number | null
+  p_tirada_em: string
+  p_hash: string
+  p_linha_id: string | null
+}
+
+export type AutoGlosarArgs = {
+  p_auto_id: string
+  p_motivo: MotivoGlosa
+  p_descricao: string
+  p_valor: number
+  p_linha_id: string | null
+  p_ocorrencia_id: string | null
+}
+
+export type SubsPainelTotais = {
+  contratado: number
+  orcado_subempreitadas: number
+  certificado: number
+  pago: number
+  por_pagar: number
+  retencao_acumulada: number
+  retencao_libertada: number
+  em_aprovacao_valor: number
+  em_aprovacao_n: number
+  glosado: number
+  taxa_glosa_pct: number
+}
+
+export type SubsPainelSub = {
+  sub_id: string
+  nome: string
+  obra_id: string
+  obra_nome: string
+  contratado: number
+  orcado_ligado: number
+  certificado: number
+  executado_pct: number
+  progresso_fisico_pct: number | null
+  desvio_pp: number | null
+  glosado: number
+  taxa_glosa_pct: number
+  ocorrencias_altas: number
+  docs_estado: DocsEstadoGlobal
+  docs_em_falta: string[]
+  por_pagar: number
+  saude: Saude
+}
+
+export type SubsAlerta = {
+  tipo: string
+  sub_id: string | null
+  obra_id: string | null
+  texto: string
+  gravidade: Gravidade
+}
+
+export type SubsPainelCeo = {
+  totais: SubsPainelTotais
+  por_sub: SubsPainelSub[]
+  passivo_documental: { subs_com_pendencia: number; valor_por_pagar_em_risco: number }
+  alertas: SubsAlerta[]
+}
+
+export type FluxoCaixaSemana = {
+  semana_inicio: string
+  aprovado: number
+  em_aprovacao: number
+  n_autos: number
+}
+
+export type CriarAutoRpcRow = { id: string; numero: number }
+
 export type ObrasDatabase = {
   __InternalSupabase: { PostgrestVersion: '14.5' }
   public: {
@@ -367,7 +659,16 @@ export type ObrasDatabase = {
       obra_eventos:             Tabela<EventoRow & { obra_id: string; autor_id: string | null }>
       sub_ocorrencias:          Tabela<SubOcorrenciaRow>
       subempreiteiros:          Tabela<SubFichaObraRow>
-      autos_medicao:            Tabela<AutoEvidenciasObraRow>
+      autos_medicao:            Tabela<AutoEvidenciasObraRow & AutoWorkflowRow>
+      subs_config:              Tabela<SubsConfigRow>
+      obra_orcamento_itens:     Tabela<OrcamentoItemRow>
+      subempreiteiro_artigos:   Tabela<SubArtigoOrcamentoRow>
+      sub_documentos:           Tabela<SubDocumentoRow>
+      auto_evidencias:          Tabela<AutoEvidenciaRow>
+      auto_linhas:              Tabela<AutoLinhaMedicaoRow>
+      auto_verificacoes:        Tabela<AutoVerificacaoRow>
+      auto_glosas:              Tabela<AutoGlosaRow>
+      liberacoes_retencao:      Tabela<LiberacaoRetencaoRow>
     }
     Views: {
       obra_fotos_todas: { Row: FotoTodasRow; Relationships: [] }
@@ -453,6 +754,54 @@ export type ObrasDatabase = {
       obra_frota: { Args: { p_obra_id: string }; Returns: ObraFrotaRow[] }
       obra_ferramentas: { Args: { p_obra_id: string }; Returns: ObraFerramentaRow[] }
       obra_materiais: { Args: { p_obra_id: string }; Returns: ObraMaterialRow[] }
+      subs_config_ler: { Args: Record<string, never>; Returns: SubsConfigRow }
+      subs_config_guardar: { Args: { p_cfg: SubsConfigGuardar }; Returns: undefined }
+      obra_orcamento_guardar_item: { Args: OrcamentoItemGuardarArgs; Returns: string }
+      obra_orcamento_apagar_item: { Args: { p_id: string }; Returns: undefined }
+      obra_orcamento_resumo: { Args: { p_obra_id: string }; Returns: OrcamentoResumoRow[] }
+      sub_doc_registar: {
+        Args: {
+          p_sub_id: string; p_tipo: TipoDocSub; p_referencia: string | null; p_emitido_em: string | null
+          p_validade: string | null; p_path: string; p_nome: string | null
+        }
+        Returns: string
+      }
+      sub_doc_remover: { Args: { p_id: string }; Returns: undefined }
+      sub_docs_estado: { Args: { p_sub_id: string }; Returns: SubDocEstadoRow[] }
+      auto_registar_evidencia: { Args: EvidenciaRegistarArgs; Returns: EvidenciaResultado }
+      auto_apagar_evidencia: { Args: { p_id: string }; Returns: undefined }
+      auto_evidencias_lista: { Args: { p_auto_id: string }; Returns: AutoEvidenciaRow[] }
+      auto_submeter: { Args: { p_auto_id: string }; Returns: undefined }
+      auto_iniciar_verificacao: { Args: { p_auto_id: string }; Returns: undefined }
+      auto_registar_verificacao: { Args: { p_auto_id: string; p_itens: AutoVerificacaoItem[] }; Returns: undefined }
+      auto_verificar: { Args: { p_auto_id: string; p_excecao_motivo?: string | null }; Returns: undefined }
+      auto_glosar: { Args: AutoGlosarArgs; Returns: string }
+      auto_levantar_glosa: { Args: { p_glosa_id: string; p_motivo: string }; Returns: undefined }
+      auto_devolver: { Args: { p_auto_id: string; p_motivo: string }; Returns: undefined }
+      auto_aprovar: { Args: { p_auto_id: string; p_excecao_docs_motivo?: string | null }; Returns: undefined }
+      auto_registar_fatura: {
+        Args: {
+          p_auto_id: string; p_numero: string; p_data: string; p_valor: number
+          p_path: string; p_nome: string | null
+        }
+        Returns: undefined
+      }
+      validar_auto: { Args: { p_id: string }; Returns: unknown }
+      marcar_auto_pago: {
+        Args: { p_auto_id: string; p_referencia?: string | null; p_excecao_motivo?: string | null }
+        Returns: undefined
+      }
+      marcar_auto_em_atraso: { Args: { p_auto_id: string }; Returns: undefined }
+      criar_auto_rpc: {
+        Args: { p_sub_id: string; p_data: string; p_percentagem: number; p_valor: number; p_notas?: string | null }
+        Returns: CriarAutoRpcRow[]
+      }
+      sub_libertar_retencao: {
+        Args: { p_sub_id: string; p_valor: number; p_motivo: MotivoLiberacaoRetencao; p_obs: string | null }
+        Returns: string
+      }
+      subs_painel_ceo: { Args: { p_obra_id?: string | null }; Returns: SubsPainelCeo }
+      subs_fluxo_caixa: { Args: { p_obra_id?: string | null; p_semanas?: number }; Returns: FluxoCaixaSemana[] }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
