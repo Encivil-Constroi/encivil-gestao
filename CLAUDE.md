@@ -156,6 +156,10 @@ partem na shell). Commit/push só quando o utilizador pedir; `main` é a branch 
 formato `tipo(âmbito): descrição` (ex.: `feat(frota): …`, `fix(obras): …`). Decide e avança sem pedir confirmações triviais;
 confirma antes de ações irreversíveis ou que publiquem algo para fora.
 
+## Como responder ao utilizador (regra fixa)
+Direto ao ponto, sem enrolação. Frases curtas. Problema numa linha; solução em passos numerados. Termo técnico só com
+uma frase a explicá-lo logo a seguir. Faltou informação para executar? **Pergunta ANTES de fazer** (uma pergunta, objetiva).
+
 ## Ao terminar uma tarefa, reporta
 Ficheiros alterados · comportamento alterado · testes/comandos corridos com o resultado · riscos conhecidos · passos manuais
 para o utilizador (ex.: migration a aplicar no SQL Editor, por esta ordem).
