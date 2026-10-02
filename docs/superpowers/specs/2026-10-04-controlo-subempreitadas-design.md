@@ -11,8 +11,7 @@ o que falta pagar; ninguém paga mais do que o orçamento de controlo permite ne
 
 **Adaptação (o pedido veio com termos brasileiros):** CND/FGTS/INSS → certidão de não dívida à **Segurança Social** e às
 **Finanças (AT)**, **alvará/título IMPIC**, **seguro de acidentes de trabalho** e de **responsabilidade civil**. FVS → **ficha de
-verificação** (estilo PPI). "Nota fiscal" → **fatura** do subempreiteiro (o ERP não emite faturas: valida a fatura contra o valor
-aprovado; IVA/autoliquidação ficam com a contabilidade — os valores do módulo são **sem IVA**). Retenção de garantia 5 % (prática
+verificação** (estilo PPI). "Nota fiscal" → **fatura** do subempreiteiro: **o ERP não emite faturas, apenas guarda** as que os subempreiteiros emitem (número, data, valor e o ficheiro PDF/foto num bucket privado) e assinala, sem bloquear, se o valor diferir do aprovado; IVA/autoliquidação ficam com a contabilidade — os valores do módulo são **sem IVA**. Retenção de garantia 5 % (prática
 corrente em PT; configurável). A base legal (responsabilidade solidária do dono de obra, etc.) deve ser confirmada pelo jurista da
 ENCIVIL; o sistema só impõe as regras abaixo, todas configuráveis.
 
@@ -55,7 +54,7 @@ Artigos sem ligação são permitidos (dados antigos) mas `sub_painel` devolve `
 
 **`sub_documentos`**: `id, subempreiteiro_id FK, tipo CHECK IN ('CERT_SS','CERT_AT','ALVARA','SEGURO_AT','SEGURO_RC','OUTRO'), referencia text,
 emitido_em date, validade date NULL, path text NOT NULL, nome text, criado_por default auth.uid(), criado_em`. Ficheiro no bucket **privado**
-`obras-contratos`, caminho `<subempreiteiro_id>/doc-<ts>.<ext>` (estender `contrato_obra_valido` e as policies de storage; ≤ 20 MB).
+`obras-contratos`, caminho `<subempreiteiro_id>/doc-<ts>.<ext>` (estender `contrato_obra_valido` e as policies de storage para `doc-` **e** `fatura-<ts>.<ext>`; ≤ 20 MB).
 **RPC** `sub_doc_registar(p_sub_id, p_tipo, p_referencia, p_emitido_em, p_validade, p_path, p_nome) → uuid` (`pode_escrever('subempreitadas')`),
 `sub_doc_remover(p_id)` (`pode_gerir_obras()`), `sub_docs_estado(p_sub_id) → TABLE(tipo, obrigatorio bool, estado 'ok'|'a_expirar'|'expirado'|'em_falta',
 validade date, dias_restantes int, doc_id uuid, referencia text)` — usa o documento **mais recente por tipo**; obrigatórios = `subs_config.docs_obrigatorios`;
@@ -76,7 +75,7 @@ coordenadas (`motivo_invalida='obra_sem_coordenadas'`) ou distância > `coalesce
 ### Migration B — `20261004010000_subs_medicao_workflow_glosas_painel.sql`
 **`autos_medicao`** (ALTER): `workflow text NOT NULL default 'rascunho' CHECK IN ('rascunho','submetido','verificado','validado')` (backfill:
 `validado` onde `estado='validado'`), `submetido_por/em, verificado_por/em, valor_glosado numeric(14,2) NOT NULL default 0 CHECK (valor_glosado >= 0
-AND valor_glosado <= valor_periodo), data_vencimento date, fatura_numero text, fatura_data date, fatura_valor numeric(14,2), excecao_motivo text`.
+AND valor_glosado <= valor_periodo), data_vencimento date, fatura_numero text, fatura_data date, fatura_valor numeric(14,2), fatura_path text, fatura_nome text, fatura_registada_em timestamptz, excecao_motivo text`.
 Invariante: `estado='validado' ⇔ workflow='validado'`. **Certificado = `valor_periodo − valor_glosado`**.
 **`auto_linhas`** (ALTER): `qtd_pedida numeric(14,3) NULL ≥0` (reclamada pelo subempreiteiro), `justificacao text NULL` (obrigatória em extras).
 **Imutabilidade:** trigger `BEFORE UPDATE OR DELETE` em `autos_medicao` e `auto_linhas`: se `OLD.workflow <> 'rascunho'` (para linhas: o auto-pai) só
@@ -99,8 +98,8 @@ criado_por, criado_em, levantada_por, levantada_em, motivo_levantamento`. `autos
 | `auto_devolver(p_auto_id, p_motivo)` | `pode_medir_obras` | `submetido`/`verificado`; motivo ≥ 5 car. | volta a `rascunho`; limpa verificação |
 | **`auto_aprovar(p_auto_id, p_excecao_docs_motivo text default null)`** | gestor/admin (alçada) | `verificado`; certificado > 0; **alçada**: se há extras **ou** certificado > `alcada_gestor_ate` só `admin`; **segregação**: aprovador ≠ `created_by` (admin isento); documentos obrigatórios em dia (`_sub_docs_bloqueio`) **ou** `p_excecao_docs_motivo` (≥ 10 car., só admin, audit) | `estado='validado'`, `workflow='validado'`, `validado_por/em`, `data_vencimento = hoje + prazo_pagamento_dias` |
 | `validar_auto(p_id)` | (legado) | passa a **delegar em `auto_aprovar`** — a cadeia não se contorna | idem |
-| `auto_registar_fatura(p_auto_id, p_numero, p_data, p_valor)` | `pode_gerir_obras` | `validado`; número não vazio; valor > 0 | grava fatura |
-| `marcar_auto_pago` (CREATE OR REPLACE) | admin, gestor | `validado`; **fatura registada** se `exigir_fatura_para_pagar` e `fatura_valor = certificado − retenção` (±0,01); **sem ocorrência de gravidade `alta` (tipos QUALIDADE/SEGURANCA) por resolver** no subempreiteiro; documentos em dia ou exceção admin (`p_excecao_motivo`) | `pago` |
+| `auto_registar_fatura(p_auto_id, p_numero, p_data, p_valor, p_path, p_nome)` | `pode_gerir_obras` | `validado`; número não vazio; valor > 0; ficheiro no bucket privado `obras-contratos`, caminho `<subempreiteiro_id>/fatura-<ts>.<ext>` (PDF/imagem ≤ 20 MB) | **guarda** a fatura do subempreiteiro (pode ser substituída antes do pagamento; histórico no evento) |
+| `marcar_auto_pago` (CREATE OR REPLACE) | admin, gestor | `validado`; **fatura guardada** (com ficheiro) se `exigir_fatura_para_pagar` — o valor da fatura **não bloqueia**: `sub_painel`/UI marcam "valor da fatura diverge do aprovado" como aviso; **sem ocorrência de gravidade `alta` (tipos QUALIDADE/SEGURANCA) por resolver** no subempreiteiro; documentos em dia ou exceção admin (`p_excecao_motivo`) | `pago` |
 Assinaturas de `marcar_auto_pago`: `(p_auto_id uuid, p_referencia text default null, p_excecao_motivo text default null)`.
 **Retenção e pagamento:** retenção = `(valor_periodo − valor_glosado) × percentagem_retencao / 100`; a pagar = certificado − retenção.
 **`sub_libertar_retencao(p_sub_id, p_valor, p_motivo, p_obs)`** (`pode_gerir_obras`): total libertado ≤ retenção acumulada; bloqueia com ocorrência `alta`
@@ -125,7 +124,7 @@ Eventos novos em `obra_eventos`: `AUTO_SUBMETIDO, AUTO_VERIFICADO, AUTO_DEVOLVID
 2. Ninguém mede mais do que o contratado, mais do que o subempreiteiro pediu, nem altera preços do contrato.
 3. Uma medição só avança com provas: fotografia **tirada na hora**, dentro do raio da obra, com precisão aceitável, nunca reutilizada, e checklist assinado.
 4. Quem cria não aprova (exceto o admin); acima de 10 000 € (configurável) ou com trabalhos a mais, só o CEO.
-5. Não se paga sem fatura de valor exato, sem documentos legais em dia, nem com problema grave de qualidade/segurança por resolver; as exceções são só do admin, com motivo e registo.
+5. Não se paga sem a fatura do subempreiteiro guardada (a divergência de valor fica assinalada), sem documentos legais em dia, nem com problema grave de qualidade/segurança por resolver; as exceções são só do admin, com motivo e registo.
 6. Após aprovação, o auto é imutável; a retenção só se liberta até ao valor retido.
 
 ## 4. Frontend (`src/features/obras/**` — um módulo, sem importar de outros)
