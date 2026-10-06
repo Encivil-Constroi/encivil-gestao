@@ -1,6 +1,7 @@
 // Importação dinâmica — xlsx só carrega quando o utilizador clica em exportar,
 // sem impacto no bundle inicial.
 import type * as XLSXType from 'xlsx'
+import { neutralizarFormula } from './neutralizarFormula'
 
 // Colunas cujo nome sugere valor monetário → formato "€ 1.234,56"
 function ehColunaMonetaria(chave: string): boolean {
@@ -29,7 +30,9 @@ export async function exportarXlsx(
   const headers = Object.keys(rows[0])
 
   // Gerar worksheet a partir do array de objetos
-  const ws = XLSX.utils.json_to_sheet(rows)
+  const seguras = rows.map(r =>
+    Object.fromEntries(Object.entries(r).map(([k, v]) => [k, neutralizarFormula(v)])))
+  const ws = XLSX.utils.json_to_sheet(seguras)
 
   // Largura automática de cada coluna (máximo entre cabeçalho e conteúdo, cap 55)
   ws['!cols'] = headers.map(h => ({
