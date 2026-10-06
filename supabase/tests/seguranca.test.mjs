@@ -65,8 +65,10 @@ describe('anon não executa funções privilegiadas', () => {
        ORDER BY 1`)
     // Políticas RLS avaliadas como anon e triggers. Desde o abastecimento v2
     // (20260930010000) já não há página sem sessão: saíram as 6 funções dela.
+    // registar_login_falhado (20261008020000): o login falhado acontece sem sessão;
+    // tem tetos próprios (por email e global) e ignora o excesso em silêncio.
     expect(rows.map(r => r.proname)).toEqual([
-      'audit_delete', 'auth_role', 'handle_new_user', 'pode_escrever',
+      'audit_delete', 'auth_role', 'handle_new_user', 'pode_escrever', 'registar_login_falhado',
     ])
   })
 
