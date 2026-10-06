@@ -44,6 +44,7 @@ vi.mock('@/features/combustivel/hooks/usePedidos', () => ({
   useCancelarPedido: () => ({ cancelar: m.cancelar, loading: false, error: null }),
   useContadorInicial: () => ({ registar: m.registar, loading: false, error: null }),
   useLigarBomba: () => ({ ligar: m.ligar, loading: false, error: null }),
+  useCancelarAutorizacaoBomba: () => ({ cancelarLigacao: vi.fn(), loading: false, error: null }),
   useConcluirPedido: () => ({ concluir: m.concluir, loading: false, error: null }),
   usePrecos: () => ({ precos: [{ tipo_combustivel: 'gasoleo', preco_litro: 1.5, atualizado_em: '' }], loading: false, error: null }),
 }))
