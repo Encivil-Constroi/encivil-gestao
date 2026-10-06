@@ -9,6 +9,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
+import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
 import { validar } from '../_shared/validar.ts'
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
@@ -92,6 +93,9 @@ Deno.serve(async (req) => {
     return err('Acesso negado — apenas gestores podem extrair faturas', 403)
   }
 
+  const { data: dadosUser } = await userClient.auth.getUser()
+  if (!dadosUser?.user) return err('Sessão inválida', 401)
+
   // ── Parsear body ────────────────────────────────────────────────────────────
   const validado = validar({ fatura_id: { tipo: 'uuid', obrigatorio: true } }, await req.json().catch(() => null))
   if (!validado.ok) return err(validado.erro)
@@ -101,6 +105,8 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  if (!await dentroDoLimite(admin, `extrair-fatura:${dadosUser.user.id}`, 600, 20)) return respostaLimite(cors, 600)
 
   // ── Buscar fatura ───────────────────────────────────────────────────────────
   const { data: fatura, error: faturaErr } = await admin

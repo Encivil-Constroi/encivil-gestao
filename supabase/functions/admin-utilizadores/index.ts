@@ -7,6 +7,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
+import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
 import { validar, type Esquema } from '../_shared/validar.ts'
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
@@ -62,6 +63,10 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  const { data: dadosUser } = await userClient.auth.getUser()
+  if (!dadosUser?.user) return err('Sessão inválida', 401)
+  if (!await dentroDoLimite(admin, `admin-utilizadores:${dadosUser.user.id}`, 600, 60)) return respostaLimite(cors, 600)
 
   const corpo = await req.json().catch(() => null)
   const vAcao = validar(ESQUEMA_ACAO, corpo)

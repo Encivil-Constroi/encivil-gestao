@@ -17,6 +17,7 @@
 //   { "status": "authorized", "seconds": 180 }  → ligar relé por N segundos
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { dentroDoLimite } from '../_shared/limite.ts'
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -50,7 +51,17 @@ Deno.serve(async (req: Request) => {
   }
 
   // Falha de segredo responde "idle" para não revelar se há autorizações em curso
-  if (!segredoValido(req.headers.get('x-pump-secret'))) return json({ status: 'idle' })
+  if (!segredoValido(req.headers.get('x-pump-secret'))) {
+    // Só as falhas contam: trava a adivinhação do segredo sem limitar o Shelly legítimo
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'desconhecido'
+    if (!await dentroDoLimite(supabase, `pump-status:${ip}`, 600, 30)) {
+      return new Response(JSON.stringify({ status: 'idle' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '600' },
+      })
+    }
+    return json({ status: 'idle' })
+  }
 
   const url = new URL(req.url)
   const { data, error } = await supabase.rpc('pump_poll', {

@@ -17,6 +17,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
+import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
 import { validar } from '../_shared/validar.ts'
 
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
@@ -226,6 +227,7 @@ Deno.serve(async (req) => {
   const { data: sessao, error: sessErr } = await supabase.auth.getUser(token)
   if (sessErr || !sessao?.user) return err('Sessão inválida', 401)
   const userId = sessao.user.id
+  if (!await dentroDoLimite(supabase, `ler-foto:${userId}`, 600, 30)) return respostaLimite(cors, 600)
 
   const validado = validar({
     foto_path: { tipo: 'texto', obrigatorio: true, max: 300 },
