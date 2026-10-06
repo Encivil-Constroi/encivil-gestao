@@ -20,7 +20,7 @@ import { EvidenciaCapture } from './auto/EvidenciaCapture';
 import { AutoVerificacao } from './auto/AutoVerificacao';
 import { AutoGlosas } from './auto/AutoGlosas';
 import { AutoFaturaPagamento } from './auto/AutoFaturaPagamento';
-import { acumuladoOutrosAutos, useLinhasMedicao, WORKFLOW_CONTA_ACUMULADO } from './auto/autoDados';
+import { acumuladoOutrosAutos, useLinhasMedicao, WORKFLOW_CONTA_ACUMULADO } from '../../lib/autoDados';
 
 type CfgAuto = Pick<SubsConfigRow, 'alcada_gestor_ate' | 'min_fotos_verificacao' | 'foto_idade_max_min' | 'exigir_fatura_para_pagar' | 'bloquear_pagamento_sem_docs'>;
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }))
 
 import { passoAtual, proximoPasso, type ContextoPassos } from '@/features/obras/components/subempreitadas/auto/AutoPassos'
-import { acumuladoOutrosAutos, caminhoFatura, hashSha256 } from '@/features/obras/components/subempreitadas/auto/autoDados'
+import { acumuladoOutrosAutos, caminhoFatura, hashSha256 } from '@/features/obras/lib/autoDados'
 import { textoLocal } from '@/features/obras/components/subempreitadas/auto/EvidenciaCapture'
 
 const ctx = (p: Partial<ContextoPassos> = {}): ContextoPassos => ({

@@ -3,12 +3,8 @@ import { supabase } from '@/integrations/supabase/client'
 import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import { reduzirFoto } from '@/app/lib/reduzirFoto'
-import { obrasDb, type AutoLinhaMedicaoRow, type WorkflowAuto } from '../../../db'
-import { caminhoFotoObra } from '../../../lib/fotosObras'
-
-// Acesso a dados que a fundação (T3) e o serviço legado ainda não cobrem:
-// `qtd_pedida`/`justificacao` das linhas, uploads com hash e a fatura do
-// subempreiteiro. A mover para `legacy/autosService` na integração (T8).
+import { obrasDb, type AutoLinhaMedicaoRow, type WorkflowAuto } from '../db'
+import { caminhoFotoObra } from './fotosObras'
 
 const BUCKET_FOTOS = 'obras'
 const BUCKET_PRIVADO = 'obras-contratos'

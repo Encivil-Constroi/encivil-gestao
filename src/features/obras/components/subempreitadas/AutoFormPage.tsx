@@ -13,7 +13,7 @@ import { validarEvidencias } from './subData';
 import { useEvidenciasAuto, useGuardarEvidencias } from './useSubData';
 import {
   acumuladoOutrosAutos, useGuardarLinhasAuto, useLinhasMedicao, WORKFLOW_CONTA_ACUMULADO, type LinhaGravar,
-} from './auto/autoDados';
+} from '../../lib/autoDados';
 
 type ExtraLinha = { id: string; description: string; unit: string; unitPrice: string; quantity: string; justificacao: string };
 

@@ -3,7 +3,7 @@ import { Banknote, CircleAlert, FileText, TriangleAlert } from 'lucide-react'
 import { fmtEuro } from '@/app/lib/format'
 import type { WorkflowAuto } from '../../../db'
 import { useMarcarAutoEmAtraso, usePagarAuto, useRegistarFaturaAuto } from '../../../hooks/useSubsControlo'
-import { enviarFatura, urlAssinadaFatura } from './autoDados'
+import { enviarFatura, urlAssinadaFatura } from '../../../lib/autoDados'
 
 export type FaturaGuardada = { numero: string; data?: string; valor?: number; path?: string; nome?: string }
 

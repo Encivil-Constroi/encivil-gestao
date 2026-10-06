@@ -4,7 +4,7 @@ import type { AutoEvidenciaRow, EvidenciaResultado } from '../../../db'
 import { useApagarEvidencia, useEvidenciasAutoLista, useRegistarEvidencia } from '../../../hooks/useSubsControlo'
 import { MOTIVO_EVIDENCIA, validarTiradaEm } from '../../../lib/geo'
 import { urlFotoObra } from '../../../lib/fotosObras'
-import { enviarEvidencia, obterGps, prepararEvidencia, type PosicaoGps } from './autoDados'
+import { enviarEvidencia, obterGps, prepararEvidencia, type PosicaoGps } from '../../../lib/autoDados'
 
 type Props = {
   autoId: string

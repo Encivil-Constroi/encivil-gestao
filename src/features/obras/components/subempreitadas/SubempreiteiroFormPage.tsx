@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ChevronLeft, Plus, Trash2, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { useAsync } from '@/app/lib/useAsync';
 import { fmtEuro, fmtNumber, UNIDADES_OBRA } from '@/app/lib/format';
 import { useObras } from '@/features/obras/hooks/useObras';
 import { useSubempreiteiro, useGuardarSubempreiteiro } from '../../legacy/useSubempreiteiros';
@@ -13,16 +11,6 @@ import { useItensOrcamento, useResumoOrcamento, useConfigSubs } from '../../hook
 import { useFichaSub, useGuardarFichaSub } from './useSubData';
 
 type LinhaArtigo = { id: string; description: string; unit: string; unitPrice: string; plannedQuantity: string; itemId: string };
-
-type LigacaoArtigos = {
-  from(tabela: 'subempreiteiro_artigos'): {
-    select(colunas: 'id, orcamento_item_id'): {
-      eq(coluna: 'subempreiteiro_id', valor: string): PromiseLike<{ data: { id: string; orcamento_item_id: string | null }[] | null; error: { message: string } | null }>;
-    };
-    update(valores: { orcamento_item_id: string | null }): { eq(coluna: 'id', valor: string): PromiseLike<{ error: { message: string } | null }> };
-  };
-};
-const ligacaoArtigos = supabase as unknown as LigacaoArtigos;
 
 export type AvisoExcesso = { itemId: string; codigo: string; contratado: number; orcado: number; limite: number };
 
@@ -48,8 +36,6 @@ export function avisosExcesso(
   }
   return avisos;
 }
-
-const chaveArtigo = (descricao: string, unidade: string, preco: number, qtd: number) => `${descricao}|${unidade}|${preco}|${qtd}`;
 
 function novaLinha(): LinhaArtigo {
   const id = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -120,29 +106,13 @@ export function SubempreiteiroFormPage() {
         unit: i.unit,
         unitPrice: String(i.unitPrice),
         plannedQuantity: String(i.plannedQuantity),
-        itemId: '',
+        itemId: i.orcamentoItemId ?? '',
       })));
     }
   }, [isEdit, sub, navigate]);
 
   const { resumo: resumoEap } = useResumoOrcamento(form.obraId || undefined);
   const { itens: itensEap } = useItensOrcamento(form.obraId || undefined);
-  const { data: ligacoes } = useAsync(
-    async () => {
-      const { data, error } = await ligacaoArtigos.from('subempreiteiro_artigos').select('id, orcamento_item_id').eq('subempreiteiro_id', id!);
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-    [id],
-    { enabled: isEdit, errorMsg: 'Erro ao carregar a ligação ao orçamento' },
-  );
-  useEffect(() => {
-    if (!ligacoes?.length) return;
-    setLinhas(prev => prev.map(l => {
-      const lig = ligacoes.find(x => x.id === l.id);
-      return lig?.orcamento_item_id && !l.itemId ? { ...l, itemId: lig.orcamento_item_id } : l;
-    }));
-  }, [ligacoes, sub]);
   const excessos = form.type === 'unitario' ? avisosExcesso(linhas, resumoEap, itensEap) : [];
 
   const set = (patch: Partial<typeof form>) => setForm(prev => ({ ...prev, ...patch }));
@@ -174,16 +144,15 @@ export function SubempreiteiroFormPage() {
     }
 
     let items;
-    let validasLinhas: LinhaArtigo[] = [];
     if (form.type === 'unitario') {
       const validas = linhas.filter(l => l.description.trim() && parseFloat(l.unitPrice || '0') >= 0 && parseFloat(l.plannedQuantity || '0') > 0);
       if (validas.length === 0) { toast.error('Adicione pelo menos um artigo com descrição, preço e quantidade.'); return; }
-      validasLinhas = validas;
       items = validas.map(l => ({
         description: l.description.trim(),
         unit: l.unit,
         unitPrice: parseFloat(l.unitPrice || '0'),
         plannedQuantity: parseFloat(l.plannedQuantity),
+        orcamentoItemId: l.itemId || null,
       }));
     }
 
@@ -200,20 +169,6 @@ export function SubempreiteiroFormPage() {
 
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
     if (result) {
-      const porLigar = validasLinhas.filter(l => l.itemId);
-      if (porLigar.length > 0) {
-        const disponiveis = [...(result.items ?? [])];
-        let falhou = false;
-        for (const l of porLigar) {
-          const chave = chaveArtigo(l.description.trim(), l.unit, parseFloat(l.unitPrice || '0'), parseFloat(l.plannedQuantity));
-          const idx = disponiveis.findIndex(a => chaveArtigo(a.description, a.unit, a.unitPrice, a.plannedQuantity) === chave);
-          if (idx === -1) { falhou = true; continue; }
-          const [artigo] = disponiveis.splice(idx, 1);
-          const { error } = await ligacaoArtigos.from('subempreiteiro_artigos').update({ orcamento_item_id: l.itemId }).eq('id', artigo.id);
-          if (error) falhou = true;
-        }
-        if (falhou) toast.warning('Contratação guardada, mas não foi possível ligar alguns artigos ao orçamento. Edite e tente de novo.');
-      }
       const guardada = await guardarFicha(result.id, { nif: dadosFicha.nif.trim() || null, telefone: dadosFicha.telefone.trim() || null, email: dadosFicha.email.trim() || null, especialidade: dadosFicha.especialidade.trim() || null, data_inicio: dadosFicha.data_inicio || null, data_fim_prevista: dadosFicha.data_fim_prevista || null });
       if (guardada === null) { toast.error('Contratação guardada, mas não foi possível guardar os dados da ficha.'); navigate(`/obras/subempreitada/${result.id}`); return; }
       toast.success(isEdit ? 'Contratação atualizada.' : 'Contratação criada como rascunho.');

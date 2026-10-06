@@ -70,8 +70,8 @@ vi.mock('@/features/obras/components/subempreitadas/useSubData', () => ({
 vi.mock('@/features/obras/components/subempreitadas/AutoEvidenciasView', () => ({ AutoEvidenciasView: () => null }))
 vi.mock('@/features/obras/components/FotoCapture', () => ({ FotoCapture: () => null }))
 vi.mock('@/features/obras/lib/fotosObras', () => ({ urlFotoObra: (p: string) => `https://x/${p}`, caminhoFotoObra: vi.fn() }))
-vi.mock('@/features/obras/components/subempreitadas/auto/autoDados', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/features/obras/components/subempreitadas/auto/autoDados')>()),
+vi.mock('@/features/obras/lib/autoDados', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/features/obras/lib/autoDados')>()),
   useLinhasMedicao: () => ({ linhas: estado.linhasDb, loading: false, error: null }),
   useGuardarLinhasAuto: () => ({ guardar: estado.guardarLinhas, loading: false, error: null }),
   obterGps: estado.obterGps,
