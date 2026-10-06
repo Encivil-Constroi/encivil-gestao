@@ -120,6 +120,7 @@ const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPag
 
 const RecursosHumanosPage = lazy(() => import('./pages/RecursosHumanosPage').then(m => ({ default: m.RecursosHumanosPage })));
 const PerfilPage          = lazy(() => import('@/features/auth/components/PerfilPage').then(m => ({ default: m.PerfilPage })));
+const MfaRegistoPage      = lazy(() => import('@/features/auth/components/MfaRegistoPage').then(m => ({ default: m.MfaRegistoPage })));
 const RHPage             = lazy(() => import('@/features/horarios').then(m => ({ default: m.RHPage })));
 const PicagemPage        = lazy(() => import('@/features/picagens').then(m => ({ default: m.PicagemPage })));
 const ValidacaoPicagensPage = lazy(() => import('@/features/picagens').then(m => ({ default: m.ValidacaoPicagensPage })));
@@ -224,6 +225,11 @@ export const router = createBrowserRouter([
       {
         path: '/frota/viatura/:id/imprimir',
         element: <L><FichaViaturaPrintPage /></L>,
+        errorElement: <RouteErrorPage />,
+      },
+      {
+        path: '/seguranca/mfa',
+        element: <L><MfaRegistoPage /></L>,
         errorElement: <RouteErrorPage />,
       },
       {

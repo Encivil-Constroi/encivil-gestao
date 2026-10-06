@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, Save } from 'lucide-react'
+import { ChevronRight, KeyRound, Save, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
+import { useAsync } from '@/app/lib/useAsync'
 import { FotoPerfilInput } from '@/app/components/FotoPerfilInput'
 import { useAuth } from '../AuthContext'
 import { useRole } from '../useRole'
 import { useMeuPerfil, useAtualizarContacto, usePedirNovoEmail, useAlterarSenha } from '../hooks/usePerfil'
 import { SENHA_MIN, DICA_SENHA, mensagemSenha, validarSenha } from '../lib/politicaSenha'
+import { listarFatores } from '../services/mfaService'
 
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm'
 const labelCls = 'block text-sm font-medium mb-1.5'
@@ -19,6 +22,7 @@ export function PerfilPage() {
   const { mutate: atualizar, loading: aGuardar, error: erroContacto } = useAtualizarContacto()
   const { mutate: pedirEmail } = usePedirNovoEmail()
   const { mutate: trocarSenha, loading: aTrocar, error: erroSenha } = useAlterarSenha()
+  const { data: fatoresMfa } = useAsync(listarFatores, [user?.id], { enabled: !!user, errorMsg: 'Erro ao ler a verificação em dois passos' })
 
   const [contacto, setContacto] = useState({ nome: '', email: '', telemovel: '', fotoPath: null as string | null })
   const [senha, setSenha] = useState({ atual: '', nova: '', confirmar: '' })
@@ -105,6 +109,20 @@ export function PerfilPage() {
         {erroSenha && <p role="alert" className="text-sm text-destructive">{erroSenha}</p>}
         <button type="submit" disabled={aTrocar} className={botaoCls}><KeyRound className="w-4 h-4" aria-hidden="true" />{aTrocar ? 'A alterar…' : 'Alterar senha / PIN'}</button>
       </form>
+
+      <section className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h2 className="text-base font-semibold">Segurança</h2>
+        <Link to="/seguranca/mfa" className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 hover:bg-accent transition-colors">
+          <ShieldCheck className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-sm font-medium">Verificação em dois passos</span>
+          {fatoresMfa && (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${fatoresMfa.length > 0 ? 'bg-success text-success-foreground' : 'bg-muted text-muted-foreground'}`}>
+              {fatoresMfa.length > 0 ? 'Ativa' : 'Não ativa'}
+            </span>
+          )}
+          <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        </Link>
+      </section>
     </div>
   )
 }
