@@ -192,7 +192,15 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
                 : 'Demora até 5 segundos.'}
             </p>
             {estadoBomba?.bloqueioMotivo && <Aviso tipo="erro">{estadoBomba.bloqueioMotivo}</Aviso>}
+            {pedido.bomba_ligada_em && agora - new Date(pedido.bomba_ligada_em).getTime() > 30_000 && !estadoBomba?.bombaOcupada && (
+              <Aviso tipo="alerta">
+                Está a demorar mais do que o normal. Confirme que o quadro da bomba está ligado.
+                Se a bomba não arrancar, carregue no botão verde (I) do quadro ou fale com o responsável.
+                O seu pedido fica guardado — pode sair e voltar depois.
+              </Aviso>
+            )}
           </div>
+          <Link to="/abastecimento" className={`w-full ${botaoSecundario}`}>Voltar aos pedidos</Link>
         </Cartao>
       )
     case 'A_ABASTECER':

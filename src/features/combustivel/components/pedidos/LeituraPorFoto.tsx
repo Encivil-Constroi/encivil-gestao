@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Camera, Loader2, RotateCcw, Sparkles, PencilLine } from 'lucide-react'
 import type { OrigemLeitura } from '../../db'
+import { useProtegerSaida } from '@/app/lib/protegerSaida'
 import { lerNumero } from '../../lib/pedido'
 import { enviarFotoAbastecimento, lerFotoComIA, type TipoLeitura } from '../../services/fotosService'
 import { botaoPrimario, botaoSecundario, inputCls } from './ui'
@@ -41,6 +42,9 @@ export function LeituraPorFoto({
   const [valorTxt, setValorTxt] = useState('')
   const [custoTxt, setCustoTxt] = useState('')
   const [erro, setErro] = useState<string | null>(null)
+  // Confirmado = o ecrã vai mudar sozinho; não pode pedir confirmação de saída
+  const [confirmado, setConfirmado] = useState(false)
+  useProtegerSaida(estado.passo !== 'SEM_FOTO' && !confirmado, 'A foto e a leitura ainda não foram guardadas. Se sair agora, perde-as.')
 
   const previa = estado.passo === 'SEM_FOTO' ? null : estado.previa
   useEffect(() => () => { if (previa) URL.revokeObjectURL(previa) }, [previa])
@@ -85,7 +89,12 @@ export function LeituraPorFoto({
     if (estado.passo !== 'LIDO' || valor == null) return
     const igualIA = estado.valorIA != null && Math.abs(estado.valorIA - valor) < 1e-9
       && (!pedirCusto || (estado.custoIA != null && custo != null && Math.abs(estado.custoIA - custo) < 1e-9))
-    await onConfirmar({ fotoPath: estado.fotoPath, valor, custo: pedirCusto ? custo : null, origem: igualIA ? 'IA' : 'MANUAL' })
+    setConfirmado(true)
+    try {
+      await onConfirmar({ fotoPath: estado.fotoPath, valor, custo: pedirCusto ? custo : null, origem: igualIA ? 'IA' : 'MANUAL' })
+    } finally {
+      setConfirmado(false)
+    }
   }
 
   return (

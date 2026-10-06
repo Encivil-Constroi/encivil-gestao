@@ -6,6 +6,7 @@ import { MobileBottomNav } from '../components/MobileBottomNav';
 import { OfflineSyncBanner } from '../components/OfflineSyncBanner';
 import { PushSetup } from '../components/PushSetup';
 import { useRole } from '@/features/auth/useRole';
+import { ProtecaoSaida } from '../lib/protegerSaida';
 
 // O mecânico só trabalha na Frota: qualquer outro endereço leva-o para lá.
 // É conforto de navegação — o que ele pode escrever decide-se na RLS.
@@ -45,6 +46,7 @@ export function MainLayout() {
         </main>
         <ScrollRestoration />
         <PushSetup />
+        <ProtecaoSaida />
       </div>
 
       <MobileBottomNav />

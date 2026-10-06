@@ -5,6 +5,7 @@ import type { TipoCombustivel, TipoFonte } from '../../db'
 import { ROTULO_COMBUSTIVEL, formatarNumero } from '../../lib/pedido'
 import { useContextoAbastecimento, useCriarPedido, useViaturasAtivas } from '../../hooks/usePedidos'
 import { useEstadoBomba } from '../../hooks/useBombaPolo2'
+import { libertarSaida, useProtegerSaida } from '@/app/lib/protegerSaida'
 import { LeituraPorFoto, type LeituraConfirmada } from './LeituraPorFoto'
 import { AtivarNotificacoes } from './AtivarNotificacoes'
 import { Aviso, Cabecalho, Cartao, inputCls } from './ui'
@@ -34,6 +35,8 @@ export function NovoPedidoPage() {
   const [combustivel, setCombustivel] = useState<TipoCombustivel | null>(null)
   const [obs, setObs] = useState('')
 
+  useProtegerSaida(!!viaturaEscolhida || !!combustivel || obs.trim() !== '', 'O pedido ainda não foi enviado. Se sair agora, perde o que preencheu.')
+
   const veiculoId = viaturaEscolhida ?? viaturaQr ?? contexto?.veiculo_id ?? null
   const viatura = useMemo(() => viaturas.find(v => v.id === veiculoId) ?? null, [viaturas, veiculoId])
   const combustivelViatura = (viatura?.tipo_combustivel === 'gasolina' || viatura?.tipo_combustivel === 'gasoleo')
@@ -52,12 +55,13 @@ export function NovoPedidoPage() {
       id: pedidoId, veiculoId, tipoFonte: fonte, tipoCombustivel,
       km: Math.round(l.valor), fotoKmPath: l.fotoPath, observacoes: obs.trim() || null,
     })
+    if (id) libertarSaida()
     if (id) navigate(`/abastecimento/pedido/${id}`, { replace: true })
   }
 
   return (
     <div className="max-w-lg mx-auto space-y-4 pb-24">
-      <Cabecalho titulo="Pedir abastecimento" voltar={false}
+      <Cabecalho titulo="Pedir abastecimento"
         subtitulo="Preencha, fotografe os km e o pedido segue logo para aprovação." />
 
       <AtivarNotificacoes motivo="para saber logo quando o pedido for aprovado" />
