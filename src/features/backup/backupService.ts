@@ -53,6 +53,7 @@ export const TABELAS_BACKUP = [
   { id: 'veiculo_entregas', label: 'Entregas de Viatura', grupo: 'Frota' },
   { id: 'veiculo_manutencoes', label: 'Manutenções', grupo: 'Frota' },
   { id: 'frota_itens_catalogo', label: 'Catálogo de Itens de Frota', grupo: 'Frota' },
+  { id: 'frota_alerta_destinatarios', label: 'Destinatários de Alertas de Frota', grupo: 'Frota' },
   { id: 'frota_veiculo_itens', label: 'Itens por Viatura', grupo: 'Frota' },
   // Recursos Humanos
   { id: 'colaboradores',            label: 'Colaboradores',               grupo: 'RH' },

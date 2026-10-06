@@ -1,7 +1,6 @@
 // @vitest-environment node
 // Cada tabela da exportação /backup tem de existir depois de todas as migrations.
 import { describe, it, expect, beforeAll } from 'vitest'
-// @ts-expect-error pg-harness é JS sem tipos
 import { criarBanco } from '../../../../supabase/tests/pg-harness.mjs'
 import { TABELAS_BACKUP } from '@/features/backup/backupService'
 
@@ -17,6 +16,6 @@ describe('TABELAS_BACKUP', () => {
 
   it.each(TABELAS_BACKUP.map(t => t.id))('a tabela %s existe', async id => {
     const { rows } = await db.query(`SELECT to_regclass('public.' || $1) IS NOT NULL AS existe`, [id])
-    expect(rows[0].existe).toBe(true)
+    expect(rows[0]?.existe).toBe(true)
   })
 })
