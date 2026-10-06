@@ -5,7 +5,7 @@ import { FotoPerfilInput } from '@/app/components/FotoPerfilInput'
 import { useAuth } from '../AuthContext'
 import { useRole } from '../useRole'
 import { useMeuPerfil, useAtualizarContacto, usePedirNovoEmail, useAlterarSenha } from '../hooks/usePerfil'
-import { SENHA_MIN } from '../services/perfilService'
+import { SENHA_MIN, DICA_SENHA, mensagemSenha, validarSenha } from '../lib/politicaSenha'
 
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm'
 const labelCls = 'block text-sm font-medium mb-1.5'
@@ -48,7 +48,8 @@ export function PerfilPage() {
 
   const guardarSenha = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (senha.nova.length < SENHA_MIN) { toast.error(`A senha/PIN deve ter pelo menos ${SENHA_MIN} caracteres.`); return }
+    const erroPolitica = mensagemSenha(validarSenha(senha.nova))
+    if (erroPolitica) { toast.error(erroPolitica); return }
     if (senha.nova !== senha.confirmar) { toast.error('A confirmação não coincide com a nova senha/PIN.'); return }
     if ((await trocarSenha(user?.email ?? '', senha.atual, senha.nova)) === true) {
       toast.success('Senha/PIN alterado.')
@@ -94,6 +95,7 @@ export function PerfilPage() {
           <div>
             <label htmlFor="senha-nova" className={labelCls}>Nova senha / PIN</label>
             <input id="senha-nova" type="password" autoComplete="new-password" minLength={SENHA_MIN} className={inputCls} value={senha.nova} onChange={e => setSenha(s => ({ ...s, nova: e.target.value }))} required />
+            <p className="text-xs text-muted-foreground mt-1">{DICA_SENHA}</p>
           </div>
           <div>
             <label htmlFor="senha-conf" className={labelCls}>Repetir</label>
