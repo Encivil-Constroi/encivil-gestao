@@ -89,11 +89,13 @@ export async function criarBanco({ ate } = {}) {
 }
 
 // Executa SQL como um utilizador da app (papel + auth.uid()), numa transação isolada
-export async function como(db, { papel, uid = null }, fn) {
+export async function como(db, { papel, uid = null, aal = null }, fn) {
   return db.transaction(async tx => {
     await tx.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [uid ?? ''])
     // Como no token real: políticas antigas usam auth.role() = 'authenticated'
     await tx.query(`SELECT set_config('request.jwt.claim.role', $1, true)`, [papel])
+    // Nível de autenticação do token (MFA): só definido quando o teste o pede
+    if (aal) await tx.query(`SELECT set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ aal })])
     await tx.exec(`SET LOCAL ROLE ${papel}`)
     return fn(tx)
   })
