@@ -158,6 +158,9 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
             onConfirmar={async l => { await registar(pedido.id, l.valor, l.fotoPath, l.origem) }}
           />
           {erroRegisto && <Aviso tipo="erro">{erroRegisto}</Aviso>}
+          <button type="button" onClick={aoCancelar} disabled={aCancelar} className={`w-full ${botaoSecundario}`}>
+            <Ban className="w-4 h-4" aria-hidden="true" /> Cancelar pedido
+          </button>
         </Cartao>
       )
     case 'LIGAR':
@@ -178,6 +181,9 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
             <Aviso tipo="alerta">A bomba não chegou a ligar. Confirme que o quadro está ligado e carregue outra vez.</Aviso>
           )}
           {erroLigar && <Aviso tipo="erro">{erroLigar}</Aviso>}
+          <button type="button" onClick={aoCancelar} disabled={aCancelar} className={`w-full ${botaoSecundario}`}>
+            <Ban className="w-4 h-4" aria-hidden="true" /> Cancelar pedido
+          </button>
         </Cartao>
       )
     case 'A_LIGAR':
