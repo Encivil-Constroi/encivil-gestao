@@ -41,3 +41,6 @@ supabase/.temp/
 
 # Material de referência (ex.: projeto FlutterFlow exportado) — consulta, não é código do sistema
 _referencia/
+
+# clone aninhado do superpowers (não é submódulo)
+.claude/skills/superpowers/
