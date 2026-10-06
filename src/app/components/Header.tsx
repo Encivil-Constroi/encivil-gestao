@@ -3,6 +3,7 @@ import { Bell, User, LogOut, Menu, Search, Sun, Moon } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
 import { pendentesDoUtilizador } from '@/features/movimentos/offlineQueue'
+import { pendentesDoUtilizador as picagensDoUtilizador } from '@/features/picagens/offlineQueue'
 import { useRole } from '@/features/auth/useRole'
 import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
 import { useTheme } from '@/features/theme/ThemeProvider'
@@ -55,9 +56,9 @@ export function Header({ onMenuOpen }: HeaderProps) {
   }, [])
 
   const handleLogout = async () => {
-    const pendentes = pendentesDoUtilizador(user?.id ?? null).length
+    const pendentes = pendentesDoUtilizador(user?.id ?? null).length + picagensDoUtilizador(user?.id ?? null).length
     const msg = pendentes > 0
-      ? `Há ${pendentes} movimento(s) por enviar neste dispositivo. Ficam guardados e só são enviados quando voltar a entrar com esta conta. Terminar sessão?`
+      ? `Há ${pendentes} registo(s) por enviar neste dispositivo. Ficam guardados e só são enviados quando voltar a entrar com esta conta. Terminar sessão?`
       : 'Terminar sessão?'
     if (window.confirm(msg)) {
       await signOut()

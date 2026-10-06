@@ -35,8 +35,11 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 // Sair = terminar a sessão no Supabase e apagar o que a app guardou no dispositivo
 async function terminarSessao() {
-  await supabase.auth.signOut()
-  await limparDadosLocais()
+  try {
+    await supabase.auth.signOut()
+  } finally {
+    await limparDadosLocais()
+  }
 }
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
@@ -81,6 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         setProfile(null)
         clearSentryUser()
+        // Também cobre sessões terminadas fora do nosso signOut (refresh falhado, outro separador)
+        void limparDadosLocais()
       }
     })
 
@@ -98,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleTimeout = () => {
       if (!sessionRef.current) return
       toast.info('Sessão terminada por inatividade. Inicie sessão de novo.')
-      void terminarSessao()
+      terminarSessao().catch(() => { /* sem rede: a sessão local expira sozinha; os dados locais já foram limpos */ })
     }
 
     const resetTimer = () => {
