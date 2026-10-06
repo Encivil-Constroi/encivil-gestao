@@ -16,6 +16,8 @@
 // do browser), portanto não há como usar a função como proxy.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
+import { validar } from '../_shared/validar.ts'
 
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
@@ -189,20 +191,8 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 
-// supabase.functions.invoke envia authorization/apikey/x-client-info: sem os
-// declarar aqui o preflight do browser falhava e a leitura nunca chegava a correr
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-const JSON_H = { ...CORS, 'Content-Type': 'application/json' }
-
-function ok(data: unknown)         { return new Response(JSON.stringify(data),          { status: 200, headers: JSON_H }) }
-// Toda a recusa fica nos Logs da função — sem isto uma falha era invisível
-function err(msg: string, s = 400, detalhe = '') {
-  console.error(`[ler-foto] ${s} ${msg}${detalhe ? ` — ${detalhe}` : ''}`)
-  return new Response(JSON.stringify({ erro: msg }), { status: s, headers: JSON_H })
+function resposta(cors: Record<string, string>, corpo: unknown, status: number): Response {
+  return new Response(JSON.stringify(corpo), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 }
 
 function toBase64(buffer: ArrayBuffer): string {
@@ -216,7 +206,17 @@ function toBase64(buffer: ArrayBuffer): string {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  // supabase.functions.invoke envia authorization/apikey/x-client-info: o preflight
+  // tem de os declarar (cabecalhosCors) ou a leitura nunca chegava a correr
+  if (req.method === 'OPTIONS') return respostaPreflight(req)
+  const cors = cabecalhosCors(req)
+  const ok = (data: unknown) => resposta(cors, data, 200)
+  // Toda a recusa fica nos Logs da função — sem isto uma falha era invisível
+  const err = (msg: string, s = 400, detalhe = '') => {
+    console.error(`[ler-foto] ${s} ${msg}${detalhe ? ` — ${detalhe}` : ''}`)
+    return resposta(cors, { erro: msg }, s)
+  }
+  if (origemRecusada(req)) return err('Origem não permitida', 403)
   if (req.method !== 'POST')    return err('Método não permitido', 405)
   const t0 = performance.now()
   const ms = (desde: number) => Math.round(performance.now() - desde)
@@ -227,10 +227,14 @@ Deno.serve(async (req) => {
   if (sessErr || !sessao?.user) return err('Sessão inválida', 401)
   const userId = sessao.user.id
 
-  const body = await req.json().catch(() => null) as { foto_path?: unknown; leitura?: unknown } | null
-  const leitura = body?.leitura as Leitura
-  if (!LEITURAS.includes(leitura)) return err('leitura inválida')
-  const foto = lerCaminho(body?.foto_path)
+  const validado = validar({
+    foto_path: { tipo: 'texto', obrigatorio: true, max: 300 },
+    leitura:   { tipo: 'enum', valores: LEITURAS, obrigatorio: true },
+  }, await req.json().catch(() => null))
+  if (!validado.ok) return err(validado.erro)
+  const leitura = validado.valor.leitura as Leitura
+  const fotoPath = validado.valor.foto_path as string
+  const foto = lerCaminho(fotoPath)
   if (!foto) return err('foto_path inválido')
 
   if (!GOOGLE_AI_API_KEY) return err('GOOGLE_AI_API_KEY não configurada', 500)
@@ -247,7 +251,7 @@ Deno.serve(async (req) => {
   const pedidoMs = ms(tPedido)
 
   const tDownload = performance.now()
-  const { data: blob, error: dlErr } = await supabase.storage.from('combustivel-taloes').download(body!.foto_path as string)
+  const { data: blob, error: dlErr } = await supabase.storage.from('combustivel-taloes').download(fotoPath)
   if (dlErr || !blob) return err('Não foi possível descarregar a foto', 422, dlErr?.message)
   if (blob.size > MAX_BYTES) return err('Foto demasiado grande', 413)
   const buffer = await blob.arrayBuffer()

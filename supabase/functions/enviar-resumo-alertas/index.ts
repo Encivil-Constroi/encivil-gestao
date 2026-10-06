@@ -8,6 +8,7 @@
 //   EDGE_FUNCTION_SECRET      — string aleatória para autenticar chamadas do pg_cron
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { autorizadoPorSegredo } from '../_shared/segredo.ts'
 
 const RESEND_KEY    = Deno.env.get('RESEND_API_KEY') ?? ''
 const DESTINATARIO  = Deno.env.get('EMAIL_ALERTAS_DESTINATARIO') ?? ''
@@ -143,7 +144,7 @@ Deno.serve(async (req) => {
 
   // Verifica segredo partilhado (protege de chamadas não autorizadas)
   const auth = req.headers.get('Authorization') ?? ''
-  if (EDGE_SECRET && auth !== `Bearer ${EDGE_SECRET}`) {
+  if (!autorizadoPorSegredo(auth, EDGE_SECRET)) {
     return new Response('Unauthorized', { status: 401 })
   }
 
