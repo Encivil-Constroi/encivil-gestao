@@ -17,6 +17,23 @@ export function UpdatePrompt() {
     }
   }, [])
 
+  // O SW novo ativa-se sozinho (skipWaiting no install): quando passa a controlar
+  // a página, recarrega para correr o bundle novo. Só se já havia SW a controlar
+  // (na 1.ª instalação não há nada a atualizar) e com o mesmo guard anti-loop.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return
+    const onChange = () => {
+      try {
+        const lastAt = Number(sessionStorage.getItem('sw_reload_at') ?? 0)
+        if (Date.now() - lastAt < 12_000) return
+        sessionStorage.setItem('sw_reload_at', String(Date.now()))
+      } catch { /* sessionStorage pode estar bloqueado em modo privado */ }
+      window.location.href = '/'
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', onChange)
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', onChange)
+  }, [])
+
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,

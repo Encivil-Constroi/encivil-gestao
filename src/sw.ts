@@ -17,6 +17,10 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
+// Ativa de imediato, sem esperar pela página: uma PWA instalada há semanas
+// nunca fica presa numa versão antiga à espera de SKIP_WAITING.
+self.skipWaiting()
+
 // Take control of all clients immediately after activation
 clientsClaim()
 

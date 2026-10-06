@@ -158,6 +158,12 @@ describe('pedido', () => {
     await expect(pedir(motB, v1)).rejects.toThrow(/viatura já tem um pedido/)
   })
 
+  it('a viatura fica livre assim que o pedido é autorizado', async () => {
+    const id = await pedir(motA, v1)
+    await autorizar(ceo, id)
+    await expect(pedir(motB, v1)).resolves.toBeTruthy()
+  })
+
   it('viatura inativa: a foto já é recusada e, mesmo com foto, o pedido também', async () => {
     await expect(pedir(motA, v3)).rejects.toThrow(/row-level security/)
     const id = randomUUID()
