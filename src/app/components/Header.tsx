@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Bell, User, LogOut, Menu, Search, Sun, Moon } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
+import { pendentesDoUtilizador } from '@/features/movimentos/offlineQueue'
 import { useRole } from '@/features/auth/useRole'
 import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
 import { useTheme } from '@/features/theme/ThemeProvider'
@@ -21,7 +22,7 @@ interface HeaderProps {
 
 export function Header({ onMenuOpen }: HeaderProps) {
   const navigate = useNavigate()
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
   const { nome, role } = useRole()
   const { notifications, count: notifCount, loading: notifLoading, error: notifError } = useNotifications()
   const [notifOpen,  setNotifOpen]  = useState(false)
@@ -54,7 +55,11 @@ export function Header({ onMenuOpen }: HeaderProps) {
   }, [])
 
   const handleLogout = async () => {
-    if (window.confirm('Terminar sessão?')) {
+    const pendentes = pendentesDoUtilizador(user?.id ?? null).length
+    const msg = pendentes > 0
+      ? `Há ${pendentes} movimento(s) por enviar neste dispositivo. Ficam guardados e só são enviados quando voltar a entrar com esta conta. Terminar sessão?`
+      : 'Terminar sessão?'
+    if (window.confirm(msg)) {
       await signOut()
       navigate('/login')
     }

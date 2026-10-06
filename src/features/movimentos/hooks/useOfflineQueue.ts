@@ -1,26 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import { getQueue, removeFromQueue, onQueueChange, isNetworkError, ehPendenteArmazem, type PendingMovimento } from '../offlineQueue'
+import { pendentesDoUtilizador, pendentesDeOutros, removeFromQueue, onQueueChange, isNetworkError, ehPendenteArmazem, type PendingMovimento } from '../offlineQueue'
 import { registarMovimento } from '../services/movimentosService'
 import { registarMovimentoArmazem } from '../services/armazemService'
 import { invalidateCache } from '@/app/lib/useAsync'
 import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/features/auth/AuthContext'
 
 // Só deve existir UMA instância ativa deste hook na app (montada uma vez no
 // MainLayout) — caso contrário duas instâncias tentariam sincronizar a
 // mesma fila em simultâneo e duplicariam movimentos.
 export function useOfflineQueue() {
-  const [pending, setPending] = useState<PendingMovimento[]>(() => getQueue())
+  const { user } = useAuth()
+  const userId = user?.id ?? null
+  const [pending, setPending] = useState<PendingMovimento[]>(() => pendentesDoUtilizador(userId))
+  const [deOutros, setDeOutros] = useState(() => pendentesDeOutros(userId))
   const [syncing, setSyncing] = useState(false)
   const flushingRef = useRef(false)
 
-  const refresh = useCallback(() => setPending(getQueue()), [])
+  const refresh = useCallback(() => {
+    setPending(pendentesDoUtilizador(userId))
+    setDeOutros(pendentesDeOutros(userId))
+  }, [userId])
 
+  useEffect(() => { refresh() }, [refresh])
   useEffect(() => onQueueChange(refresh), [refresh])
 
   const flush = useCallback(async () => {
     if (flushingRef.current) return
-    const queue = getQueue()
+    const queue = pendentesDoUtilizador(userId)
     if (queue.length === 0 || !navigator.onLine) return
 
     // Sessão pode ter expirado por inatividade (30 min) enquanto offline.
@@ -32,6 +40,11 @@ export function useOfflineQueue() {
     if (!session) {
       flushingRef.current = false
       toast.warning('Inicie sessão para sincronizar os registos pendentes.')
+      return
+    }
+    // Defesa em profundidade: a sessão real tem de ser a do dono dos movimentos
+    if (session.user.id !== userId) {
+      flushingRef.current = false
       return
     }
 
@@ -82,7 +95,7 @@ export function useOfflineQueue() {
     if (stoppedByNetwork && okCount === 0 && failCount === 0) {
       // ainda offline — não vale a pena notificar, já existe o banner persistente
     }
-  }, [refresh])
+  }, [refresh, userId])
 
   useEffect(() => {
     flush()
@@ -90,5 +103,5 @@ export function useOfflineQueue() {
     return () => window.removeEventListener('online', flush)
   }, [flush])
 
-  return { pendingCount: pending.length, syncing, flushNow: flush }
+  return { pendingCount: pending.length, deOutros, syncing, flushNow: flush }
 }

@@ -5,7 +5,7 @@ const STORAGE_KEY  = 'encivil_pending_movimentos'
 const QUEUE_EVENT  = 'encivil:queue-changed'
 const MAX_QUEUE_SIZE = 200
 
-type Meta = { queueId: string; queuedAt: string }
+type Meta = { queueId: string; queuedAt: string; userId?: string }
 
 // Registos novos guardam os argumentos da RPC registar_movimento_armazem.
 // Os antigos (tipo/destinoObra, gravados antes da atualização num telemóvel
@@ -57,14 +57,24 @@ export function getQueue(): PendingMovimento[] {
   return readQueue()
 }
 
-export function enqueuePendingMovimento(input: RegistarMovimentoArmazemInput): PendenteArmazem {
+export function enqueuePendingMovimento(input: RegistarMovimentoArmazemInput, userId: string): PendenteArmazem {
   const current = readQueue()
   if (current.length >= MAX_QUEUE_SIZE) {
     throw new Error(`Fila offline cheia (máx. ${MAX_QUEUE_SIZE} registos). Sincronize antes de continuar.`)
   }
-  const item: PendenteArmazem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString() }
+  const item: PendenteArmazem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString(), userId }
   writeQueue([...current, item])
   return item
+}
+
+// Só quem criou o movimento o envia: noutra sessão seria registado em nome de outra pessoa
+export function pendentesDoUtilizador(userId: string | null): PendingMovimento[] {
+  if (!userId) return []
+  return readQueue().filter(i => !i.userId || i.userId === userId)
+}
+
+export function pendentesDeOutros(userId: string | null): number {
+  return readQueue().filter(i => i.userId && i.userId !== userId).length
 }
 
 export function removeFromQueue(queueId: string) {
