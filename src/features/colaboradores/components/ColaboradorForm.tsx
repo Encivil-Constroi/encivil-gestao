@@ -21,9 +21,11 @@ interface ColaboradorFormProps {
   colaborador?: Colaborador | null
   onSaved: () => void
   onCancel: () => void
+  // Na página (não na gaveta): usa a largura toda, com mais colunas em ecrãs grandes
+  ampla?: boolean
 }
 
-export function ColaboradorForm({ colaborador, onSaved, onCancel }: ColaboradorFormProps) {
+export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false }: ColaboradorFormProps) {
   const isEdit = !!colaborador
   const { criar, atualizar, loading } = useGuardarColaborador()
   const { obras } = useObras()
@@ -121,18 +123,22 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel }: ColaboradorF
     onSaved()
   }
 
+  const cheio = 'col-span-full'
+  const grelha = ampla ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-4'
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        <FotoPerfilInput dono={{ tipo: 'colaboradores', id: donoFoto }} valor={form.fotoPath} onChange={fotoPath => set({ fotoPath })} />
+      <div className={`flex-1 overflow-y-auto ${ampla ? 'p-4 sm:p-6' : 'p-5'} space-y-6`}>
+        <div className={grelha}>
+          <div className={cheio}>
+            <FotoPerfilInput dono={{ tipo: 'colaboradores', id: donoFoto }} valor={form.fotoPath} onChange={fotoPath => set({ fotoPath })} />
+          </div>
 
-        <div>
-          <label htmlFor="colab-nome" className={labelCls}>Nome <span className="text-destructive">*</span></label>
-          <input id="colab-nome" type="text" value={form.nome} onChange={e => set({ nome: e.target.value })}
-            className={inputCls} placeholder="Nome completo" required />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
+          <div className={ampla ? 'sm:col-span-2 xl:col-span-1' : cheio}>
+            <label htmlFor="colab-nome" className={labelCls}>Nome <span className="text-destructive">*</span></label>
+            <input id="colab-nome" type="text" value={form.nome} onChange={e => set({ nome: e.target.value })}
+              className={inputCls} placeholder="Nome completo" required />
+          </div>
           <div>
             <label htmlFor="colab-cargo" className={labelCls}>Função / Cargo <span className="text-destructive">*</span></label>
             <input id="colab-cargo" type="text" value={form.cargo} onChange={e => set({ cargo: e.target.value })}
@@ -144,9 +150,7 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel }: ColaboradorF
               className={inputCls} placeholder="Ex: Obra, Armazém…" />
             <datalist id="colab-setores">{setores.map(s => <option key={s} value={s} />)}</datalist>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="colab-tel" className={labelCls}>Telemóvel</label>
             <input id="colab-tel" type="tel" inputMode="tel" value={form.telemovel} onChange={e => set({ telemovel: e.target.value })}
@@ -157,9 +161,14 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel }: ColaboradorF
             <input id="colab-email" type="email" value={form.email} onChange={e => set({ email: e.target.value })}
               className={inputCls} placeholder="nome@empresa.pt" />
           </div>
-        </div>
+          <div>
+            <label htmlFor="colab-obra" className={labelCls}>Obra principal <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+            <select id="colab-obra" value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls}>
+              <option value="">— Sem obra atribuída —</option>
+              {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="colab-mecan" className={labelCls}>N.º Mecanográfico <span className="text-muted-foreground font-normal text-xs">(automático se vazio)</span></label>
             <input id="colab-mecan" type="text" value={form.numeroMecan} onChange={e => set({ numeroMecan: e.target.value })}
@@ -170,20 +179,18 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel }: ColaboradorF
             <input id="colab-nif" type="text" inputMode="numeric" value={form.nif} onChange={e => set({ nif: e.target.value })}
               className={inputCls} placeholder="123456789" maxLength={9} pattern="\d{9}" />
           </div>
-        </div>
-
-        <div>
-          <label htmlFor="colab-obra" className={labelCls}>Obra principal <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-          <select id="colab-obra" value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls}>
-            <option value="">— Sem obra atribuída —</option>
-            {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
+          <div className={cheio}>
+            <label htmlFor="colab-notas" className={labelCls}>Notas <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+            <textarea id="colab-notas" value={form.notas} onChange={e => set({ notas: e.target.value })}
+              className={`${inputCls} resize-none`} rows={3} placeholder="Observações internas…" />
+          </div>
         </div>
 
         {/* Conta e permissões — só o admin lê os perfis e gere contas */}
         {isAdmin && (
-          <>
-            <div>
+          <section className="space-y-4 pt-5 border-t border-border">
+            <h3 className="text-sm font-semibold">Acesso à app</h3>
+            <div className="max-w-md">
               <label htmlFor="colab-conta" className={labelCls}>Conta na app <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
               <select id="colab-conta" value={form.userId} onChange={e => { set({ userId: e.target.value }); setPermissoesMexidas(false) }} className={inputCls}>
                 <option value="">— Sem conta —</option>
@@ -197,29 +204,23 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel }: ColaboradorF
               </p>
             </div>
 
-            <PermissoesSwitches valor={permissoes} onChange={p => { setPermissoes(p); setPermissoesMexidas(true) }} />
+            <PermissoesSwitches valor={permissoes} colunas={ampla} onChange={p => { setPermissoes(p); setPermissoesMexidas(true) }} />
             {!form.userId && permissoes.contaAtiva && (
               <p className="text-xs text-muted-foreground">
                 Com email e conta ativa, a pessoa recebe um convite para definir a senha e só vê o que estas permissões permitem.
               </p>
             )}
-          </>
+          </section>
         )}
-
-        <div>
-          <label htmlFor="colab-notas" className={labelCls}>Notas <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-          <textarea id="colab-notas" value={form.notas} onChange={e => set({ notas: e.target.value })}
-            className={`${inputCls} resize-none`} rows={3} placeholder="Observações internas…" />
-        </div>
       </div>
 
-      <div className="px-5 py-4 border-t border-border flex gap-3">
+      <div className={`px-5 py-4 border-t border-border flex gap-3 ${ampla ? 'sm:justify-end' : ''}`}>
         <button type="button" onClick={onCancel}
-          className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-accent transition-colors">
+          className={`flex-1 ${ampla ? 'sm:flex-none sm:w-40' : ''} py-3 rounded-xl border border-border text-sm font-medium hover:bg-accent transition-colors`}>
           Cancelar
         </button>
         <button type="submit" disabled={loading}
-          className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
+          className={`flex-1 ${ampla ? 'sm:flex-none sm:w-48' : ''} py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60`}>
           {loading ? 'A guardar…' : isEdit ? 'Guardar Alterações' : 'Criar ficha'}
         </button>
       </div>

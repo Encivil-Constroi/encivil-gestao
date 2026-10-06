@@ -86,7 +86,7 @@ const menuSections: MenuSection[] = [
   {
     title: 'Recursos Humanos',
     items: [
-      { path: '/colaboradores', label: 'Colaboradores', icon: Users,   gestorOnly: true,
+      { path: '/colaboradores', label: 'Recursos Humanos', icon: Users,   gestorOnly: true,
         prefetch: () => { void import('@/features/colaboradores/components/ColaboradoresPage') } },
       { path: '/rh',            label: 'RH',            icon: CalendarDays, gestorOnly: true,
         prefetch: () => { void import('@/features/horarios') }, hidden: true },
@@ -112,7 +112,7 @@ const menuSections: MenuSection[] = [
   {
     title: 'Administração',
     items: [
-      { path: '/gestao-utilizadores', label: 'Utilizadores',  icon: UserCog,   adminOnly: true,
+      { path: '/gestao-utilizadores', label: 'Utilizadores',  icon: UserCog,   adminOnly: true, hidden: true,
         prefetch: () => { void import('@/app/pages/GestaoUtilizadoresPage') } },
       { path: '/auditoria',           label: 'Auditoria',     icon: Shield,    adminOnly: true,
         prefetch: () => { void import('@/app/pages/AuditoriaPage') } },

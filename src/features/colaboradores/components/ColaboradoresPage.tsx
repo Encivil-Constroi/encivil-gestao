@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, Users, Archive, RotateCcw, Pencil, Clock, CalendarX, Phone, UserPlus } from 'lucide-react'
+import { Plus, Search, Users, Archive, RotateCcw, Pencil, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmptyState } from '@/app/components/EmptyState'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
@@ -10,27 +10,22 @@ import {
   useRestaurarColaborador,
 } from '../hooks/useColaboradores'
 import { ColaboradorDrawer } from './ColaboradorDrawer'
-import { ColaboradorForm } from './ColaboradorForm'
 import { urlFotoRh } from '@/app/lib/fotosRh'
 import { hrefTel } from '../lib/telefone'
-import { HorariosPage } from '@/features/horarios/components/HorariosPage'
-import { FaltasPage } from '@/features/horarios/components/FaltasPage'
 import type { Colaborador } from '@/app/types'
 
-type MainTab = 'equipa' | 'perfil' | 'horarios' | 'faltas'
 type Tab = 'ativos' | 'arquivados'
 
-export function ColaboradoresPage() {
+// Lista de pessoal; vive dentro de Recursos Humanos (src/app/pages/RecursosHumanosPage)
+export function ColaboradoresPage({ onNovo }: { onNovo: () => void }) {
   const { isAdmin, isGestor } = useRole()
   const podeEditar = isAdmin || isGestor
 
-  const [mainTab, setMainTab]     = useState<MainTab>('equipa')
   const [tab, setTab]             = useState<Tab>('ativos')
   const [search, setSearch]       = useState('')
   const [setor, setSetor]         = useState('')
   const [cargo, setCargo]         = useState('')
   const [obra, setObra]           = useState('')
-  const [formKey, setFormKey]     = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Colaborador | null>(null)
   const [archiveId, setArchiveId]   = useState<string | null>(null)
@@ -70,14 +65,12 @@ export function ColaboradoresPage() {
   const filteredAtivos     = filter(ativos)
   const filteredArquivados = filter(arquivadosSomente)
 
-  const openCreate = () => { setMainTab('perfil') }
+  const openCreate = onNovo
   const openEdit   = (c: Colaborador) => { setEditTarget(c); setDrawerOpen(true) }
   const closeDrawer = () => { setDrawerOpen(false); setEditTarget(null) }
 
   const handleSaved = () => {
     closeDrawer()
-    setMainTab('equipa')
-    setFormKey(k => k + 1)
     reloadAtivos()
     reloadArquivados()
   }
@@ -175,47 +168,6 @@ export function ColaboradoresPage() {
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho + abas principais */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-semibold mb-3">Recursos Humanos</h1>
-        <div className="flex gap-1 border-b border-border">
-          {([
-            { id: 'equipa',   label: 'Equipa',   Icon: Users     },
-            ...(podeEditar ? [{ id: 'perfil' as MainTab, label: 'Criar perfil', Icon: UserPlus }] : []),
-            { id: 'horarios', label: 'Horários', Icon: Clock     },
-            { id: 'faltas',   label: 'Faltas',   Icon: CalendarX },
-          ] as { id: MainTab; label: string; Icon: typeof Users }[]).map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              onClick={() => setMainTab(id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                mainTab === id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Aba Criar perfil */}
-      {mainTab === 'perfil' && podeEditar && (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden max-w-2xl flex flex-col">
-          <ColaboradorForm key={formKey} onSaved={handleSaved} onCancel={() => setMainTab('equipa')} />
-        </div>
-      )}
-
-      {/* Aba Horários */}
-      {mainTab === 'horarios' && <HorariosPage />}
-
-      {/* Aba Faltas */}
-      {mainTab === 'faltas' && <FaltasPage />}
-
-      {/* Aba Equipa */}
-      {mainTab === 'equipa' && <>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {loadingAtivos ? 'A carregar…' : `${ativos.length} colaborador${ativos.length !== 1 ? 'es' : ''} ativo${ativos.length !== 1 ? 's' : ''}`}
@@ -372,7 +324,6 @@ export function ColaboradoresPage() {
           onCancel={() => setRestoreId(null)}
         />
       )}
-      </>}
     </div>
   )
 }

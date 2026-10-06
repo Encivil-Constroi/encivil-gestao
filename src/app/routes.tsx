@@ -118,7 +118,7 @@ const AutoDetailPage   = lazy(() => import('@/features/obras/components/subempre
 
 const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPage').then(m => ({ default: m.AbastecimentoFormPage })));
 
-const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/components/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
+const RecursosHumanosPage = lazy(() => import('./pages/RecursosHumanosPage').then(m => ({ default: m.RecursosHumanosPage })));
 const PerfilPage          = lazy(() => import('@/features/auth/components/PerfilPage').then(m => ({ default: m.PerfilPage })));
 const RHPage             = lazy(() => import('@/features/horarios').then(m => ({ default: m.RHPage })));
 const PicagemPage        = lazy(() => import('@/features/picagens').then(m => ({ default: m.PicagemPage })));
@@ -134,7 +134,6 @@ const SettingsPage       = lazy(() => import('./pages/SettingsPage').then(m => (
 const HelpPage           = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const NotFoundPage       = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const ResetPasswordPage      = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
-const GestaoUtilizadoresPage = lazy(() => import('./pages/GestaoUtilizadoresPage').then(m => ({ default: m.GestaoUtilizadoresPage })));
 const AutoPdfPage            = lazy(() => import('@/features/obras/components/subempreitadas/AutoPdfPage').then(m => ({ default: m.AutoPdfPage })));
 const ObraRelatorioPage         = lazy(() => import('./pages/ObraRelatorioPage').then(m => ({ default: m.ObraRelatorioPage })));
 const ExportacaoContabilidadePage = lazy(() => import('./pages/ExportacaoContabilidadePage').then(m => ({ default: m.ExportacaoContabilidadePage })));
@@ -266,15 +265,15 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id',           element: <Redirecionar para="/armazem/ferramenta/:id" /> },
           { path: 'ferramentas/:id/editar',    element: <Redirecionar para="/armazem/ferramenta/:id/editar" /> },
           { path: 'ferramentas/:id/devolucao', element: <Redirecionar para="/armazem/ferramenta/:id/devolucao" /> },
-          { path: 'colaboradores', element: <L><RoleGuard require="gestor"><ColaboradoresPage /></RoleGuard></L> },
+          { path: 'colaboradores', element: <L><RoleGuard require="gestor"><RecursosHumanosPage /></RoleGuard></L> },
           { path: 'rh',           element: <L><RoleGuard require="gestor"><RHPage /></RoleGuard></L> },
           { path: 'picagens',     element: <L><PicagemPage /></L> },
           { path: 'picagens/validacao', element: <L><RoleGuard require="gestor"><ValidacaoPicagensPage /></RoleGuard></L> },
           { path: 'epis',            element: <L><RoleGuard require="gestor"><EpisPage /></RoleGuard></L> },
           { path: 'formacoes',       element: <L><RoleGuard require="gestor"><FormacoesPage /></RoleGuard></L> },
           { path: 'seguranca',       element: <L><RoleGuard require="gestor"><FichaSegurancaPage /></RoleGuard></L> },
-          { path: 'horarios',     element: <Navigate to="/rh" replace /> },
-          { path: 'faltas',       element: <Navigate to="/rh" replace /> },
+          { path: 'horarios',     element: <Navigate to="/colaboradores?aba=horarios" replace /> },
+          { path: 'faltas',       element: <Navigate to="/colaboradores?aba=faltas" replace /> },
           { path: 'alertas',      element: <L><RoleGuard require="gestor"><AlertasPage /></RoleGuard></L> },
           // ── Obras ── (um só módulo: obras, relatórios diários e subempreitadas)
           {
@@ -368,7 +367,7 @@ export const router = createBrowserRouter([
           { path: 'backup',                element: <L><RoleGuard require="admin"><BackupPage /></RoleGuard></L> },
           { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
           { path: 'configuracoes',         element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
-          { path: 'gestao-utilizadores',   element: <L><RoleGuard require="admin"><GestaoUtilizadoresPage /></RoleGuard></L> },
+          { path: 'gestao-utilizadores',   element: <Navigate to="/colaboradores?aba=utilizadores" replace /> },
           { path: 'perfil',        element: <L><PerfilPage /></L> },
           { path: 'ajuda',         element: <L><HelpPage /></L> },
           { path: 'documentacao',  element: <Navigate to="/ajuda" replace /> },

@@ -11,10 +11,12 @@ const ITENS: { chave: ChavePermissao; rotulo: string; ajuda?: string }[] = [
   { chave: 'motorista',         rotulo: 'Motorista', ajuda: 'Só pede abastecimentos e vê os seus pedidos.' },
 ]
 
-export function PermissoesSwitches({ valor, onChange }: { valor: PermissoesFicha; onChange: (p: PermissoesFicha) => void }) {
+export function PermissoesSwitches({ valor, onChange, colunas = false }: {
+  valor: PermissoesFicha; onChange: (p: PermissoesFicha) => void; colunas?: boolean
+}) {
   return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-medium mb-1.5">Permissões</legend>
+    <fieldset className={colunas ? 'grid sm:grid-cols-2 xl:grid-cols-3 gap-2' : 'space-y-2'}>
+      <legend className="text-sm font-medium mb-1.5 col-span-full">Permissões</legend>
       {ITENS.map(({ chave, rotulo, ajuda }) => (
         <label key={chave} className={`flex items-center justify-between gap-3 p-3 rounded-xl border border-border ${chave === 'verRelatorios' ? 'opacity-70' : 'cursor-pointer hover:bg-accent/40'}`}>
           <span className="min-w-0">
