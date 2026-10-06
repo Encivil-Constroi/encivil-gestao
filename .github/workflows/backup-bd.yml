@@ -1,0 +1,50 @@
+name: Backup BD
+
+on:
+  schedule:
+    - cron: '17 2 * * *'   # ~03:17 em Lisboa (02:17 no inverno)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      restauro:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restauro
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Cliente Postgres 17 e age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSLo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -q
+          sudo apt-get install -yq postgresql-client-17 age
+      - name: Backup, restauro de teste e cifra
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AGE_DESTINATARIO: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+          RESTAURO_URL: postgres://postgres:restauro@localhost:5432/postgres
+          SAIDA: backup
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$AGE_DESTINATARIO" ]; then
+            echo "::error::Configurar os secrets SUPABASE_DB_URL e BACKUP_AGE_PUBLIC_KEY (docs/22-seguranca-operacao.md)"
+            exit 1
+          fi
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          bash scripts/backup/backup-bd.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: bd-${{ github.run_id }}
+          path: backup/*.age
+          retention-days: 30
+          if-no-files-found: error
