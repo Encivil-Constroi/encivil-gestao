@@ -10,10 +10,10 @@ import { ProtecaoSaida } from '../lib/protegerSaida';
 
 // O mecânico só trabalha na Frota: qualquer outro endereço leva-o para lá.
 // É conforto de navegação — o que ele pode escrever decide-se na RLS.
-const ROTAS_MECANICO = /^\/(frota|ajuda)(\/|$)/;
+const ROTAS_MECANICO = /^\/(frota|perfil|ajuda)(\/|$)/;
 // O motorista só pede abastecimentos e acompanha os seus pedidos
 // (/abastecer: endereços antigos, que redirecionam mantendo o pedido)
-const ROTAS_MOTORISTA = /^\/(abastecimento|abastecer|ajuda)(\/|$)/;
+const ROTAS_MOTORISTA = /^\/(abastecimento|abastecer|perfil|ajuda)(\/|$)/;
 
 export function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

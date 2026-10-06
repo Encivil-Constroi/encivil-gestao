@@ -29,7 +29,7 @@ afterEach(cleanup)
 
 describe('menu lateral', () => {
   it('o mecânico vê só a Frota e a Ajuda', () => {
-    expect(opcoes('mecanico')).toEqual(['Frota', 'Ajuda'])
+    expect(opcoes('mecanico')).toEqual(['Frota', 'O meu perfil', 'Ajuda'])
   })
 
   it('admin vê a Frota e tudo o que já via', () => {

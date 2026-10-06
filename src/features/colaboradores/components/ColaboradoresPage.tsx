@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, Users, Archive, RotateCcw, Pencil, Clock, CalendarX } from 'lucide-react'
+import { Plus, Search, Users, Archive, RotateCcw, Pencil, Clock, CalendarX, Phone, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmptyState } from '@/app/components/EmptyState'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
@@ -10,11 +10,14 @@ import {
   useRestaurarColaborador,
 } from '../hooks/useColaboradores'
 import { ColaboradorDrawer } from './ColaboradorDrawer'
+import { ColaboradorForm } from './ColaboradorForm'
+import { urlFotoRh } from '@/app/lib/fotosRh'
+import { hrefTel } from '../lib/telefone'
 import { HorariosPage } from '@/features/horarios/components/HorariosPage'
 import { FaltasPage } from '@/features/horarios/components/FaltasPage'
 import type { Colaborador } from '@/app/types'
 
-type MainTab = 'equipa' | 'horarios' | 'faltas'
+type MainTab = 'equipa' | 'perfil' | 'horarios' | 'faltas'
 type Tab = 'ativos' | 'arquivados'
 
 export function ColaboradoresPage() {
@@ -24,6 +27,10 @@ export function ColaboradoresPage() {
   const [mainTab, setMainTab]     = useState<MainTab>('equipa')
   const [tab, setTab]             = useState<Tab>('ativos')
   const [search, setSearch]       = useState('')
+  const [setor, setSetor]         = useState('')
+  const [cargo, setCargo]         = useState('')
+  const [obra, setObra]           = useState('')
+  const [formKey, setFormKey]     = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Colaborador | null>(null)
   const [archiveId, setArchiveId]   = useState<string | null>(null)
@@ -36,26 +43,41 @@ export function ColaboradoresPage() {
 
   const arquivadosSomente = arquivados.filter(c => !c.ativo || !ativos.some(a => a.id === c.id))
 
+  const todos = [...ativos, ...arquivadosSomente]
+  const unicos = (f: (c: Colaborador) => string | undefined) =>
+    [...new Set(todos.map(f).filter((v): v is string => !!v))].sort((a, b) => a.localeCompare(b, 'pt'))
+  const setores = unicos(c => c.setor)
+  const cargos  = unicos(c => c.cargo)
+  const obras   = unicos(c => c.obraNome)
+
   const filter = (list: Colaborador[]) =>
     list.filter(c => {
       const q = search.toLowerCase()
       return (
-        c.nome.toLowerCase().includes(q) ||
-        c.numeroMecan.toLowerCase().includes(q) ||
-        c.cargo.toLowerCase().includes(q) ||
-        (c.obraNome ?? '').toLowerCase().includes(q)
+        (!setor || c.setor === setor) &&
+        (!cargo || c.cargo === cargo) &&
+        (!obra  || c.obraNome === obra) &&
+        (
+          c.nome.toLowerCase().includes(q) ||
+          c.numeroMecan.toLowerCase().includes(q) ||
+          c.cargo.toLowerCase().includes(q) ||
+          (c.setor ?? '').toLowerCase().includes(q) ||
+          (c.obraNome ?? '').toLowerCase().includes(q)
+        )
       )
     })
 
   const filteredAtivos     = filter(ativos)
   const filteredArquivados = filter(arquivadosSomente)
 
-  const openCreate = () => { setEditTarget(null); setDrawerOpen(true) }
+  const openCreate = () => { setMainTab('perfil') }
   const openEdit   = (c: Colaborador) => { setEditTarget(c); setDrawerOpen(true) }
   const closeDrawer = () => { setDrawerOpen(false); setEditTarget(null) }
 
   const handleSaved = () => {
     closeDrawer()
+    setMainTab('equipa')
+    setFormKey(k => k + 1)
     reloadAtivos()
     reloadArquivados()
   }
@@ -91,18 +113,32 @@ export function ColaboradoresPage() {
   const renderRow = (c: Colaborador, isArchived = false) => (
     <div key={c.id} className="flex items-center gap-3 p-4 border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
       {/* Avatar inicial */}
-      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-        <span className="text-sm font-bold text-primary">{c.nome.charAt(0).toUpperCase()}</span>
+      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+        {c.fotoPath
+          ? <img src={urlFotoRh(c.fotoPath) ?? ''} alt={c.nome} loading="lazy" className="w-full h-full object-cover" />
+          : <span className="text-sm font-bold text-primary">{c.nome.charAt(0).toUpperCase()}</span>}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold truncate ${isArchived ? 'text-muted-foreground' : ''}`}>{c.nome}</p>
         <p className="text-xs text-muted-foreground mt-0.5 truncate">
-          {c.numeroMecan} · {c.cargo}
+          {c.numeroMecan} · {c.cargo}{c.setor && ` · ${c.setor}`}
           {c.obraNome && <span className="text-primary/70"> · {c.obraNome}</span>}
         </p>
       </div>
+
+      {/* Ligar — tel: abre a app Telefone no Android e no iOS (também na PWA) */}
+      {!isArchived && hrefTel(c.telemovel) && (
+        <a
+          href={hrefTel(c.telemovel)!}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-success-foreground bg-success rounded-lg hover:opacity-90 transition-opacity shrink-0"
+          aria-label={`Ligar a ${c.nome}`}
+        >
+          <Phone className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Ligar</span>
+        </a>
+      )}
 
       {/* Ações */}
       {podeEditar && (
@@ -145,6 +181,7 @@ export function ColaboradoresPage() {
         <div className="flex gap-1 border-b border-border">
           {([
             { id: 'equipa',   label: 'Equipa',   Icon: Users     },
+            ...(podeEditar ? [{ id: 'perfil' as MainTab, label: 'Criar perfil', Icon: UserPlus }] : []),
             { id: 'horarios', label: 'Horários', Icon: Clock     },
             { id: 'faltas',   label: 'Faltas',   Icon: CalendarX },
           ] as { id: MainTab; label: string; Icon: typeof Users }[]).map(({ id, label, Icon }) => (
@@ -163,6 +200,13 @@ export function ColaboradoresPage() {
           ))}
         </div>
       </div>
+
+      {/* Aba Criar perfil */}
+      {mainTab === 'perfil' && podeEditar && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden max-w-2xl flex flex-col">
+          <ColaboradorForm key={formKey} onSaved={handleSaved} onCancel={() => setMainTab('equipa')} />
+        </div>
+      )}
 
       {/* Aba Horários */}
       {mainTab === 'horarios' && <HorariosPage />}
@@ -229,10 +273,25 @@ export function ColaboradoresPage() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Pesquisar por nome, número, cargo ou obra…"
+              placeholder="Pesquisar por nome, número, cargo, setor ou obra…"
               className="w-full pl-10 pr-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             />
           </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-4 border-b border-border">
+          {([
+            { rotulo: 'Setor', valor: setor, set: setSetor, opcoes: setores },
+            { rotulo: 'Cargo', valor: cargo, set: setCargo, opcoes: cargos },
+            { rotulo: 'Obra',  valor: obra,  set: setObra,  opcoes: obras  },
+          ]).map(f => (
+            <select key={f.rotulo} value={f.valor} onChange={e => f.set(e.target.value)} aria-label={`Filtrar por ${f.rotulo.toLowerCase()}`}
+              className="w-full px-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+              <option value="">{f.rotulo}: todos</option>
+              {f.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          ))}
         </div>
 
         {/* Lista — Ativos */}
@@ -268,7 +327,18 @@ export function ColaboradoresPage() {
         )}
       </div>
 
-      {/* Drawer de criação / edição */}
+      {/* Botão + : novo colaborador (aba Criar perfil) */}
+      {podeEditar && (
+        <button
+          onClick={openCreate}
+          aria-label="Adicionar colaborador"
+          className="fixed right-4 bottom-24 md:bottom-6 z-30 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
+        >
+          <Plus className="w-6 h-6" aria-hidden="true" />
+        </button>
+      )}
+
+      {/* Drawer de edição */}
       {drawerOpen && (
         <ColaboradorDrawer
           colaborador={editTarget}

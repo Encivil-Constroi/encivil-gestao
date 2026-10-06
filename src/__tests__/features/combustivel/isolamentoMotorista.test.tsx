@@ -91,11 +91,11 @@ describe('isolamento do motorista', () => {
 
 describe('menu lateral do abastecimento', () => {
   it('motorista vê só o pedido, os pedidos e a ajuda', () => {
-    expect(menu('motorista')).toEqual(['Pedir combustível', 'Os meus pedidos', 'Ajuda'])
+    expect(menu('motorista')).toEqual(['Pedir combustível', 'Os meus pedidos', 'O meu perfil', 'Ajuda'])
   })
 
   it('o mecânico continua só com a Frota e a Ajuda', () => {
-    expect(menu('mecanico')).toEqual(['Frota', 'Ajuda'])
+    expect(menu('mecanico')).toEqual(['Frota', 'O meu perfil', 'Ajuda'])
   })
 
   it('os outros papéis têm um só item "Abastecimento" (sem duplicados de combustível)', () => {

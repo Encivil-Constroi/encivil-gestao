@@ -10,6 +10,7 @@ const m = vi.hoisted(() => ({
 }))
 
 vi.mock('@/features/auth/useRole', () => ({ useRole: () => ({ isAdmin: m.admin }) }))
+vi.mock('@/features/auth/hooks/useUtilizadores', () => ({ useUtilizadores: () => ({ utilizadores: [] }) }))
 vi.mock('@/features/obras/hooks/useObras', () => ({ useObras: () => ({ obras: [] }) }))
 vi.mock('@/features/colaboradores/hooks/useColaboradores', () => ({
   useGuardarColaborador: () => ({ criar: m.criar, atualizar: m.atualizar, loading: false }),

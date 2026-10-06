@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { colaboradoresDb } from '../db'
 import type { Colaborador } from '@/app/types'
 
 // Inclui o nome da obra via join para evitar N+1
@@ -14,6 +15,10 @@ type ColaboradorRow = {
   user_id: string | null
   ativo: boolean
   notas: string | null
+  telemovel: string | null
+  email: string | null
+  foto_path: string | null
+  setor: string | null
   created_at: string
   obras: { id: string; nome: string } | null
 }
@@ -30,12 +35,16 @@ function toColaborador(row: ColaboradorRow): Colaborador {
     userId: row.user_id ?? undefined,
     ativo: row.ativo,
     notas: row.notas ?? undefined,
+    telemovel: row.telemovel ?? undefined,
+    email: row.email ?? undefined,
+    fotoPath: row.foto_path ?? undefined,
+    setor: row.setor ?? undefined,
     createdAt: new Date(row.created_at),
   }
 }
 
 export async function listarColaboradores(apenasAtivos = true): Promise<Colaborador[]> {
-  let query = supabase.from('colaboradores').select(SELECT).order('nome')
+  let query = colaboradoresDb.from('colaboradores').select(SELECT).order('nome')
   if (apenasAtivos) query = query.eq('ativo', true)
   const { data, error } = await query
   if (error) throw error
@@ -43,7 +52,7 @@ export async function listarColaboradores(apenasAtivos = true): Promise<Colabora
 }
 
 export async function buscarColaborador(id: string): Promise<Colaborador> {
-  const { data, error } = await supabase
+  const { data, error } = await colaboradoresDb
     .from('colaboradores')
     .select(SELECT)
     .eq('id', id)
@@ -54,28 +63,38 @@ export async function buscarColaborador(id: string): Promise<Colaborador> {
 
 export type NovoColaborador = {
   nome: string
-  numeroMecan: string
+  // Vazio: a BD gera ENC-nnnn (trigger colaborador_numero_auto)
+  numeroMecan?: string
   cargo: string
   nif?: string
   obraId?: string
   notas?: string
+  telemovel?: string
+  email?: string
+  fotoPath?: string | null
+  setor?: string
   // Conta na app: liga o pedido de abastecimento à viatura atribuída na Frota.
   // undefined = não mexer (só o admin vê e altera este campo)
   userId?: string | null
 }
 
 export async function criarColaborador(input: NovoColaborador): Promise<Colaborador> {
-  const { data, error } = await supabase
+  const linha: ColaboradorNovo = {
+    nome: input.nome.trim(),
+    numero_mecan: input.numeroMecan?.trim() ?? '',
+    cargo: input.cargo.trim(),
+    nif: input.nif?.trim() || null,
+    obra_id: input.obraId ?? null,
+    notas: input.notas?.trim() || null,
+    user_id: input.userId ?? null,
+    telemovel: input.telemovel?.trim() || null,
+    email: input.email?.trim().toLowerCase() || null,
+    foto_path: input.fotoPath ?? null,
+    setor: input.setor?.trim() || null,
+  }
+  const { data, error } = await colaboradoresDb
     .from('colaboradores')
-    .insert({
-      nome: input.nome.trim(),
-      numero_mecan: input.numeroMecan.trim(),
-      cargo: input.cargo.trim(),
-      nif: input.nif?.trim() || null,
-      obra_id: input.obraId ?? null,
-      notas: input.notas?.trim() || null,
-      user_id: input.userId ?? null,
-    })
+    .insert(linha)
     .select(SELECT)
     .single()
   if (error) throw error
@@ -83,6 +102,8 @@ export async function criarColaborador(input: NovoColaborador): Promise<Colabora
 }
 
 export type AtualizarColaborador = Partial<NovoColaborador>
+
+type ColaboradorNovo = Omit<ColaboradorPatch, 'nome' | 'numero_mecan' | 'cargo'> & { nome: string; numero_mecan: string; cargo: string }
 
 type ColaboradorPatch = {
   nome?: string
@@ -92,6 +113,10 @@ type ColaboradorPatch = {
   obra_id?: string | null
   notas?: string | null
   user_id?: string | null
+  telemovel?: string | null
+  email?: string | null
+  foto_path?: string | null
+  setor?: string | null
 }
 
 export async function atualizarColaborador(id: string, input: AtualizarColaborador): Promise<Colaborador> {
@@ -103,8 +128,12 @@ export async function atualizarColaborador(id: string, input: AtualizarColaborad
   if (input.obraId !== undefined)     patch.obra_id = input.obraId || null
   if (input.notas !== undefined)      patch.notas = input.notas.trim() || null
   if (input.userId !== undefined)     patch.user_id = input.userId
+  if (input.telemovel !== undefined)  patch.telemovel = input.telemovel.trim() || null
+  if (input.email !== undefined)      patch.email = input.email.trim().toLowerCase() || null
+  if (input.fotoPath !== undefined)   patch.foto_path = input.fotoPath
+  if (input.setor !== undefined)      patch.setor = input.setor.trim() || null
 
-  const { data, error } = await supabase
+  const { data, error } = await colaboradoresDb
     .from('colaboradores')
     .update(patch)
     .eq('id', id)
@@ -115,7 +144,7 @@ export async function atualizarColaborador(id: string, input: AtualizarColaborad
 }
 
 export async function arquivarColaborador(id: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await colaboradoresDb
     .from('colaboradores')
     .update({ ativo: false })
     .eq('id', id)
@@ -123,7 +152,7 @@ export async function arquivarColaborador(id: string): Promise<void> {
 }
 
 export async function restaurarColaborador(id: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await colaboradoresDb
     .from('colaboradores')
     .update({ ativo: true })
     .eq('id', id)

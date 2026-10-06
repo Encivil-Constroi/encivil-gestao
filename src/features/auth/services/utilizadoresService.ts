@@ -27,8 +27,10 @@ export async function listarUtilizadores(): Promise<Utilizador[]> {
   return chamarAdmin<Utilizador[]>('listar')
 }
 
-export async function convidarUtilizador(email: string, nome: string, role: RoleUtilizador): Promise<void> {
-  await chamarAdmin('convidar', { email, nome, role })
+export type ExtrasConvite = { colaboradorId?: string; telemovel?: string; fotoPath?: string }
+
+export async function convidarUtilizador(email: string, nome: string, role: RoleUtilizador, extras: ExtrasConvite = {}): Promise<void> {
+  await chamarAdmin('convidar', { email, nome, role, ...extras })
 }
 
 export async function alterarPapel(userId: string, role: RoleUtilizador): Promise<void> {

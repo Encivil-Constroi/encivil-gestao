@@ -119,6 +119,7 @@ const AutoDetailPage   = lazy(() => import('@/features/obras/components/subempre
 const AbastecimentoFormPage    = lazy(() => import('./pages/AbastecimentoFormPage').then(m => ({ default: m.AbastecimentoFormPage })));
 
 const ColaboradoresPage  = lazy(() => import('@/features/colaboradores/components/ColaboradoresPage').then(m => ({ default: m.ColaboradoresPage })));
+const PerfilPage          = lazy(() => import('@/features/auth/components/PerfilPage').then(m => ({ default: m.PerfilPage })));
 const RHPage             = lazy(() => import('@/features/horarios').then(m => ({ default: m.RHPage })));
 const PicagemPage        = lazy(() => import('@/features/picagens').then(m => ({ default: m.PicagemPage })));
 const ValidacaoPicagensPage = lazy(() => import('@/features/picagens').then(m => ({ default: m.ValidacaoPicagensPage })));
@@ -368,6 +369,7 @@ export const router = createBrowserRouter([
           { path: 'auditoria',             element: <L><RoleGuard require="admin"><AuditoriaPage /></RoleGuard></L> },
           { path: 'configuracoes',         element: <L><RoleGuard require="admin"><SettingsPage /></RoleGuard></L> },
           { path: 'gestao-utilizadores',   element: <L><RoleGuard require="admin"><GestaoUtilizadoresPage /></RoleGuard></L> },
+          { path: 'perfil',        element: <L><PerfilPage /></L> },
           { path: 'ajuda',         element: <L><HelpPage /></L> },
           { path: 'documentacao',  element: <Navigate to="/ajuda" replace /> },
           { path: '*',             element: <L><NotFoundPage /></L> },

@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
   // ── Convidar utilizador ───────────────────────────────────────────────
   if (action === 'convidar') {
-    const { email, nome, role } = payload ?? {}
+    const { email, nome, role, colaboradorId, telemovel, fotoPath } = payload ?? {}
     if (!email || typeof email !== 'string') return err('Email obrigatório')
     if (!nome  || typeof nome  !== 'string') return err('Nome obrigatório')
     if (!ROLES_VALIDOS.includes(role))       return err('Papel inválido')
@@ -95,7 +95,14 @@ Deno.serve(async (req) => {
     // O trigger handle_new_user cria o perfil com role='gestor'.
     // Actualizamos imediatamente para o papel pretendido.
     if (data?.user) {
-      await admin.from('profiles').update({ nome, role }).eq('id', data.user.id)
+      const extra: Record<string, string> = {}
+      if (typeof telemovel === 'string' && telemovel.trim()) extra.telemovel = telemovel.trim()
+      if (typeof fotoPath === 'string' && fotoPath.trim())   extra.foto_path = fotoPath.trim()
+      await admin.from('profiles').update({ nome, role, ...extra }).eq('id', data.user.id)
+      // Liga a ficha de pessoal à conta recém-criada
+      if (typeof colaboradorId === 'string' && colaboradorId) {
+        await admin.from('colaboradores').update({ user_id: data.user.id }).eq('id', colaboradorId)
+      }
     }
 
     return ok({ sucesso: true, userId: data?.user?.id })

@@ -244,6 +244,10 @@ export interface Colaborador {
   userId?: string;
   ativo: boolean;
   notas?: string;
+  telemovel?: string;
+  email?: string;
+  fotoPath?: string;
+  setor?: string;
   createdAt: Date;
 }
 

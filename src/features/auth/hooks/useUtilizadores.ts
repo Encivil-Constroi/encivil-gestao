@@ -9,11 +9,11 @@ import {
   type RoleUtilizador,
 } from '../services/utilizadoresService'
 
-export function useUtilizadores() {
+export function useUtilizadores(enabled = true) {
   const { data: utilizadores, loading, error, reload } = useAsync(
     listarUtilizadores,
     [],
-    { cacheKey: 'utilizadores', errorMsg: 'Não foi possível carregar os utilizadores' },
+    { enabled, cacheKey: 'utilizadores', errorMsg: 'Não foi possível carregar os utilizadores' },
   )
   return { utilizadores: utilizadores ?? [], loading, error, reload }
 }
