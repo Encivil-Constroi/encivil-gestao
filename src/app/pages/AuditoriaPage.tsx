@@ -3,6 +3,7 @@ import { Shield, ChevronLeft, ChevronRight, Download, ChevronDown, ChevronRight 
 import { useAsync } from '../lib/useAsync'
 import { exportarXlsx } from '../lib/exportXlsx'
 import { supabase } from '@/integrations/supabase/client'
+import { auditoriaDb } from '../lib/auditoriaDb'
 import { toast } from 'sonner'
 
 const PAGE_SIZE = 50
@@ -27,18 +28,46 @@ const PERIOD_OPTS: { value: PeriodFilter; label: string }[] = [
   { value: 'mes',    label: 'Este mês' },
 ]
 
-function labelAction(action: string): string {
+// Tabelas com o trigger auditar_alteracao (20261008060000_seguranca_auditoria.sql)
+const TABELAS_AUDITADAS = [
+  'profiles', 'colaboradores', 'faturas_fornecedor', 'comb_aprovadores',
+  'configuracoes_empresa', 'seguranca_config', 'obras',
+] as const
+
+// Mudanças nestas tabelas mexem em acessos/segurança, seja qual for a operação
+const TABELAS_SENSIVEIS = new Set(['profiles', 'seguranca_config', 'comb_aprovadores'])
+
+const OPERACAO_LABEL: Record<string, string> = {
+  insert: 'Criação',
+  update: 'Alteração',
+  delete: 'Eliminação',
+}
+
+function separarAction(action: string): { tabela: string; operacao: string } | null {
+  const m = /^([a-z0-9_]+)\.(insert|update|delete)$/.exec(action)
+  return m ? { tabela: m[1], operacao: m[2] } : null
+}
+
+export function labelAction(action: string): string {
+  const generica = separarAction(action)
+  if (generica) return `${OPERACAO_LABEL[generica.operacao]} em ${generica.tabela}`
   if (action.startsWith('delete_'))  return `Eliminação (${action.slice(7)})`
   switch (action) {
     case 'role_change':              return 'Alteração de papel'
+    case 'mfa_obrigatorio':          return 'Verificação em dois passos obrigatória'
     case 'validar_subempreiteiro':   return 'Validação subempreiteiro'
     case 'validar_auto':             return 'Validação auto'
     default: return action
   }
 }
 
-function severidadeAction(action: string): 'high' | 'medium' | 'low' {
-  if (action === 'role_change' || action.startsWith('delete_')) return 'high'
+export function severidadeAction(action: string): 'high' | 'medium' | 'low' {
+  const generica = separarAction(action)
+  if (generica) {
+    if (generica.operacao === 'delete' || TABELAS_SENSIVEIS.has(generica.tabela)) return 'high'
+    return 'medium'
+  }
+  if (action === 'role_change' || action === 'mfa_obrigatorio' || action.startsWith('delete_')) return 'high'
   if (action.startsWith('validar_')) return 'medium'
   return 'low'
 }
@@ -66,6 +95,7 @@ export function AuditoriaPage() {
   const [page,         setPage]         = useState(0)
   const [period,       setPeriod]       = useState<PeriodFilter>('todos')
   const [actionFilter, setActionFilter] = useState('')
+  const [tabela,       setTabela]       = useState('')
   const [expanded,     setExpanded]     = useState<Set<string>>(new Set())
   const [exporting,    setExporting]    = useState(false)
 
@@ -83,14 +113,14 @@ export function AuditoriaPage() {
     return m
   }, [profiles])
 
-  const deps = [page, period, actionFilter] as const
+  const deps = [page, period, actionFilter, tabela] as const
 
   const { data: result, loading } = useAsync(
     async () => {
       const from = page * PAGE_SIZE
       const to   = from + PAGE_SIZE - 1
 
-      let query = supabase
+      let query = auditoriaDb
         .from('audit_log')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
@@ -99,6 +129,7 @@ export function AuditoriaPage() {
       const start = periodStart(period)
       if (start) query = query.gte('created_at', start)
       if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
+      if (tabela) query = query.eq('tabela', tabela)
 
       const { data, count, error } = await query
       if (error) throw error
@@ -112,7 +143,7 @@ export function AuditoriaPage() {
   const totalCount = result?.count ?? 0
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
-  const hasFilter = period !== 'todos' || actionFilter.trim() !== ''
+  const hasFilter = period !== 'todos' || actionFilter.trim() !== '' || tabela !== ''
 
   function toggleExpand(id: string) {
     setExpanded(prev => {
@@ -125,7 +156,7 @@ export function AuditoriaPage() {
   async function handleExport() {
     setExporting(true)
     try {
-      let query = supabase
+      let query = auditoriaDb
         .from('audit_log')
         .select('*')
         .order('created_at', { ascending: false })
@@ -133,6 +164,7 @@ export function AuditoriaPage() {
       const start = periodStart(period)
       if (start) query = query.gte('created_at', start)
       if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
+      if (tabela) query = query.eq('tabela', tabela)
 
       const { data, error } = await query
       if (error) throw error
@@ -198,6 +230,17 @@ export function AuditoriaPage() {
               {PERIOD_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Tabela</label>
+            <select
+              value={tabela}
+              onChange={e => { setTabela(e.target.value); setPage(0) }}
+              className={selectCls}
+            >
+              <option value="">Todas</option>
+              {TABELAS_AUDITADAS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
           <div className="flex-1">
             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Acção</label>
             <input
@@ -211,7 +254,7 @@ export function AuditoriaPage() {
           {hasFilter && (
             <div className="flex items-end">
               <button
-                onClick={() => { setPeriod('todos'); setActionFilter(''); setPage(0) }}
+                onClick={() => { setPeriod('todos'); setActionFilter(''); setTabela(''); setPage(0) }}
                 className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-accent transition-colors"
               >
                 Limpar
