@@ -184,3 +184,8 @@ export async function listarParaAnalise(inicio: string, fim: string): Promise<Ab
     ...r, litros: Number(r.litros), custo_total: Number(r.custo_total), contador: r.contador == null ? null : Number(r.contador),
   }))
 }
+
+export async function cancelarAutorizacaoBomba(id: string): Promise<void> {
+  const { error } = await combDb.rpc('cancelar_autorizacao_bomba', { p_id: id })
+  if (error) throw error
+}

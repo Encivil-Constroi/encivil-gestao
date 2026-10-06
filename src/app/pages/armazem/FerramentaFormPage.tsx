@@ -1,3 +1,4 @@
+import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ChevronLeft, AlertTriangle, ShieldAlert } from 'lucide-react'
@@ -16,6 +17,7 @@ export function FerramentaFormPage() {
   const { id } = useParams()
   const editar = !!id
   const navigate = useNavigate()
+  const refForm = useProtegerFormulario()
   const permitido = useExigePermissaoFerramentas()
 
   const { tool, loading: aCarregar } = useFerramenta(id)
@@ -103,7 +105,7 @@ export function FerramentaFormPage() {
         </div>
       </div>
 
-      <form onSubmit={submeter} className="space-y-4" noValidate>
+      <form ref={refForm} onSubmit={submeter} className="space-y-4" noValidate>
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <FotoInput dono={{ tipo: 'ferramentas', id: ferramentaId }} valor={foto} onChange={setFoto} rotulo="Foto da ferramenta" />
 

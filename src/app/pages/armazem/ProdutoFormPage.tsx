@@ -1,3 +1,4 @@
+import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Info, Loader2 } from 'lucide-react'
@@ -53,6 +54,7 @@ export function ProdutoFormPage() {
   const { id: idRota } = useParams()
   const aEditar = !!idRota
   const navigate = useNavigate()
+  const refForm = useProtegerFormulario()
   const { podeArmazem } = useRole()
 
   // Ao criar, o id nasce aqui para a foto ir logo para produtos/<id>/ (a política do bucket exige-o)
@@ -164,7 +166,7 @@ export function ProdutoFormPage() {
         </div>
       </div>
 
-      <form onSubmit={guardar} noValidate className="space-y-4">
+      <form ref={refForm} onSubmit={guardar} noValidate className="space-y-4">
         <section className="bg-card rounded-2xl border border-border p-4 sm:p-5">
           <FotoInput dono={{ tipo: 'produtos', id }} valor={form.fotoPath} onChange={c => a('fotoPath', c)} rotulo="Foto do artigo" desativado={aGuardar} />
         </section>

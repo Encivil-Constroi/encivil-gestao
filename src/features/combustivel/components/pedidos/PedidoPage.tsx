@@ -11,7 +11,7 @@ import {
   formatarHora, formatarNumero, litrosPorDiferenca, minutosDesde, textoDuracao,
 } from '../../lib/pedido'
 import {
-  useCancelarPedido, useConcluirPedido, useContadorInicial, useLigarBomba, usePedido, usePodeAprovar, usePrecos,
+  useCancelarAutorizacaoBomba, useCancelarPedido, useConcluirPedido, useContadorInicial, useLigarBomba, usePedido, usePodeAprovar, usePrecos,
 } from '../../hooks/usePedidos'
 import { useEstadoPedidoBomba } from '../../hooks/useBombaPolo2'
 import { urlFotoCombustivel } from '../../services/fotosService'
@@ -85,6 +85,7 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
   const { cancelar, loading: aCancelar } = useCancelarPedido()
   const { registar, loading: aRegistar, error: erroRegisto } = useContadorInicial()
   const { ligar, loading: aLigar, error: erroLigar } = useLigarBomba()
+  const { cancelarLigacao, loading: aCancelarLigacao } = useCancelarAutorizacaoBomba()
   const { concluir, loading: aConcluir, error: erroConcluir } = useConcluirPedido()
   const { precos } = usePrecos()
   const preco = precos.find(p => p.tipo_combustivel === pedido.tipo_combustivel)?.preco_litro ?? null
@@ -200,6 +201,9 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
               </Aviso>
             )}
           </div>
+          <button type="button" onClick={() => cancelarLigacao(pedido.id)} disabled={aCancelarLigacao} className={`w-full ${botaoSecundario}`}>
+            <Ban className="w-4 h-4" aria-hidden="true" /> Cancelar e tentar mais tarde
+          </button>
           <Link to="/abastecimento" className={`w-full ${botaoSecundario}`}>Voltar aos pedidos</Link>
         </Cartao>
       )

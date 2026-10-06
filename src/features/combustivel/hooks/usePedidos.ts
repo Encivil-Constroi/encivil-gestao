@@ -4,7 +4,7 @@ import { useMutation } from '@/app/lib/useMutation'
 import type { OrigemLeitura, TipoCombustivel } from '../db'
 import {
   fetchContexto, listarPedidos, fetchPedido, criarPedido,
-  autorizarPedido, recusarPedido, aprovarRegistoAntigo, cancelarPedido, registarContadorInicial, ligarBomba,
+  autorizarPedido, recusarPedido, aprovarRegistoAntigo, cancelarPedido, registarContadorInicial, ligarBomba, cancelarAutorizacaoBomba,
   concluirPedido, listarPrecos, definirPreco, listarAprovadores, definirAprovador, listarUtilizadores,
   listarViaturasAtivas, listarParaAnalise,
   type FiltrosPedidos, type NovoPedido, type Conclusao,
@@ -85,6 +85,11 @@ export function useContadorInicial() {
 export function useLigarBomba() {
   const { executar, loading, error } = useAcao((id: string) => ligarBomba(id), 'Não foi possível ligar a bomba')
   return { ligar: executar, loading, error }
+}
+
+export function useCancelarAutorizacaoBomba() {
+  const { executar, loading, error } = useAcao((id: string) => cancelarAutorizacaoBomba(id), 'Não foi possível cancelar')
+  return { cancelarLigacao: executar, loading, error }
 }
 
 export function useConcluirPedido() {

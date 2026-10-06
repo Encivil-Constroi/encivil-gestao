@@ -1,3 +1,4 @@
+import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ChevronLeft, Plus, Trash2, Package } from 'lucide-react';
@@ -47,7 +48,8 @@ function novaLinha(): LinhaArtigo {
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
 
 export function SubempreiteiroFormPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const refForm = useProtegerFormulario();
   const { id } = useParams();
   const [params] = useSearchParams();
   const isEdit = !!id;
@@ -194,7 +196,7 @@ export function SubempreiteiroFormPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={refForm} onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3"><h2 className="font-semibold">Ficha do subempreiteiro</h2><div className="grid gap-3 sm:grid-cols-2">{([['nif','NIF','text'],['telefone','Telefone','tel'],['email','Email','email'],['especialidade','Especialidade','text'],['data_inicio','Data de início','date'],['data_fim_prevista','Fim previsto','date']] as const).map(([campo,rotulo,tipo]) => <label key={campo} className="text-sm">{rotulo}<input type={tipo} className={inputCls} value={dadosFicha[campo]} onChange={e => setDadosFicha(prev => ({ ...prev, [campo]: e.target.value }))} /></label>)}</div></div>
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <div>

@@ -1,3 +1,4 @@
+import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ChevronLeft, CircleAlert, Plus, Trash2, TrendingUp } from 'lucide-react';
@@ -31,7 +32,8 @@ const num = (s: string | undefined): number => parseFloat((s ?? '').replace(',',
 const numOuNull = (s: string | undefined): number | null => (s ?? '').trim() === '' ? null : num(s);
 
 export function AutoFormPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const refForm = useProtegerFormulario();
   const params = useParams();
   const autoId = params.autoId;
   const isEdit = !!autoId;
@@ -207,7 +209,7 @@ export function AutoFormPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={refForm} onSubmit={handleSubmit} className="space-y-4">
         <section className="rounded-2xl border border-border bg-card p-4 space-y-3"><h2 className="font-semibold">Evidências da medição</h2><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Progresso físico (%)<input className={inputCls} type="number" min="0" max="100" step="0.01" value={progressoFisico} onChange={e => setProgressoFisico(e.target.value)} /></label><label className="text-sm">Dias de atraso<input className={inputCls} type="number" min="0" step="1" value={atraso} onChange={e => setAtraso(e.target.value)} /></label><label className="text-sm">Clima<select className={inputCls} value={clima} onChange={e => setClima(e.target.value as ClimaObra | '')}><option value="">Não registado</option>{CLIMAS.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}</select></label><label className="text-sm">Descrição do clima<input className={inputCls} value={climaDescricao} onChange={e => setClimaDescricao(e.target.value)} /></label><label className="text-sm sm:col-span-2">Anotações<textarea className={inputCls} value={anotacoes} onChange={e => setAnotacoes(e.target.value)} /></label><label className="text-sm sm:col-span-2">Problemas<textarea className={inputCls} value={problemas} onChange={e => setProblemas(e.target.value)} /></label></div><FotoCapture obraId={sub.obraId} pasta="autos" valor={fotos} onChange={setFotos} /><p className="text-xs text-muted-foreground">As fotografias de prova com localização (que contam para a verificação) tiram-se no auto, depois de guardado.</p></section>
         <div className="bg-card rounded-2xl border border-border p-4">
           <label className="block text-sm font-medium mb-2" htmlFor="auto-data">Data da Medição</label>

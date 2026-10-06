@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useSyncExternalStore } from 'react'
+import { useContext, useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { useBlocker, UNSAFE_DataRouterContext } from 'react-router'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -60,4 +60,26 @@ function GuardaSaida() {
       </AlertDialogContent>
     </AlertDialog>
   )
+}
+
+// Para <form ref={...}>: marca como "por guardar" assim que o utilizador escreve algo
+// (não conta valores carregados por código) e liberta ao submeter
+export function useProtegerFormulario(mensagem = 'O formulário ainda não foi guardado. Se sair agora, perde o que preencheu.') {
+  const [form, setForm] = useState<HTMLFormElement | null>(null)
+  const [sujo, setSujo] = useState(false)
+  useProtegerSaida(sujo, mensagem)
+  useEffect(() => {
+    if (!form) return
+    const marcar = () => setSujo(true)
+    const limpar = () => setSujo(false)
+    form.addEventListener('input', marcar)
+    form.addEventListener('change', marcar)
+    form.addEventListener('submit', limpar)
+    return () => {
+      form.removeEventListener('input', marcar)
+      form.removeEventListener('change', marcar)
+      form.removeEventListener('submit', limpar)
+    }
+  }, [form])
+  return setForm
 }

@@ -1,3 +1,4 @@
+import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Archive, MapPin } from 'lucide-react'
@@ -38,6 +39,7 @@ function Campo({ id, rotulo, opcional, children }: { id: string; rotulo: string;
 
 export function ObraFormPage() {
   const navigate = useNavigate()
+  const refForm = useProtegerFormulario()
   const { id } = useParams()
   const isEdit = !!id
 
@@ -137,7 +139,7 @@ export function ObraFormPage() {
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
       <Cabecalho titulo={isEdit ? 'Editar obra' : 'Nova obra'} subtitulo="Dados, prazos, localização e responsáveis" />
 
-      <form onSubmit={submeter} className="space-y-4">
+      <form ref={refForm} onSubmit={submeter} className="space-y-4">
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <Campo id="obra-nome" rotulo="Nome da obra">
             <input id="obra-nome" type="text" value={form.nome} onChange={e => set({ nome: e.target.value })} className={inputCls} placeholder="Ex.: Moradia em Cascais" required />

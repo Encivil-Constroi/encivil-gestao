@@ -1,3 +1,4 @@
+import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { AlertTriangle, ArrowRight, ChevronLeft, Info } from 'lucide-react'
@@ -25,6 +26,7 @@ function numero(v: string): number | null {
 
 export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
   const navigate = useNavigate()
+  const refForm = useProtegerFormulario()
   const location = useLocation()
   const [params] = useSearchParams()
   const { nome, isAdmin, isGestor } = useRole()
@@ -104,7 +106,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
   const mostraFatura = subtipo === 'COMPRA' || subtipo === 'VENDA' || subtipo === 'DEVOLUCAO_OBRA'
 
   return (
-    <form onSubmit={submeter} className="max-w-2xl mx-auto space-y-5 pb-28" noValidate>
+    <form ref={refForm} onSubmit={submeter} className="max-w-2xl mx-auto space-y-5 pb-28" noValidate>
       <div className="flex items-center gap-3">
         <button type="button" onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg shrink-0">
           <ChevronLeft className="w-5 h-5" aria-hidden="true" />

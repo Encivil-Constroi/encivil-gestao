@@ -133,6 +133,7 @@ export type CombustivelDatabase = {
         Returns: undefined
       }
       ligar_bomba: { Args: { p_id: string }; Returns: undefined }
+      cancelar_autorizacao_bomba: { Args: { p_id: string }; Returns: undefined }
       concluir_pedido_abastecimento: {
         Args: {
           p_id: string; p_leitura_final: number | null; p_litros: number | null; p_custo: number | null
