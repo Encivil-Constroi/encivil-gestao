@@ -23,3 +23,6 @@ Aplicar primeiro `supabase/migrations/20261003000000_obras_completo.sql` no proj
 ## Verificação
 
 Executar `npm run typecheck`, `npm test`, `npm run build`, `npm run check:edge`, `npm run test:edge` e os testes de banco em `supabase/tests/obras-completo.test.mjs`. Verificar no browser com os papéis aplicáveis e uma obra de teste depois da publicação.
+
+## Controlo de subempreitadas
+Orçamento (EAP), auto-medição com verificação, evidências com GPS, glosas, alçadas, documentos e painel do CEO: ver `docs/20-subempreitadas-controlo.md`. Migrations A e B depois da `20261003000000`.

@@ -46,7 +46,7 @@ subempreitadas/autos estão em `features/obras`, mas `features/subempreiteiros|a
 | Módulo | Rota | Doc |
 |---|---|---|
 | Armazém (artigos, stock, movimentos, ferramentas, inventário) | `/armazem` | `docs/17-armazem.md`, `docs/specs/SPEC-*.md` |
-| Obras (painel, ficha, relatórios diários, subempreitadas, autos) | `/obras` | `docs/19-obras.md`, `docs/superpowers/specs/` |
+| Obras (painel, ficha, relatórios diários, subempreitadas, autos, orçamento EAP) | `/obras` | `docs/19-obras.md`, `docs/20-subempreitadas-controlo.md` |
 | Frota (viaturas/máquinas, entregas, manutenção, revisão) | `/frota` | `docs/18-frota.md` |
 | Abastecimento (pedidos, histórico, bomba Polo 2) | `/abastecimento` | `docs/15-abastecimento-v2.md`, `docs/16-jev-gateway.md` |
 | RH: colaboradores, picagens, EPIs, formações, segurança, alertas | `/colaboradores`, `/rh`, `/picagens`, `/epis`, `/alertas` | `docs/12-plano-v3.md` |

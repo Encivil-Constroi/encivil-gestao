@@ -107,7 +107,7 @@ export function AutoDetailPage() {
     fatura: auto.fatura ? { numero: auto.fatura.numero, path: auto.fatura.path ?? null, valor: auto.fatura.valor ?? null } : null,
     valorAprovado: auto.valorCertificado,
     docs,
-    ocorrenciasAltas: painel?.ocorrencias_abertas.alta ?? 0,
+    ocorrenciasAltas: painel?.ocorrencias_bloqueantes ?? 0,
   }, cfg);
   const proximo = proximoPasso({
     workflow, temFatura, pago, exigirFatura: cfg.exigir_fatura_para_pagar, role,

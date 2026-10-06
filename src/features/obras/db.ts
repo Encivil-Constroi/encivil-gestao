@@ -251,6 +251,7 @@ export type SubPainel = {
   progresso_fisico_pct?: number | null
   desvio_fisico_financeiro_pp?: number | null
   retencao_libertada?: number
+  ocorrencias_bloqueantes?: number
   artigos_sem_eap?: number
   docs_estado?: DocsEstadoGlobal
   bloqueios?: string[]
