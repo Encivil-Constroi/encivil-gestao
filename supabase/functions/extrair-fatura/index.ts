@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     return err('Acesso negado — apenas gestores podem extrair faturas', 403)
   }
 
-  const { data: dadosUser } = await userClient.auth.getUser()
+  const { data: dadosUser } = await userClient.auth.getUser(jwt)
   if (!dadosUser?.user) return err('Sessão inválida', 401)
 
   // ── Parsear body ────────────────────────────────────────────────────────────

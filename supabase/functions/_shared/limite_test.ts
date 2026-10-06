@@ -23,3 +23,40 @@ Deno.test('429 com Retry-After e mensagem pt-PT', async () => {
   assertEquals(r.headers.get('Retry-After'), '600')
   assertEquals((await r.json()).erro, MSG_LIMITE)
 })
+
+import { ipCliente, falhaSegredoPermitida } from './limite.ts'
+const pedido = (h: Record<string, string>) => new Request('https://x.test/', { headers: h })
+
+Deno.test('ipCliente: cf-connecting-ip ganha', () => {
+  assertEquals(ipCliente(pedido({ 'cf-connecting-ip': '1.1.1.1', 'x-forwarded-for': '9.9.9.9, 2.2.2.2' })), '1.1.1.1')
+})
+Deno.test('ipCliente: usa a última entrada do x-forwarded-for', () => {
+  assertEquals(ipCliente(pedido({ 'x-forwarded-for': '2.2.2.2, 3.3.3.3 ' })), '3.3.3.3')
+})
+Deno.test('ipCliente: primeira entrada falsificada é ignorada', () => {
+  assertEquals(ipCliente(pedido({ 'x-forwarded-for': 'falso-1, 4.4.4.4' })), ipCliente(pedido({ 'x-forwarded-for': 'falso-2, 4.4.4.4' })))
+})
+Deno.test('ipCliente: sem cabeçalhos devolve null', () => {
+  assertEquals(ipCliente(pedido({})), null)
+})
+
+const clienteChaves = (negar: string) => {
+  const chaves: string[] = []
+  return { chaves, rpc: (_fn: string, a: Record<string, unknown>) => {
+    chaves.push(a.p_chave as string)
+    return Promise.resolve({ data: a.p_chave !== negar, error: null })
+  } }
+}
+Deno.test('falha de segredo: limite global recusa mesmo com IP sempre diferente', async () => {
+  const c = clienteChaves('pump-status:falhas')
+  assertEquals(await falhaSegredoPermitida(c, pedido({ 'cf-connecting-ip': '5.5.5.5' })), false)
+  assertEquals(c.chaves, ['pump-status:5.5.5.5', 'pump-status:falhas'])
+})
+Deno.test('falha de segredo: limite por IP recusa', async () => {
+  assertEquals(await falhaSegredoPermitida(clienteChaves('pump-status:5.5.5.5'), pedido({ 'cf-connecting-ip': '5.5.5.5' })), false)
+})
+Deno.test('falha de segredo sem IP só conta o global', async () => {
+  const c = clienteChaves('nenhuma')
+  assertEquals(await falhaSegredoPermitida(c, pedido({})), true)
+  assertEquals(c.chaves, ['pump-status:falhas'])
+})

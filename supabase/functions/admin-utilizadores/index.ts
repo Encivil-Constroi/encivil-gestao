@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const { data: dadosUser } = await userClient.auth.getUser()
+  const { data: dadosUser } = await userClient.auth.getUser(jwt)
   if (!dadosUser?.user) return err('Sessão inválida', 401)
   if (!await dentroDoLimite(admin, `admin-utilizadores:${dadosUser.user.id}`, 600, 60)) return respostaLimite(cors, 600)
 

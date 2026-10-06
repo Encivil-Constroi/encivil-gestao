@@ -19,3 +19,19 @@ export function respostaLimite(cors: Record<string, string>, janelaSeg: number):
     headers: { ...cors, 'Content-Type': 'application/json', 'Retry-After': String(janelaSeg) },
   })
 }
+
+// X-Forwarded-For é acrescentado pelos proxies: a 1.ª entrada vem do cliente (falsificável),
+// a última é a que o nosso proxy viu.
+export function ipCliente(req: Request): string | null {
+  const cf = req.headers.get('cf-connecting-ip')?.trim()
+  if (cf) return cf
+  const entradas = (req.headers.get('x-forwarded-for') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+  return entradas.length ? entradas[entradas.length - 1] : null
+}
+
+// Falha de segredo: limite por IP e um global que a falsificação de IP não contorna.
+export async function falhaSegredoPermitida(cliente: ClienteRpc, req: Request): Promise<boolean> {
+  const ip = ipCliente(req)
+  if (ip && !await dentroDoLimite(cliente, `pump-status:${ip}`, 600, 30)) return false
+  return await dentroDoLimite(cliente, 'pump-status:falhas', 600, 100)
+}
