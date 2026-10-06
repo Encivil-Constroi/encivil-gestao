@@ -54,8 +54,8 @@ const subDireto = async (obra, o = {}) => (await sup(
   [obra, o.nome ?? `Sub ${++seq}`, o.valor ?? 1000, o.ret ?? 0, o.estado ?? 'validado', o.inicio ?? null, o.fim ?? null]))[0].id
 
 const autoDireto = async (sub, valor, o = {}) => (await sup(
-  `INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, estado, estado_pagamento, atraso_dias, data_medicao)
-   VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::date, CURRENT_DATE)) RETURNING id`,
+  `INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, estado, workflow, estado_pagamento, atraso_dias, data_medicao)
+   VALUES ($1, $2, $3, $4::estado_auto, $4::text, $5, $6, COALESCE($7::date, CURRENT_DATE)) RETURNING id`,
   [sub, ++seq, valor, o.estado ?? 'validado', o.pago ? 'pago' : 'por_pagar', o.atraso ?? 0, o.data ?? null]))[0].id
 
 const ocorrencia = (uid, sub, o = {}) => rpc1(uid, 'sub_registar_ocorrencia', {
@@ -67,6 +67,7 @@ const rm = (uid, nome, args) => expect(rpc(uid, nome, args))
 
 beforeAll(async () => {
   db = await criarBanco()
+  await db.query("UPDATE public.subs_config SET docs_obrigatorios = '{}'")
   admin     = await utilizador('admin', 'admin@t.pt')
   gestor    = await utilizador('gestor', 'gestor@t.pt')
   medicoes  = await utilizador('medicoes', 'eduarda@t.pt')
@@ -1087,7 +1088,7 @@ describe('atividade (eventos)', () => {
     const o = await obraDireta()
     const s = (await sup(`INSERT INTO public.subempreiteiros (obra_id, nome, tipo, valor_global) VALUES ($1, 'Serralharia', 'global', 5000) RETURNING id`, [o]))[0].id
     await rpc(admin, 'validar_subempreiteiro', { p_id: s })
-    const a = (await sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo) VALUES ($1, 1, 1234.5) RETURNING id`, [s]))[0].id
+    const a = (await sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, workflow) VALUES ($1, 1, 1234.5, 'verificado') RETURNING id`, [s]))[0].id
     await rpc(admin, 'validar_auto', { p_id: a })
     const e = await eventos(o)
     expect(e.map(x => x.tipo).sort()).toEqual(['AUTO_VALIDADO', 'SUB_CONTRATADA', 'SUB_VALIDADA'])

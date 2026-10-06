@@ -57,7 +57,7 @@ const item = (uid, obra, o = {}) => rpc1(uid, 'obra_orcamento_guardar_item', {
 })
 
 const autoDireto = async (sub, o = {}) => (await sup(
-  `INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, estado) VALUES ($1, $2, $3, $4) RETURNING id`,
+  `INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, estado, workflow) VALUES ($1, $2, $3, $4::estado_auto, $4::text) RETURNING id`,
   [sub, ++seq, o.valor ?? 0, o.estado ?? 'rascunho']))[0].id
 const linha = async (auto, art, qtd, preco = 10) => (await sup(
   `INSERT INTO public.auto_linhas (auto_id, artigo_id, descricao, unidade, preco_unitario, quantidade) VALUES ($1, $2, 'L', 'm3', $3, $4) RETURNING id`,
@@ -248,7 +248,8 @@ describe('orçamento de controlo (EAP)', () => {
       await artigo(subV, 10.5, { item: iD, preco: 2 })
       await rpc(admin, 'validar_subempreiteiro', { p_id: subV })
       const subR = await subDireto(o); await artigo(subR, 30, { item: iA })
-      const autoV = await autoDireto(subV, { estado: 'validado' }); await linha(autoV, artA, 20, 12); await linha(autoV, artB, 5, 5)
+      const autoV = await autoDireto(subV); await linha(autoV, artA, 20, 12); await linha(autoV, artB, 5, 5)
+      await sup(`UPDATE public.autos_medicao SET estado = 'validado', workflow = 'validado' WHERE id = $1`, [autoV])
       const autoR = await autoDireto(subV); await linha(autoR, artA, 7, 12)
       // reduzir o orçado depois de contratado é permitido e passa a "excedido"
       await item(gestor, o, { id: iD, codigo: '02.02', desc: 'Pintura', qtd: 9, preco: 2, tol: 10 })
@@ -652,7 +653,7 @@ describe('evidências dos autos', () => {
     it('depois de validado não se apaga; leitura não apaga', async () => {
       const a = await autoDireto(sub); const r = await evidencia(medicoes, a)
       await rm(leitura, 'auto_apagar_evidencia', { p_id: r.id }).rejects.toThrow(/Sem permissão/)
-      await sup(`UPDATE public.autos_medicao SET estado = 'validado', valor_periodo = 1 WHERE id = $1`, [a])
+      await sup(`UPDATE public.autos_medicao SET estado = 'validado', workflow = 'validado', valor_periodo = 1 WHERE id = $1`, [a])
       await rm(admin, 'auto_apagar_evidencia', { p_id: r.id }).rejects.toThrow(/só podem ser apagadas enquanto o auto está em rascunho/)
     })
     it('apagar o auto em rascunho leva as evidências (cascata)', async () => {
@@ -673,21 +674,19 @@ describe('evidências dos autos', () => {
         await tx.exec('SET LOCAL ROLE authenticated')
       }
       const reg = (a) => tenta(`SELECT public.auto_registar_evidencia($1, $2, NULL, $3, $4, 5, $5, $6) AS r`, [a, caminhoFoto(OBRA_EV), norte(10), LON, minutos(-1), hash()])
-      await tx.exec(`ALTER TABLE public.autos_medicao ADD COLUMN workflow text NOT NULL DEFAULT 'rascunho'`)
       const a = (await tx.query(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo) VALUES ($1, 999999, 0) RETURNING id`, [sub])).rows[0].id
 
       await comoMedicoes()
       const r1 = await reg(a); expect(r1.r.valida).toBe(true)
-      await tx.exec('RESET ROLE'); await tx.query(`UPDATE public.autos_medicao SET workflow = 'submetido' WHERE id = $1`, [a]); await comoMedicoes()
+      await tx.exec('RESET ROLE'); await tx.query(`SELECT set_config('app.auto_rpc','on',true)`); await tx.query(`UPDATE public.autos_medicao SET workflow = 'submetido' WHERE id = $1`, [a]); await comoMedicoes()
       const r2 = await reg(a); expect(r2.r.valida).toBe(true)
       expect((await tenta(`SELECT public.auto_apagar_evidencia($1)`, [r1.r.id])).erro).toMatch(/enquanto o auto está em rascunho/)
-      await tx.exec('RESET ROLE'); await tx.query(`UPDATE public.autos_medicao SET workflow = 'verificado' WHERE id = $1`, [a]); await comoMedicoes()
+      await tx.exec('RESET ROLE'); await tx.query(`SELECT set_config('app.auto_rpc','on',true)`); await tx.query(`UPDATE public.autos_medicao SET workflow = 'verificado' WHERE id = $1`, [a]); await comoMedicoes()
       expect((await reg(a)).erro).toMatch(/já não aceita evidências/)
-      await tx.exec('RESET ROLE'); await tx.query(`UPDATE public.autos_medicao SET workflow = 'rascunho' WHERE id = $1`, [a]); await comoMedicoes()
+      await tx.exec('RESET ROLE'); await tx.query(`SELECT set_config('app.auto_rpc','on',true)`); await tx.query(`UPDATE public.autos_medicao SET workflow = 'rascunho' WHERE id = $1`, [a]); await comoMedicoes()
       expect((await tenta(`SELECT public.auto_apagar_evidencia($1) AS ok`, [r1.r.id])).erro).toBeUndefined()
       await tx.rollback()
     })
-    expect((await sup(`SELECT 1 FROM information_schema.columns WHERE table_name = 'autos_medicao' AND column_name = 'workflow'`))).toEqual([])
   })
 
   it('lista: por ordem de envio; quem lê obras e o autor designado vêem; mecânico/motorista não', async () => {
