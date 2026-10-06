@@ -32,15 +32,49 @@ const PERMITIDAS = new Set([
 const ALVO_OBRAS = ['obra_autores_lista', 'obra_definir_autores']
 
 // Regex de Postgres (ARE): \y é a fronteira de palavra (\b seria backspace e nunca casaria).
-// Cobre "profiles.role"/"p.role", "FROM profiles … role" e "SELECT role … FROM profiles"
-// na mesma instrução (até ao ";"), em várias linhas.
+// Cobre "profiles.role"/"p.role" e "profiles … role" / "role … profiles" na mesma instrução
+// (até ao ";"), em várias linhas — inclui JOIN com alias e junção por vírgula. Os falsos
+// positivos (ler o papel do alvo) tratam-se na lista de isentas.
 const LE_PAPEL = [
   String.raw`\y(profiles|p)\s*\.\s*role\y`,
-  String.raw`\yfrom\s+(public\.)?profiles\y[^;]*\yrole\y`,
-  String.raw`\yrole\y[^;]*\yfrom\s+(public\.)?profiles\y`,
+  String.raw`\y(public\.)?profiles\y[^;]*\yrole\y`,
+  String.raw`\yrole\y[^;]*\y(public\.)?profiles\y`,
 ].join('|')
 
+// Nas funções isentas, o papel lido nunca pode ser o do chamador: "role"/"<alias>.role" e
+// auth.uid() na mesma instrução denunciam uma verificação do chamador sem auth_role().
+const CHAMADOR_PAPEL = [
+  String.raw`\yrole\y[^;]*\yauth\s*\.\s*uid\s*\(\s*\)`,
+  String.raw`\yauth\s*\.\s*uid\s*\(\s*\)[^;]*\yrole\y`,
+].join('|')
+
+const casa = async (texto, re) => (await db.query(`SELECT $1 ~* $2 AS m`, [texto, re])).rows[0].m
+
 describe('decisões de papel só via auth_role()', () => {
+  it('o regex apanha as formas de ler o papel do chamador (e não leituras sem papel)', async () => {
+    const apanha = [
+      `EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')`,
+      `SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'gestor')`,
+      `SELECT role INTO v FROM public.profiles WHERE id = auth.uid()`,
+      `SELECT 1 FROM obras o JOIN public.profiles pr ON pr.id = auth.uid() WHERE pr.role = 'admin'`,
+      `SELECT 1 FROM obras o, public.profiles pr WHERE pr.id = auth.uid() AND pr.role = 'admin'`,
+      `SELECT 1 FROM obras o\n  LEFT JOIN profiles AS x\n    ON x.id = auth.uid()\n WHERE x.role::text <> 'leitura'`,
+      `SELECT p.role FROM obras p`,
+    ]
+    const ignora = [
+      `SELECT nome FROM public.profiles WHERE id = auth.uid()`,
+      `public.auth_role() IN ('admin', 'gestor')`,
+      `SELECT 1 FROM public.profiles WHERE id = p_id; SELECT role_x FROM t`,
+    ]
+    for (const s of apanha) expect([s, await casa(s, LE_PAPEL)]).toEqual([s, true])
+    for (const s of ignora) expect([s, await casa(s, LE_PAPEL)]).toEqual([s, false])
+
+    expect(await casa(`SELECT pr.role INTO v FROM profiles pr WHERE pr.id = auth.uid()`, CHAMADOR_PAPEL)).toBe(true)
+    expect(await casa(`IF (SELECT x.role FROM t x JOIN profiles y ON y.id = auth.uid()) <> 'admin'`, CHAMADOR_PAPEL)).toBe(true)
+    expect(await casa(`UPDATE public.profiles SET role = p_novo_role WHERE id = p_user_id`, CHAMADOR_PAPEL)).toBe(false)
+    expect(await casa(`IF public.auth_role() <> 'admin' THEN`, CHAMADOR_PAPEL)).toBe(false)
+  })
+
   it('nenhuma policy lê profiles.role diretamente', async () => {
     const { rows } = await db.query(
       `SELECT schemaname, tablename, policyname FROM pg_policies
@@ -61,7 +95,15 @@ describe('decisões de papel só via auth_role()', () => {
   it('promover_role verifica o chamador com auth_role()', async () => {
     const { rows } = await db.query(`SELECT prosrc FROM pg_proc WHERE proname = 'promover_role'`)
     expect(rows[0].prosrc).toMatch(/auth_role\(\)/)
-    expect(rows[0].prosrc).not.toMatch(/\brole\b[^;]*\bfrom\s+(public\.)?profiles\b/i)
+  })
+
+  it('as funções isentas não verificam o papel do chamador sem auth_role()', async () => {
+    const isentas = ['promover_role', ...ALVO_OBRAS]
+    const { rows } = await db.query(
+      `SELECT p.proname, p.prosrc ~* $2 AS chamador FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = ANY($1)`, [isentas, CHAMADOR_PAPEL])
+    expect(rows.map(r => r.proname).sort()).toEqual([...isentas].sort())
+    expect(rows.filter(r => r.chamador).map(r => r.proname)).toEqual([])
   })
 
   it('funções que leem o papel do alvo verificam o chamador com pode_gerir_obras()', async () => {
