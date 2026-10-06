@@ -186,7 +186,7 @@ export function RelatorioSemanalPage() {
               </button>
               <button
                 onClick={partilharWhatsApp}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-xl font-medium hover:bg-[#20BD5C] active:scale-[0.98] transition-all text-sm"
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-[#04090F] rounded-xl font-medium hover:bg-[#20BD5C] active:scale-[0.98] transition-all text-sm"
               >
                 <Share2 className="w-4 h-4" />
                 WhatsApp

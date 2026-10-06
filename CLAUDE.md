@@ -100,6 +100,12 @@ const { mutate: salvar, loading } = useMutation(salvarFoo, 'Erro ao guardar', { 
 - Comentários só para o **porquê** não óbvio, nunca o quê. Alterações pequenas, uma funcionalidade de cada vez, código no estilo vizinho.
 - Offline: fila em `src/features/movimentos/offlineQueue.ts` + `hooks/useOfflineQueue.ts`; fotos reduzidas por `reduzirFoto`.
 
+## Identidade visual
+- Fonte dos tokens: `src/styles/theme.css`; guia: `docs/06-ux-ui.md`. Base neutra, preto oficial `#04090F`, azul de marca `#001C7D`, Geist/Geist Mono locais em `public/fonts/`.
+- Usar pares semânticos (`bg-primary text-primary-foreground`, `bg-warning text-warning-foreground`); primary inverte no escuro. Nunca fixar texto branco sobre primary/success/warning/destructive.
+- Sidebar ativa: `bg-sidebar-primary text-sidebar-primary-foreground`. Informação usa `info`; estados mantêm cor e texto/ícone. Campos usam `input`/`input-background`, foco `ring`.
+- Gráficos de ecrã usam `--chart-1..5`, `--chart-grid` e `--chart-text`. Impressão mantém papel branco e tinta escura explícitos. Raio base 8px, sombras neutras e redução de movimento.
+
 ## Supabase — regras críticas
 - Migrations: `supabase/migrations/YYYYMMDDHHMMSS_nome.sql`, cronologia estritamente crescente (a última é a de maior timestamp).
   **"Automatically expose new tables" está OFF**: toda tabela/view/sequência/função nova leva `GRANT` explícito

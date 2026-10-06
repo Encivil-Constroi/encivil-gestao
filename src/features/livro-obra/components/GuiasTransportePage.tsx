@@ -14,9 +14,9 @@ import type { GuiaTransporte, EstadoGuia, LinhaGuia, CriarGuiaInput } from '../s
 // ── Estado badges ─────────────────────────────────────────────────────────────
 
 const ESTADO_CONFIG: Record<EstadoGuia, { label: string; icon: ElementType; color: string; bg: string }> = {
-  EMITIDA:  { label: 'Emitida',  icon: Clock,       color: 'text-amber-700 dark:text-amber-400',     bg: 'bg-amber-100 dark:bg-amber-900/30'   },
-  ENTREGUE: { label: 'Entregue', icon: CheckCircle2, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-  ANULADA:  { label: 'Anulada',  icon: XCircle,      color: 'text-red-700 dark:text-red-400',         bg: 'bg-red-100 dark:bg-red-900/30'       },
+  EMITIDA:  { label: 'Emitida',  icon: Clock,       color: 'text-warning',     bg: 'bg-warning/10'   },
+  ENTREGUE: { label: 'Entregue', icon: CheckCircle2, color: 'text-success', bg: 'bg-success/10' },
+  ANULADA:  { label: 'Anulada',  icon: XCircle,      color: 'text-destructive',         bg: 'bg-destructive/10'       },
 }
 
 function EstadoBadge({ estado }: { estado: EstadoGuia }) {
@@ -226,13 +226,13 @@ const GuiaItem = memo(function GuiaItem({ guia, onImprimir, onEstado }: {
             <>
               <button
                 onClick={() => onEstado(guia, 'ENTREGUE')}
-                className="px-2.5 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-xl hover:opacity-80 transition-opacity"
+                className="px-2.5 py-1.5 text-xs font-medium bg-success/10 text-success rounded-xl hover:opacity-80 transition-opacity"
               >
                 Entregue
               </button>
               <button
                 onClick={() => onEstado(guia, 'ANULADA')}
-                className="px-2.5 py-1.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-xl hover:opacity-80 transition-opacity"
+                className="px-2.5 py-1.5 text-xs font-medium bg-destructive/10 text-destructive rounded-xl hover:opacity-80 transition-opacity"
               >
                 Anular
               </button>

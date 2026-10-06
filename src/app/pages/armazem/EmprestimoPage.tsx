@@ -211,7 +211,7 @@ export function EmprestimoPage() {
         <div className="sticky bottom-20 md:bottom-0 py-3 bg-background/80 backdrop-blur-sm">
           <div className="flex gap-3">
             <button type="submit" disabled={aRegistar || !pronto}
-              className="flex-1 py-3.5 bg-warning text-white rounded-xl font-bold active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
+              className="flex-1 py-3.5 bg-warning text-warning-foreground rounded-xl font-bold active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
               {aRegistar ? 'A registar…' : 'Confirmar empréstimo'}
             </button>
             <button type="button" onClick={() => navigate(-1)} disabled={aRegistar}

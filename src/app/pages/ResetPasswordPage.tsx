@@ -60,15 +60,15 @@ export function ResetPasswordPage() {
 
   const logo = (
     <div className="flex flex-col items-center mb-8">
-      <img src="/icone_oficial.png" alt="ENCIVIL" className="w-20 h-20 object-contain mb-4" draggable={false} />
+      <img src="/icone_oficial.png" alt="ENCIVIL" className="w-20 h-20 object-contain mb-4 grayscale mix-blend-multiply dark:invert dark:mix-blend-screen" draggable={false} />
       <h1 className="text-2xl font-semibold text-foreground mb-1">ENCIVIL Gestão</h1>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-2xl p-8">
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
 
           {/* A aguardar token */}
           {state === 'waiting' && (
@@ -108,7 +108,7 @@ export function ResetPasswordPage() {
               </p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Nova palavra-passe</label>
+                  <label htmlFor="new-password" className="block text-sm font-medium text-foreground mb-2">Nova palavra-passe</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
@@ -134,7 +134,7 @@ export function ResetPasswordPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Confirmar palavra-passe</label>
+                  <label htmlFor="confirm-password" className="block text-sm font-medium text-foreground mb-2">Confirmar palavra-passe</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
@@ -192,7 +192,7 @@ export function ResetPasswordPage() {
           )}
 
         </div>
-        <div className="text-center mt-6 text-white/70 text-sm">
+        <div className="text-center mt-6 text-muted-foreground text-xs">
           <p>© 2026 ENCIVIL - Todos os direitos reservados</p>
         </div>
       </div>

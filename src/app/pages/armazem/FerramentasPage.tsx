@@ -220,7 +220,7 @@ function CartaoFerramenta({ t, loan, podeOperar }: { t: Ferramenta; loan?: Empre
           <div className="mt-auto pt-1">
             {t.status === 'disponivel' ? (
               <Link to={`/armazem/ferramenta/emprestimo?ferramenta=${t.id}`}
-                className={`${acao} w-full bg-warning text-white hover:bg-warning/90`}>
+                className={`${acao} w-full bg-warning text-warning-foreground hover:bg-warning/90`}>
                 <Wrench className="w-4 h-4" aria-hidden="true" /> Emprestar
               </Link>
             ) : (

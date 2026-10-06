@@ -26,7 +26,7 @@ function EstadoBadge({ estado }: { estado: AlertaEstado }) {
     case 'ATIVO':
       return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">Ativo</span>
     case 'RECONHECIDO':
-      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">Reconhecido</span>
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">Reconhecido</span>
     case 'RESOLVIDO':
       return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">Resolvido</span>
   }

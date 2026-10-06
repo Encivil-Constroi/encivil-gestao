@@ -169,12 +169,12 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
         />
         {isEmpty && !active && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-            <Pen className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Toque aqui para assinar</p>
+            <Pen className="w-4 h-4 text-[#606872]" />
+            <p className="text-sm text-[#606872]">Toque aqui para assinar</p>
           </div>
         )}
         {isEmpty && active && (
-          <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none">
+          <p className="absolute inset-0 flex items-center justify-center text-sm text-[#606872] pointer-events-none">
             Assine com o dedo ou rato
           </p>
         )}

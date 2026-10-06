@@ -100,7 +100,7 @@ export function AtribuicaoHorarioPage() {
         </div>
 
         {sucesso && (
-          <div className="p-3 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm flex items-center gap-2">
+          <div className="p-3 bg-success/10 text-success rounded-lg text-sm flex items-center gap-2">
             <CalendarCheck className="w-4 h-4 shrink-0" />
             Horário atribuído com sucesso.
           </div>

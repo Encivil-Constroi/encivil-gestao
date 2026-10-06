@@ -167,7 +167,7 @@ export function ProdutoDetalhePage() {
                 )}
               </div>
               {product.status !== 'normal' && (
-                <button type="button" onClick={pedirReposicao} className={`${acao} w-full bg-[#25D366] text-white hover:bg-[#1ebe5a]`}>
+                <button type="button" onClick={pedirReposicao} className={`${acao} w-full bg-[#25D366] text-[#04090F] hover:bg-[#1ebe5a]`}>
                   <MessageCircle className="w-5 h-5" aria-hidden="true" /> Pedir reposição
                 </button>
               )}

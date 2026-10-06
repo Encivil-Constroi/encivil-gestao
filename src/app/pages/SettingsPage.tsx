@@ -93,11 +93,11 @@ export function SettingsPage() {
       </div>
 
       {!isAdmin && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+        <div className="p-4 bg-warning/10 border border-warning/30 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-amber-800">Apenas de visualização</p>
-            <p className="text-xs text-amber-700 mt-0.5">Só administradores podem editar as configurações da empresa.</p>
+            <p className="text-sm font-semibold text-warning">Apenas de visualização</p>
+            <p className="text-xs text-foreground mt-0.5">Só administradores podem editar as configurações da empresa.</p>
           </div>
         </div>
       )}

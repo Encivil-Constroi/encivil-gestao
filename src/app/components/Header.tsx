@@ -78,12 +78,14 @@ export function Header({ onMenuOpen }: HeaderProps) {
             <Menu className="w-5 h-5 text-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <img
-              src="/icone_oficial.png"
-              alt="ENCIVIL"
-              className="w-8 h-8 object-contain"
-              draggable={false}
-            />
+            <div className="w-8 h-8 shrink-0 overflow-hidden">
+              <img
+                src="/icone_oficial.png"
+                alt="ENCIVIL"
+                className="w-8 h-8 object-contain enc-logo"
+                draggable={false}
+              />
+            </div>
             <span className="font-semibold text-sm text-foreground">ENCIVIL</span>
           </div>
         </div>

@@ -11,14 +11,14 @@ interface Props {
 
 function iconFor(n: AppNotification) {
   if (n.kind === 'tool-overdue') return <Wrench className="w-4 h-4 text-destructive" />
-  if (n.kind === 'pending') return <ShieldAlert className="w-4 h-4 text-primary" />
+  if (n.kind === 'pending') return <ShieldAlert className="w-4 h-4 text-info" />
   return n.severity === 'danger'
     ? <XCircle className="w-4 h-4 text-destructive" />
     : <AlertTriangle className="w-4 h-4 text-warning" />
 }
 
 function iconBg(n: AppNotification) {
-  if (n.kind === 'pending') return 'bg-primary/10'
+  if (n.kind === 'pending') return 'bg-info/10'
   return n.severity === 'danger' ? 'bg-destructive/10' : 'bg-warning/10'
 }
 
@@ -26,7 +26,7 @@ export function NotificationPanel({ notifications, loading, error, onClose }: Pr
   const navigate = useNavigate()
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden enc-slide-down">
+    <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden enc-slide-down">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Bell className="w-4 h-4 text-foreground" />

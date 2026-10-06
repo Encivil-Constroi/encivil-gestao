@@ -150,7 +150,7 @@ type DocProps = {
 
 function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt, glosas, aprovadores, evidenciasValidas, evidenciasTotal }: DocProps) {
   return (
-    <div className="pdf-page bg-white mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
+    <div className="pdf-page bg-white text-[#04090F] mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
 
       {/* ━━━ Cabeçalho ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="flex items-start justify-between mb-6 pb-5 border-b-2 border-gray-900">
@@ -166,7 +166,7 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt, glosas, 
         {/* Título do documento */}
         <div className="text-right">
           <p className="text-[22px] font-black uppercase tracking-wide text-gray-900">Auto de Medição</p>
-          <p className="text-3xl font-black text-primary leading-none">Nº {auto.number}</p>
+          <p className="text-3xl font-black text-[#001C7D] leading-none">Nº {auto.number}</p>
           <div className="flex items-center justify-end gap-1.5 mt-1">
             <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${
               auto.workflow === 'validado'

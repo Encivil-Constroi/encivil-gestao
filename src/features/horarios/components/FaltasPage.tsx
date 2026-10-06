@@ -6,10 +6,10 @@ import type { EstadoFalta } from '../services/faltasService'
 import type { NovaFalta } from '../services/faltasService'
 
 const ESTADO_CONFIG: Record<EstadoFalta, { label: string; cls: string }> = {
-  COMUNICADA:       { label: 'Comunicada',       cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  COM_COMPROVATIVO: { label: 'Com comprovativo', cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-  JUSTIFICADA:      { label: 'Justificada',      cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  INJUSTIFICADA:    { label: 'Injustificada',    cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  COMUNICADA:       { label: 'Comunicada',       cls: 'bg-info/10 text-info' },
+  COM_COMPROVATIVO: { label: 'Com comprovativo', cls: 'bg-muted text-foreground' },
+  JUSTIFICADA:      { label: 'Justificada',      cls: 'bg-success/10 text-success' },
+  INJUSTIFICADA:    { label: 'Injustificada',    cls: 'bg-destructive/10 text-destructive' },
 }
 
 function EstadoBadge({ estado }: { estado: EstadoFalta }) {
@@ -208,7 +208,7 @@ export function FaltasPage() {
                       <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Prevista</span>
                     )}
                     {f.dadoSaude && (
-                      <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full flex items-center gap-1">
                         <Paperclip className="w-3 h-3" /> Dado saúde
                       </span>
                     )}
@@ -219,7 +219,7 @@ export function FaltasPage() {
                     {f.tipoFaltaDesignacao && ` · ${f.tipoFaltaDesignacao}`}
                   </p>
                   {f.prazoProvaAte && f.estado === 'COMUNICADA' && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-warning mt-1 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       Prazo de prova: {f.prazoProvaAte}
                     </p>
@@ -234,14 +234,14 @@ export function FaltasPage() {
                     <button
                       onClick={() => void handleEstado(f.id, 'JUSTIFICADA')}
                       disabled={atualizando}
-                      className="flex items-center gap-1 text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2.5 py-1.5 rounded-lg hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1 text-xs bg-success/10 text-success px-2.5 py-1.5 rounded-lg hover:bg-success/20 transition-colors disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Justificar
                     </button>
                     <button
                       onClick={() => void handleEstado(f.id, 'INJUSTIFICADA')}
                       disabled={atualizando}
-                      className="flex items-center gap-1 text-xs bg-red-500/10 text-red-700 dark:text-red-400 px-2.5 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1 text-xs bg-destructive/10 text-destructive px-2.5 py-1.5 rounded-lg hover:bg-destructive/20 transition-colors disabled:opacity-50"
                     >
                       <XCircle className="w-3.5 h-3.5" /> Injustificar
                     </button>

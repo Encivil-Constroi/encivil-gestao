@@ -14,15 +14,25 @@
 
 ## Paleta de Cores ENCIVIL
 
-| Token | Uso | Cor |
-|-------|-----|-----|
-| `--primary` | Ações principais, sidebar ativa | Azul escuro `#1e3a5f` |
-| `--success` | Entradas, confirmações | Verde `#16a34a` |
-| `--destructive` | Saídas, erros | Vermelho `#dc2626` |
-| `--warning` | Stock baixo, alertas | Amarelo/laranja `#d97706` |
-| `--background` | Fundo da página | Branco `#ffffff` |
-| `--card` | Painéis e cartões | Cinza muito claro `#f8fafc` |
-| `--muted-foreground` | Texto secundário | Cinza médio `#64748b` |
+Tema neutro inspirado na referência Vercel, com identidade ENCIVIL. Valores vigentes em `src/styles/theme.css` (atualização de outubro de 2026).
+
+| Token | Uso | Claro | Escuro |
+|-------|-----|-------|--------|
+| `--primary` | Ação principal | `#04090F` | `#F4F5F6` |
+| `--brand` | Azul oficial | `#001C7D` | `#001C7D` |
+| `--info` | Informação | `#001C7D` | `#93B4FF` |
+| `--success` | Entradas, confirmações | `#166534` | `#4ADE80` |
+| `--destructive` | Saídas, erros | `#B91C1C` | `#F87171` |
+| `--warning` | Stock baixo, alertas | `#92400E` | `#FBBF24` |
+| `--background` | Fundo | `#FAFAFA` | `#04090F` |
+| `--card` | Painéis | `#FFFFFF` | `#10161E` |
+| `--muted-foreground` | Texto secundário | `#606872` | `#A3ABB5` |
+
+Usar sempre o `*-foreground` correspondente sobre fundos semânticos sólidos; não fixar branco, pois o modo escuro inverte os pares. Sidebar ativa usa os tokens `sidebar-primary`/`sidebar-primary-foreground`. Campos usam `input-background` e fronteira `input`, com foco `ring`.
+
+Geist e Geist Mono são alojadas localmente em `public/fonts/`, com licença OFL. Raio base 8px, sombras neutras, superfícies consistentes em todas as áreas. Logótipo original preservado, apresentado em monocromático na navegação/autenticação. Respeitar `prefers-reduced-motion`.
+
+Gráficos usam `chart-1..5` (azul, verde, vermelho, âmbar, púrpura), `chart-grid` e `chart-text`; distinguir séries também por legendas. Documentos para impressão mantêm fundo branco e tinta escura explícitos, independentemente do tema. Cores externas (por exemplo, WhatsApp) são exceções intencionais.
 
 ---
 
@@ -62,7 +72,7 @@
 - Logótipo ENCIVIL
 - Campo e-mail
 - Campo palavra-passe (com toggle mostrar/ocultar)
-- Botão "Entrar" (destaque, azul escuro)
+- Botão "Entrar" (destaque com o par `primary`/`primary-foreground`)
 - Mensagem de erro (credenciais inválidas)
 
 **Estados:**

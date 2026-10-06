@@ -39,7 +39,12 @@ describe('menu: um só item Armazém', () => {
     const itens = within(nav).getAllByRole('link').map(l => l.textContent?.trim())
     expect(itens).toContain('Armazém')
     for (const x of ['Produtos', 'Novo Movimento', 'Histórico', 'Ferramentas']) expect(itens).not.toContain(x)
-    expect(within(nav).getByRole('link', { name: 'Armazém' }).className).toMatch(/bg-primary/)
+    const link = within(nav).getByRole('link', { name: 'Armazém' })
+    expect(link).toHaveAttribute('href', '/armazem')
+    expect(link).toHaveClass('bg-sidebar-primary', 'text-sidebar-primary-foreground')
+    for (const outro of within(nav).getAllByRole('link').filter(item => item !== link)) {
+      expect(outro).not.toHaveClass('bg-sidebar-primary')
+    }
   })
 })
 

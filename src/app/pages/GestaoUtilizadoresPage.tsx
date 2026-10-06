@@ -22,13 +22,13 @@ const ROLES: { value: RoleUtilizador; label: string; desc: string }[] = [
 ]
 
 const ROLE_BADGE: Record<RoleUtilizador, string> = {
-  admin:    'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
-  gestor:   'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-300',
-  armazem:  'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-300',
-  medicoes: 'bg-teal-100   text-teal-700   dark:bg-teal-900/30   dark:text-teal-300',
-  mecanico: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-  motorista: 'bg-sky-100  text-sky-700    dark:bg-sky-900/30    dark:text-sky-300',
-  leitura:  'bg-gray-100   text-gray-600   dark:bg-gray-800       dark:text-gray-400',
+  admin:    'bg-primary/10 text-primary',
+  gestor:   'bg-muted text-foreground',
+  armazem:  'bg-muted text-foreground',
+  medicoes: 'bg-muted text-foreground',
+  mecanico: 'bg-muted text-foreground',
+  motorista: 'bg-muted text-foreground',
+  leitura:  'bg-muted text-muted-foreground',
 }
 
 function formatDate(iso: string | null): string {

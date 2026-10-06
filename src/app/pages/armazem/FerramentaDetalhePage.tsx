@@ -101,7 +101,7 @@ export function FerramentaDetalhePage() {
           {podeFerramentas && (
             <div className="flex gap-2 flex-wrap pt-1">
               {tool.status === 'disponivel' && (
-                <Link to={`/armazem/ferramenta/emprestimo?ferramenta=${tool.id}`} className={`${botao} bg-warning text-white hover:bg-warning/90`}>
+                <Link to={`/armazem/ferramenta/emprestimo?ferramenta=${tool.id}`} className={`${botao} bg-warning text-warning-foreground hover:bg-warning/90`}>
                   <Wrench className="w-4 h-4" aria-hidden="true" /> Emprestar
                 </Link>
               )}

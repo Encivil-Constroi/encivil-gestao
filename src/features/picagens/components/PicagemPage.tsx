@@ -38,7 +38,7 @@ const RESULTADO_ICON: Record<ResultadoPicagem, typeof CheckCircle2> = {
   PENDENTE_VALIDACAO: Hourglass,
 }
 const RESULTADO_COR: Record<ResultadoPicagem, string> = {
-  AUTORIZADA: 'text-green-600',
+  AUTORIZADA: 'text-success',
   RECUSADA: 'text-destructive',
   PENDENTE_VALIDACAO: 'text-muted-foreground',
 }
@@ -184,7 +184,7 @@ export function PicagemPage() {
       {feedbackMsg && (
         <div className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
           feedbackTipo === 'autorizada'
-            ? 'bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400'
+            ? 'bg-success/10 border border-success/20 text-success'
             : feedbackTipo === 'ok'
             ? 'bg-primary/5 border border-primary/20 text-foreground'
             : 'bg-warning/10 border border-warning/20 text-foreground'
@@ -258,16 +258,16 @@ export function PicagemPage() {
             w-full min-h-[120px] rounded-2xl font-bold text-xl flex flex-col items-center justify-center gap-3
             transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
             ${primary === 'ENTRADA'
-              ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20'
+              ? 'bg-success hover:bg-success/90 text-success-foreground shadow-sm'
               : primary === 'SAIDA'
-              ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20'
-              : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20'}
+              ? 'bg-warning hover:bg-warning/90 text-warning-foreground shadow-sm'
+              : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm'}
             ${picando ? 'animate-pulse' : ''}
           `}
         >
           {picando ? (
             <div className="flex flex-col items-center gap-2">
-              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-current border-t-transparent rounded-full animate-spin" />
               {obraTemGeofence && <span className="text-sm font-normal opacity-80">A obter localização…</span>}
             </div>
           ) : (
@@ -317,11 +317,11 @@ export function PicagemPage() {
               return (
                 <li key={p.id} className="flex items-center gap-3 px-4 py-3">
                   <div className={`${
-                    p.tipo === 'ENTRADA' ? 'bg-green-500/10' :
-                    p.tipo === 'SAIDA' ? 'bg-amber-500/10' : 'bg-muted/50'
+                    p.tipo === 'ENTRADA' ? 'bg-success/10' :
+                    p.tipo === 'SAIDA' ? 'bg-warning/10' : 'bg-muted/50'
                   } rounded-lg p-2`}>
-                    {p.tipo === 'ENTRADA' && <LogIn className="w-4 h-4 text-green-600" />}
-                    {p.tipo === 'SAIDA' && <LogOut className="w-4 h-4 text-amber-600" />}
+                    {p.tipo === 'ENTRADA' && <LogIn className="w-4 h-4 text-success" />}
+                    {p.tipo === 'SAIDA' && <LogOut className="w-4 h-4 text-warning" />}
                     {p.tipo === 'PAUSA_INI' && <Coffee className="w-4 h-4 text-muted-foreground" />}
                     {p.tipo === 'PAUSA_FIM' && <Play className="w-4 h-4 text-muted-foreground" />}
                   </div>

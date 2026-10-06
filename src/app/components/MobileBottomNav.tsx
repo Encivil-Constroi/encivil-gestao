@@ -72,7 +72,7 @@ export function MobileBottomNav() {
                   w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all
                   ${isActive ? 'bg-primary/90 scale-105' : 'bg-primary'}
                 `}>
-                  <Icon className="w-7 h-7 text-white" />
+                  <Icon className="w-7 h-7 text-primary-foreground" />
                 </div>
               </Link>
             );

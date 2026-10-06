@@ -31,7 +31,7 @@ export function Interruptor({ rotulo, ativo, onChange }: { rotulo: string; ativo
       <span className="text-sm font-medium">{rotulo}</span>
       <button type="button" role="switch" aria-checked={ativo} aria-label={rotulo} onClick={() => onChange(!ativo)}
         className={`relative w-14 h-8 rounded-full border transition-colors shrink-0 ${ativo ? 'bg-primary border-primary' : 'bg-muted border-border'}`}>
-        <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${ativo ? 'left-[1.75rem]' : 'left-0.5'}`} />
+        <span className={`absolute top-0.5 w-6 h-6 rounded-full shadow transition-all ${ativo ? 'left-[1.75rem] bg-primary-foreground' : 'left-0.5 bg-foreground'}`} />
       </button>
     </div>
   )

@@ -154,7 +154,7 @@ type DocProps = {
 // ── Documento ─────────────────────────────────────────────────────────────────
 function DocContent({ obra, custo, subs, topMateriais, topViaturas, consumoPct, margemPct, gc, totalContratado, totalExecutado }: DocProps) {
   return (
-    <div className="pdf-page bg-white mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
+    <div className="pdf-page bg-white text-[#04090F] mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
 
       {/* ━━━ Cabeçalho ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="flex items-start justify-between mb-6 pb-5 border-b-2 border-gray-900">

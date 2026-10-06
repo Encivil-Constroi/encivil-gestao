@@ -282,7 +282,7 @@ function FaturaCard({ fatura, onExtrair, onEliminar, isExtraindo }: {
         {fatura.estado === 'EXTRAIDA' && (
           <button
             onClick={() => navigate(`/faturas/${fatura.id}/classificar`)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-violet-600 text-white rounded-xl text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-secondary text-secondary-foreground rounded-xl text-xs font-medium hover:bg-secondary/80 active:scale-[0.98] transition-all"
           >
             <Tag className="w-3.5 h-3.5" />Classificar Linhas
           </button>
@@ -291,7 +291,7 @@ function FaturaCard({ fatura, onExtrair, onEliminar, isExtraindo }: {
         {fatura.estado === 'CLASSIFICADA' && (
           <button
             onClick={() => navigate(`/faturas/${fatura.id}/classificar`)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-success text-white rounded-xl text-xs font-medium hover:bg-success/90 active:scale-[0.98] transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-success text-success-foreground rounded-xl text-xs font-medium hover:bg-success/90 active:scale-[0.98] transition-all"
           >
             <CheckCircle className="w-3.5 h-3.5" />Ver e Lançar
           </button>
@@ -386,7 +386,7 @@ export function FaturasPage() {
             {f.label}
             {totais[f.value] > 0 && (
               <span className={`text-[11px] px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
-                estadoFilter === f.value ? 'bg-white/20' : 'bg-muted text-muted-foreground'
+                estadoFilter === f.value ? 'bg-primary-foreground/15' : 'bg-muted text-muted-foreground'
               }`}>
                 {totais[f.value]}
               </span>

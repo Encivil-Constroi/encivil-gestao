@@ -53,16 +53,16 @@ export function LoginPage() {
 
   const logo = (
     <div className="flex flex-col items-center mb-8">
-      <img src="/icone_oficial.png" alt="ENCIVIL" className="w-24 h-24 object-contain mb-5" draggable={false} />
+      <img src="/icone_oficial.png" alt="ENCIVIL" className="w-24 h-24 object-contain mb-5 grayscale mix-blend-multiply dark:invert dark:mix-blend-screen" draggable={false} />
       <h1 className="text-2xl font-semibold text-foreground mb-1">ENCIVIL Gestão</h1>
       <p className="text-sm text-muted-foreground text-center">Sistema interno de gestão da empresa</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-2xl p-8">
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
 
           {/* ── Formulário de login ── */}
           {mode === 'login' && (
@@ -70,7 +70,7 @@ export function LoginPage() {
               {logo}
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                  <label htmlFor="login-email" className="block text-sm font-medium text-foreground mb-2">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
@@ -86,7 +86,7 @@ export function LoginPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Palavra-passe</label>
+                  <label htmlFor="login-password" className="block text-sm font-medium text-foreground mb-2">Palavra-passe</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
@@ -130,7 +130,7 @@ export function LoginPage() {
                   <p className="text-sm text-muted-foreground mb-4 text-center">
                     Indique o seu email e enviaremos um link para redefinir a palavra-passe.
                   </p>
-                  <label className="block text-sm font-medium text-foreground mb-2">Email da conta</label>
+                  <label htmlFor="reset-email" className="block text-sm font-medium text-foreground mb-2">Email da conta</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
@@ -197,7 +197,7 @@ export function LoginPage() {
           )}
 
         </div>
-        <div className="text-center mt-6 text-white/70 text-sm">
+        <div className="text-center mt-6 text-muted-foreground text-xs">
           <p>© 2026 ENCIVIL - Todos os direitos reservados</p>
         </div>
       </div>

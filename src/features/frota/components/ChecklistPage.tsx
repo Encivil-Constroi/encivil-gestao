@@ -12,9 +12,9 @@ import { Cabecalho, Seccao, BadgeEstado, inputCls, botaoPrimario, botaoSecundari
 const MAX_FOTOS = 6
 
 const COR_BOTAO: Record<EstadoItem, string> = {
-  OK:      'bg-success text-white border-success',
-  ATENCAO: 'bg-warning text-white border-warning',
-  MAU:     'bg-destructive text-white border-destructive',
+  OK:      'bg-success text-success-foreground border-success',
+  ATENCAO: 'bg-warning text-warning-foreground border-warning',
+  MAU:     'bg-destructive text-destructive-foreground border-destructive',
 }
 
 type Resposta = { estado: EstadoItem | null; observacao: string }

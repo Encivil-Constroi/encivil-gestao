@@ -219,7 +219,7 @@ export function ObraFormPage() {
             </div>
             <button type="button" role="switch" aria-checked={geofenceAtiva} aria-label="Ativar geofence" onClick={() => ativarGeofence(!geofenceAtiva)}
               className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${geofenceAtiva ? 'bg-primary' : 'bg-muted'}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${geofenceAtiva ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-4 w-4 transform rounded-full transition-transform ${geofenceAtiva ? 'translate-x-6 bg-primary-foreground' : 'translate-x-1 bg-foreground'}`} />
             </button>
           </div>
           {geofenceAtiva && (

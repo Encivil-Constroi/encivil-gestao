@@ -65,12 +65,12 @@ export function BombaPolo2Card() {
     <div className={`bg-card rounded-2xl border p-4 space-y-3 ${
       manual ? 'border-destructive/50'
         : !estado.online && !estado.nuncaComunicou ? 'border-destructive/40'
-        : aTrabalhar ? 'border-blue-300' : 'border-border'
+        : aTrabalhar ? 'border-info/30' : 'border-border'
     }`}>
       <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-xl ${aTrabalhar ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-muted'}`}>
+        <div className={`p-2 rounded-xl ${aTrabalhar ? 'bg-info/10' : 'bg-muted'}`}>
           {estado.online || estado.nuncaComunicou
-            ? <Droplets className={`w-4 h-4 ${aTrabalhar ? 'text-blue-600 animate-pulse' : 'text-muted-foreground'}`} />
+            ? <Droplets className={`w-4 h-4 ${aTrabalhar ? 'text-info animate-pulse' : 'text-muted-foreground'}`} />
             : <WifiOff className="w-4 h-4 text-destructive" />}
         </div>
         <div className="flex-1 min-w-0">
@@ -86,7 +86,7 @@ export function BombaPolo2Card() {
         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
           estado.nuncaComunicou ? 'bg-muted-foreground/40'
             : !estado.online ? 'bg-destructive'
-            : aTrabalhar ? 'bg-blue-500 animate-pulse' : 'bg-success'
+            : aTrabalhar ? 'bg-info animate-pulse' : 'bg-success'
         }`} />
       </div>
 
@@ -98,7 +98,7 @@ export function BombaPolo2Card() {
       )}
 
       {ativa && !manual && (
-        <p className="text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 rounded-lg px-2.5 py-1.5">
+        <p className="text-xs bg-info/10 border border-info/30 text-info rounded-lg px-2.5 py-1.5">
           Em uso: <strong>{ativa.veiculoNome ?? 'viatura'}</strong>
           {ativa.funcionarioNome && <> · {ativa.funcionarioNome}</>}
           {' '}· até às {hhmm(new Date(ativa.inicioEm).getTime() + ativa.segundosAutorizados * 1000)}

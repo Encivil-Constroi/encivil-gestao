@@ -146,14 +146,14 @@ export function RelatorioCombustivelPage({ embutido = false }: { embutido?: bool
             <div className="h-64" role="img" aria-label={`${medida === 'custo' ? 'Custo' : 'Litros'} por ${ROTULO_GRAN[gran].toLowerCase()}`}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={serie} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
-                  <CartesianGrid vertical={false} stroke="var(--viz-grelha)" />
-                  <XAxis dataKey="rotulo" tick={{ fontSize: 11, fill: 'var(--viz-texto)' }} tickLine={false}
-                    axisLine={{ stroke: 'var(--viz-eixo)' }} interval="preserveStartEnd" minTickGap={12} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--viz-texto)' }} tickLine={false} axisLine={false} width={64}
+                  <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+                  <XAxis dataKey="rotulo" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickLine={false}
+                    axisLine={{ stroke: 'var(--chart-grid)' }} interval="preserveStartEnd" minTickGap={12} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickLine={false} axisLine={false} width={64}
                     tickFormatter={v => compacto(medida, Number(v))} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'var(--viz-grelha)', opacity: 0.5 }}
+                  <Tooltip cursor={{ fill: 'var(--chart-grid)', opacity: 0.5 }}
                     content={<Dica formatar={v => fmtMedida(medida, v)} extra={p => `${p.n} abastecimento${p.n === 1 ? '' : 's'}`} />} />
-                  <Bar dataKey={medida} fill="var(--viz-s1)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+                  <Bar dataKey={medida} fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -216,7 +216,7 @@ function Tile({ rotulo, valor, delta, subirEBom = true, nota, destaque = false }
 const ICONE_NIVEL: Record<NivelInsight, { Icone: typeof Info; cls: string; rotulo: string }> = {
   critico: { Icone: AlertOctagon,  cls: 'text-destructive', rotulo: 'Crítico' },
   atencao: { Icone: AlertTriangle, cls: 'text-warning',     rotulo: 'Atenção' },
-  info:    { Icone: Info,          cls: 'text-primary',     rotulo: 'Nota' },
+  info:    { Icone: Info,          cls: 'text-info',        rotulo: 'Nota' },
   bom:     { Icone: CheckCircle2,  cls: 'text-success',     rotulo: 'Bom' },
 }
 
@@ -301,7 +301,7 @@ function Ranking({ titulo, subtitulo, dados }: { titulo: string; subtitulo: stri
               </div>
               <div className="h-2.5 mt-1 rounded-r bg-transparent">
                 <div className="h-full rounded-r-[4px] transition-opacity group-hover:opacity-80"
-                  style={{ width: `${Math.max(1, (d.valor / max) * 100)}%`, background: 'var(--viz-s1)' }} />
+                  style={{ width: `${Math.max(1, (d.valor / max) * 100)}%`, background: 'var(--chart-1)' }} />
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">{d.extra}</p>
             </li>
@@ -312,7 +312,7 @@ function Ranking({ titulo, subtitulo, dados }: { titulo: string; subtitulo: stri
   )
 }
 
-const COR_FONTE = ['var(--viz-s1)', 'var(--viz-s2)', 'var(--viz-s3)', 'var(--viz-cinza)']
+const COR_FONTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-5)']
 
 // Parte de um todo: uma barra empilhada (2 px de intervalo entre partes) + legenda com valores
 function OrigemCombustivel({ fontes, total }: { fontes: ReturnType<typeof porFonte>; total: number }) {

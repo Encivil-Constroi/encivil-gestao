@@ -13,7 +13,7 @@ function diasParaValidade(dataValidade?: string): number | null {
 
 function BadgeValidade({ dataValidade }: { dataValidade?: string }) {
   if (!dataValidade) return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400">
+    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-info/10 text-info">
       <Infinity className="w-3 h-3" /> Vitalícia
     </span>
   )
@@ -29,12 +29,12 @@ function BadgeValidade({ dataValidade }: { dataValidade?: string }) {
     </span>
   )
   if (dias <= 90) return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
+    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning">
       <Clock className="w-3 h-3" /> {dias}d restantes
     </span>
   )
   return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400">
+    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
       <CheckCircle2 className="w-3 h-3" /> Válida
     </span>
   )

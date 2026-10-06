@@ -51,7 +51,7 @@ export function BombaAtiva({ ativadaEm, maxSegundos, pedidoId }: {
   if (!ativa) {
     if (estado?.desligadaConfirmada) {
       return (
-        <div role="status" className="flex items-center justify-center gap-2 p-4 bg-green-50 border border-green-200 rounded-2xl text-sm text-green-800 font-semibold">
+        <div role="status" className="flex items-center justify-center gap-2 p-4 bg-success/10 border border-success/30 rounded-2xl text-sm text-success font-semibold">
           <CheckCircle2 className="w-5 h-5 shrink-0" />
           Bomba desligada{estado.motivoFim ? ` — ${FIM_SESSAO[estado.motivoFim]}` : ''}
         </div>
@@ -59,7 +59,7 @@ export function BombaAtiva({ ativadaEm, maxSegundos, pedidoId }: {
     }
     if (fimVistoEm !== null && agora - fimVistoEm > CONFIRMACAO_MAX_MS) {
       return (
-        <div role="alert" className="flex items-start gap-2.5 p-4 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-800">
+        <div role="alert" className="flex items-start gap-2.5 p-4 bg-destructive/10 border border-destructive/30 rounded-2xl text-sm text-destructive">
           <AlertTriangle className="w-5 h-5 shrink-0" />
           <span>
             <strong>Não foi possível confirmar que a bomba desligou.</strong><br />
@@ -69,7 +69,7 @@ export function BombaAtiva({ ativadaEm, maxSegundos, pedidoId }: {
       )
     }
     return (
-      <div role="status" className="flex items-center justify-center gap-2 p-4 bg-gray-100 border border-gray-200 rounded-2xl text-sm text-gray-700">
+      <div role="status" className="flex items-center justify-center gap-2 p-4 bg-muted border border-border rounded-2xl text-sm text-muted-foreground">
         <Loader2 className="w-4 h-4 animate-spin shrink-0" />
         {paragemPedida ? 'A desligar a bomba…' : 'A confirmar que a bomba desligou…'}
       </div>
@@ -77,27 +77,27 @@ export function BombaAtiva({ ativadaEm, maxSegundos, pedidoId }: {
   }
 
   return (
-    <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
+    <div className="p-4 bg-info/10 border border-info/30 rounded-2xl space-y-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-info font-semibold text-sm">
           <Droplets className="w-4 h-4 animate-pulse" />
           Bomba liberada
         </div>
-        <span className="text-2xl font-bold tabular-nums text-blue-900">{mmss}</span>
+        <span className="text-2xl font-bold tabular-nums text-info">{mmss}</span>
       </div>
-      <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-        <div className="h-full bg-blue-500 rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
+      <div className="h-2 bg-info/10 rounded-full overflow-hidden">
+        <div className="h-full bg-info rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-xs text-blue-700">
+      <p className="text-xs text-info">
         Se a bomba não arrancar sozinha, carrega no botão verde (I) do quadro.
       </p>
       <button type="button" onClick={handleParar} disabled={loading}
-        className="w-full py-3.5 bg-red-600 text-white rounded-xl font-bold text-base active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2">
+        className="w-full py-3.5 bg-destructive text-destructive-foreground rounded-xl font-bold text-base active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2">
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         Terminei — desligar bomba
       </button>
       {falhou && (
-        <p role="alert" className="text-xs text-red-700 font-medium text-center">
+        <p role="alert" className="text-xs text-destructive font-medium text-center">
           Não foi possível desligar pela app. Usa o botão vermelho EMERGENZA no quadro.
         </p>
       )}

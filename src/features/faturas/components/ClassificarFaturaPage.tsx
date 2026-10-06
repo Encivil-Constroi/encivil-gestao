@@ -34,9 +34,9 @@ async function listarProdutosSimples(): Promise<{ id: string; nome: string; codi
 // ── Destino badge/select ──────────────────────────────────────────────────────
 
 const DESTINO_META: Record<DestinoLinha, { label: string; icon: typeof Package; cls: string }> = {
-  ARMAZEM:     { label: 'Armazém',     icon: Package,     cls: 'text-blue-600 dark:text-blue-400'   },
-  OBRA:        { label: 'Obra',        icon: Hammer,      cls: 'text-orange-600 dark:text-orange-400' },
-  SERVICO:     { label: 'Serviço',     icon: Wrench,      cls: 'text-violet-600 dark:text-violet-400' },
+  ARMAZEM:     { label: 'Armazém',     icon: Package,     cls: 'text-info'   },
+  OBRA:        { label: 'Obra',        icon: Hammer,      cls: 'text-warning' },
+  SERVICO:     { label: 'Serviço',     icon: Wrench,      cls: 'text-muted-foreground' },
   DESCONHECIDO:{ label: 'Desconhecido',icon: CircleHelp,  cls: 'text-muted-foreground'              },
 }
 
@@ -52,7 +52,7 @@ type LinhaState = {
 function confiancaLabel(c?: number): { label: string; cls: string } {
   if (c == null)  return { label: 'Sem regra',   cls: 'text-muted-foreground' }
   if (c >= 0.8)   return { label: 'Alta',         cls: 'text-success'          }
-  if (c >= 0.5)   return { label: 'Média',        cls: 'text-amber-600 dark:text-amber-400' }
+  if (c >= 0.5)   return { label: 'Média',        cls: 'text-warning' }
   return            { label: 'Baixa',        cls: 'text-destructive'      }
 }
 
@@ -178,7 +178,7 @@ function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, 
           })}
         </div>
         {nDesconhecidas > 0 && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+          <p className="text-xs text-warning mt-1.5">
             {nDesconhecidas} linha{nDesconhecidas !== 1 ? 's' : ''} por classificar
           </p>
         )}
@@ -213,7 +213,7 @@ function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, 
       {!readonly && linhas.length > 0 && (
         <div className="p-4 border-t border-border space-y-2">
           {nArmazemSemArtigo > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+            <p className="text-xs text-warning text-center">
               {nArmazemSemArtigo} linha{nArmazemSemArtigo !== 1 ? 's' : ''} ARMAZEM sem artigo selecionado
             </p>
           )}
@@ -230,7 +230,7 @@ function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, 
               onClick={onLancar}
               disabled={lancando || !canLancar}
               title={nDesconhecidas > 0 ? 'Classifica todas as linhas antes de lançar' : undefined}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-success text-white rounded-xl text-sm font-medium hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-medium hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {lancando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {lancando ? 'A lançar em stock…' : 'Lançar em Stock'}
@@ -392,9 +392,9 @@ export function ClassificarFaturaPage() {
   }
 
   const estadoMeta = {
-    RECEBIDA:     'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    EXTRAIDA:     'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-    CLASSIFICADA: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+    RECEBIDA:     'bg-info/10 text-info',
+    EXTRAIDA:     'bg-warning/10 text-warning',
+    CLASSIFICADA: 'bg-muted text-foreground',
     LANCADA:      'bg-success/15 text-success',
   }[fatura.estado]
 
@@ -440,7 +440,7 @@ export function ClassificarFaturaPage() {
           >
             Linhas
             {linhaStates.filter(s => s.destino === 'DESCONHECIDO').length > 0 && (
-              <span className="w-4 h-4 bg-amber-500 text-white rounded-full text-[10px] flex items-center justify-center leading-none">
+              <span className="w-4 h-4 bg-warning text-warning-foreground rounded-full text-[10px] flex items-center justify-center leading-none">
                 {linhaStates.filter(s => s.destino === 'DESCONHECIDO').length}
               </span>
             )}

@@ -30,7 +30,7 @@ export function PWAInstallHint() {
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="bg-primary p-1.5 rounded-lg">
-              <Share className="w-4 h-4 text-white" />
+              <Share className="w-4 h-4 text-primary-foreground" />
             </div>
             <p className="font-semibold text-sm">Instalar no iPhone</p>
           </div>
@@ -41,15 +41,15 @@ export function PWAInstallHint() {
 
         <ol className="space-y-2 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
-            <span className="bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">1</span>
+            <span className="bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">1</span>
             Toque em <Share className="w-4 h-4 text-primary inline mx-1" /> <strong className="text-foreground">Partilhar</strong> no Safari
           </li>
           <li className="flex items-center gap-2">
-            <span className="bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">2</span>
+            <span className="bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">2</span>
             Escolha <Plus className="w-4 h-4 text-primary inline mx-1" /> <strong className="text-foreground">Adicionar ao Ecrã Inicial</strong>
           </li>
           <li className="flex items-center gap-2">
-            <span className="bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">3</span>
+            <span className="bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">3</span>
             Confirme <strong className="text-foreground">Adicionar</strong>
           </li>
         </ol>

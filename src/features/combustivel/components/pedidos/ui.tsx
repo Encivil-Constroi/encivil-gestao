@@ -41,7 +41,7 @@ export function Cartao({ children, className = '' }: { children: ReactNode; clas
 
 const COR_ESTADO: Record<EstadoPedido, string> = {
   AGUARDA_AUTORIZACAO: 'bg-warning/15 text-warning',
-  AUTORIZADO:          'bg-primary/10 text-primary',
+  AUTORIZADO:          'bg-info/10 text-info',
   AGUARDA_APROVACAO:   'bg-muted text-muted-foreground',
   REJEITADO:           'bg-destructive/10 text-destructive',
   CONCLUIDO:           'bg-success/10 text-success',
@@ -77,7 +77,7 @@ export function BadgeEspera({ minutos }: { minutos: number }) {
 
 export function Aviso({ tipo = 'info', children }: { tipo?: 'info' | 'alerta' | 'erro' | 'ok'; children: ReactNode }) {
   const cls = {
-    info:   'bg-primary/5 border-primary/15 text-foreground',
+    info:   'bg-info/10 border-info/30 text-info',
     alerta: 'bg-warning/10 border-warning/30 text-foreground',
     erro:   'bg-destructive/10 border-destructive/30 text-destructive',
     ok:     'bg-success/10 border-success/30 text-foreground',

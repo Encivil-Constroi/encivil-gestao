@@ -2,11 +2,11 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import type { CustoConsolidado } from '../services/custosService'
 
 const CATEGORIAS = [
-  { key: 'materiais'      , label: 'Materiais',       color: '#3b82f6' },
-  { key: 'maoDeObra'      , label: 'Mão de Obra',     color: '#8b5cf6' },
-  { key: 'combustivel'    , label: 'Combustível',     color: '#f59e0b' },
-  { key: 'fornecedores'   , label: 'Fornecedores',    color: '#ef4444' },
-  { key: 'subempreiteiros', label: 'Subempreiteiros', color: '#10b981' },
+  { key: 'materiais'      , label: 'Materiais',       color: 'var(--chart-1)' },
+  { key: 'maoDeObra'      , label: 'Mão de Obra',     color: 'var(--chart-5)' },
+  { key: 'combustivel'    , label: 'Combustível',     color: 'var(--chart-4)' },
+  { key: 'fornecedores'   , label: 'Fornecedores',    color: 'var(--chart-3)' },
+  { key: 'subempreiteiros', label: 'Subempreiteiros', color: 'var(--chart-2)' },
 ] as const
 
 type CatKey = (typeof CATEGORIAS)[number]['key']
@@ -42,6 +42,7 @@ export function DashboardRentabilidade({ custo }: Props) {
           paddingAngle={2}
           dataKey="value"
           label={false}
+          isAnimationActive={false}
         >
           {dados.map((entry, i) => (
             <Cell key={i} fill={entry.color} stroke="transparent" />
@@ -50,11 +51,14 @@ export function DashboardRentabilidade({ custo }: Props) {
         <Tooltip
           formatter={(value: number) => [EUR.format(value), '']}
           contentStyle={{
-            background: 'hsl(var(--card))',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: '12px',
+            background: 'var(--card)',
+            color: 'var(--card-foreground)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
             fontSize: '12px',
           }}
+          itemStyle={{ color: 'var(--card-foreground)' }}
+          labelStyle={{ color: 'var(--card-foreground)' }}
         />
         <Legend
           iconType="circle"

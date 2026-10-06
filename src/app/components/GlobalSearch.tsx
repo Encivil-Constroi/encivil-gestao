@@ -18,10 +18,10 @@ const KIND_ICON: Record<SearchResultKind, React.ReactNode> = {
 }
 
 const KIND_COLOR: Record<SearchResultKind, string> = {
-  obra:           'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  produto:        'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  subempreiteiro: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  ferramenta:     'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  obra:           'bg-info/10 text-info',
+  produto:        'bg-success/10 text-success',
+  subempreiteiro: 'bg-warning/10 text-warning',
+  ferramenta:     'bg-secondary text-secondary-foreground',
 }
 
 interface Props {
@@ -106,7 +106,7 @@ export function GlobalSearch({ onClose }: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Pesquisar obras, produtos, subempreiteiros, ferramentas…"
-            className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
           />
           {query && (
             <button onClick={() => { setQuery(''); setResults([]); inputRef.current?.focus() }}

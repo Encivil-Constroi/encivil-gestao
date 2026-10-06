@@ -110,7 +110,11 @@ describe('menu lateral do abastecimento', () => {
     m.papel = 'admin'
     render(<MemoryRouter initialEntries={['/abastecimento/analise']}><Sidebar /></MemoryRouter>)
     const link = within(screen.getAllByRole('navigation')[0]).getByRole('link', { name: /Abastecimento/ })
-    expect(link.className).toMatch(/bg-primary/)
+    expect(link).toHaveAttribute('href', '/abastecimento')
+    expect(link).toHaveClass('bg-sidebar-primary', 'text-sidebar-primary-foreground')
+    for (const outro of within(screen.getAllByRole('navigation')[0]).getAllByRole('link').filter(item => item !== link)) {
+      expect(outro).not.toHaveClass('bg-sidebar-primary')
+    }
   })
 
   it('endereço antigo de um pedido leva ao mesmo pedido', async () => {

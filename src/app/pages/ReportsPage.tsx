@@ -187,7 +187,7 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
   const lowCount     = products.filter(p => p.status !== 'normal').length
   const today        = fmt(new Date())
 
-  const NAVY   = '#1e3a8a'
+  const NAVY   = '#001C7D'
   const GREEN  = '#16a34a'
   const RED    = '#dc2626'
   const AMBER  = '#f59e0b'
@@ -218,23 +218,23 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
   return createPortal(
     <div
       id="encivil-print-root"
-      style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}
+      style={{ position: 'fixed', inset: 0, background: 'white', color: '#04090F', zIndex: 9999, overflowY: 'auto' }}
     >
       {/* ── Barra de controlo (oculta na impressão) ────────── */}
       <div
         className="no-print"
         style={{
           position: 'sticky', top: 0, zIndex: 10,
-          background: 'white', borderBottom: `1px solid ${BORDER}`,
+          background: 'var(--card)', borderBottom: `1px solid var(--border)`,
           padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FileText style={{ width: 16, height: 16, color: NAVY }} />
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+          <FileText style={{ width: 16, height: 16, color: 'var(--foreground)' }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--foreground)' }}>
             Pré-visualização · Relatório Executivo ENCIVIL
           </span>
-          <span style={{ fontSize: 12, color: SLATE, marginLeft: 8 }}>
+          <span style={{ fontSize: 12, color: 'var(--muted-foreground)', marginLeft: 8 }}>
             {periodLabel}
           </span>
         </div>
@@ -243,8 +243,8 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
             onClick={onClose}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-              border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13,
-              background: 'white', cursor: 'pointer', color: '#374151',
+              border: `1px solid var(--border)`, borderRadius: 8, fontSize: 13,
+              background: 'var(--card)', cursor: 'pointer', color: 'var(--foreground)',
             }}
           >
             <X style={{ width: 14, height: 14 }} /> Fechar
@@ -253,7 +253,7 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
             onClick={() => window.print()}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px',
-              background: NAVY, color: 'white', border: 'none', borderRadius: 8,
+              background: 'var(--primary)', color: 'var(--primary-foreground)', border: 'none', borderRadius: 8,
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -365,7 +365,7 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
                   <>
                     <PieChart width={260} height={160}>
                       <Pie data={stockHealth} cx="50%" cy="50%" innerRadius={42} outerRadius={70} dataKey="value" paddingAngle={3}>
-                        {stockHealth.map((e, i) => <Cell key={i} fill={e.color} />)}
+                        {stockHealth.map((e, i) => <Cell key={i} fill={e.name === 'Normal' ? GREEN : e.name === 'Stock Baixo' ? AMBER : RED} />)}
                       </Pie>
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${BORDER}` }} />
                     </PieChart>
@@ -373,7 +373,7 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
                       {stockHealth.map(s => (
                         <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.name === 'Normal' ? GREEN : s.name === 'Stock Baixo' ? AMBER : RED, display: 'inline-block', flexShrink: 0 }} />
                             <span style={{ color: SLATE }}>{s.name}</span>
                           </div>
                           <span style={{ fontWeight: 700, color: '#1e293b' }}>{s.value}</span>
@@ -586,12 +586,12 @@ function ToolsReportSection({ loading, tools, loansCurrent, loansPrevious, loans
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={activityData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<ChartTooltip />} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-              <Line type="monotone" dataKey="Empréstimos" stroke="#1e3a8a" strokeWidth={2.5} dot={{ r: 3, fill: '#1e3a8a' }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="Empréstimos" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--chart-1)' }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -734,7 +734,7 @@ function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: (
   const topFuncionarios = useTopFuncionarios(loansCurrent)
   const today = fmt(new Date())
 
-  const NAVY   = '#1e3a8a'
+  const NAVY   = '#001C7D'
   const GREEN  = '#16a34a'
   const RED    = '#dc2626'
   const AMBER  = '#f59e0b'
@@ -765,30 +765,30 @@ function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: (
   return createPortal(
     <div
       id="encivil-print-root-ferramentas"
-      style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}
+      style={{ position: 'fixed', inset: 0, background: 'white', color: '#04090F', zIndex: 9999, overflowY: 'auto' }}
     >
       <div
         className="no-print"
         style={{
           position: 'sticky', top: 0, zIndex: 10,
-          background: 'white', borderBottom: `1px solid ${BORDER}`,
+          background: 'var(--card)', borderBottom: `1px solid var(--border)`,
           padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FileText style={{ width: 16, height: 16, color: NAVY }} />
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+          <FileText style={{ width: 16, height: 16, color: 'var(--foreground)' }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--foreground)' }}>
             Pré-visualização · Relatório de Ferramentas ENCIVIL
           </span>
-          <span style={{ fontSize: 12, color: SLATE, marginLeft: 8 }}>{periodLabel}</span>
+          <span style={{ fontSize: 12, color: 'var(--muted-foreground)', marginLeft: 8 }}>{periodLabel}</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={onClose}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-              border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13,
-              background: 'white', cursor: 'pointer', color: '#374151',
+              border: `1px solid var(--border)`, borderRadius: 8, fontSize: 13,
+              background: 'var(--card)', cursor: 'pointer', color: 'var(--foreground)',
             }}
           >
             <X style={{ width: 14, height: 14 }} /> Fechar
@@ -797,7 +797,7 @@ function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: (
             onClick={() => window.print()}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px',
-              background: NAVY, color: 'white', border: 'none', borderRadius: 8,
+              background: 'var(--primary)', color: 'var(--primary-foreground)', border: 'none', borderRadius: 8,
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -1110,13 +1110,13 @@ function ObrasReportSection({ loading, linhas }: ObrasReportData) {
           <h2 className="font-semibold text-base mb-4">Orçamento vs. Custo Real</h2>
           <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 56)}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `${Math.round(Number(v) / 1000)}k`} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(v) => fmtEuro(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} cursor={{ fill: '#f1f5f9' }} />
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--chart-grid)" />
+              <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickFormatter={v => `${Math.round(Number(v) / 1000)}k`} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11, fill: 'var(--chart-text)' }} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(v) => fmtEuro(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--popover)', color: 'var(--popover-foreground)' }} cursor={{ fill: 'var(--muted)' }} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              <Bar dataKey="Orçamento" fill="#1e3a8a" radius={[0, 4, 4, 0]} barSize={11} />
-              <Bar dataKey="Custo Real" fill="#dc2626" radius={[0, 4, 4, 0]} barSize={11} />
+              <Bar dataKey="Orçamento" fill="var(--chart-1)" radius={[0, 4, 4, 0]} barSize={11} />
+              <Bar dataKey="Custo Real" fill="var(--chart-3)" radius={[0, 4, 4, 0]} barSize={11} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -1239,20 +1239,20 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
   const a = analiseObras(linhas)
   const today = fmt(new Date())
 
-  const NAVY = '#1e3a8a', GREEN = '#16a34a', RED = '#dc2626', AMBER = '#b45309', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
+  const NAVY = '#001C7D', GREEN = '#16a34a', RED = '#dc2626', AMBER = '#b45309', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
 
   return createPortal(
-    <div id="encivil-print-root-obras" style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}>
-      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white', borderBottom: `1px solid ${BORDER}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div id="encivil-print-root-obras" style={{ position: 'fixed', inset: 0, background: 'white', color: '#04090F', zIndex: 9999, overflowY: 'auto' }}>
+      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--card)', borderBottom: `1px solid var(--border)`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FileText style={{ width: 16, height: 16, color: NAVY }} />
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Pré-visualização · Relatório de Obras ENCIVIL</span>
+          <FileText style={{ width: 16, height: 16, color: 'var(--foreground)' }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--foreground)' }}>Pré-visualização · Relatório de Obras ENCIVIL</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, background: 'white', cursor: 'pointer', color: '#374151' }}>
+          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid var(--border)`, borderRadius: 8, fontSize: 13, background: 'var(--card)', cursor: 'pointer', color: 'var(--foreground)' }}>
             <X style={{ width: 14, height: 14 }} /> Fechar
           </button>
-          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: NAVY, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: 'var(--primary)', color: 'var(--primary-foreground)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             <Printer style={{ width: 14, height: 14 }} /> Imprimir / Salvar PDF
           </button>
         </div>
@@ -1487,20 +1487,20 @@ function CombustivelPrintReport({ data, onClose }: { data: CombustivelReportData
   const totalLitros = linhas.reduce((s, l) => s + l.litros, 0)
   const precoMedio = totalLitros > 0 ? totalCusto / totalLitros : 0
   const today = fmt(new Date())
-  const NAVY = '#1e3a8a', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
+  const NAVY = '#001C7D', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
 
   return createPortal(
-    <div id="encivil-print-root-comb" style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}>
-      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white', borderBottom: `1px solid ${BORDER}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div id="encivil-print-root-comb" style={{ position: 'fixed', inset: 0, background: 'white', color: '#04090F', zIndex: 9999, overflowY: 'auto' }}>
+      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--card)', borderBottom: `1px solid var(--border)`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FileText style={{ width: 16, height: 16, color: NAVY }} />
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Pré-visualização · Relatório de Combustível ENCIVIL</span>
+          <FileText style={{ width: 16, height: 16, color: 'var(--foreground)' }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--foreground)' }}>Pré-visualização · Relatório de Combustível ENCIVIL</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, background: 'white', cursor: 'pointer', color: '#374151' }}>
+          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid var(--border)`, borderRadius: 8, fontSize: 13, background: 'var(--card)', cursor: 'pointer', color: 'var(--foreground)' }}>
             <X style={{ width: 14, height: 14 }} /> Fechar
           </button>
-          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: NAVY, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: 'var(--primary)', color: 'var(--primary-foreground)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             <Printer style={{ width: 14, height: 14 }} /> Imprimir / Salvar PDF
           </button>
         </div>
@@ -1816,9 +1816,9 @@ export function ReportsPage() {
   [current])
 
   const stockHealth = useMemo(() => [
-    { name: 'Normal',      value: products.filter(p => p.status === 'normal').length,    color: '#16a34a' },
-    { name: 'Stock Baixo', value: products.filter(p => p.status === 'baixo').length,     color: '#f59e0b' },
-    { name: 'Sem Stock',   value: products.filter(p => p.status === 'sem-stock').length, color: '#dc2626' },
+    { name: 'Normal',      value: products.filter(p => p.status === 'normal').length,    color: 'var(--chart-2)' },
+    { name: 'Stock Baixo', value: products.filter(p => p.status === 'baixo').length,     color: 'var(--chart-4)' },
+    { name: 'Sem Stock',   value: products.filter(p => p.status === 'sem-stock').length, color: 'var(--chart-3)' },
   ].filter(d => d.value > 0), [products])
 
   const biggestExit = useMemo(() => {
@@ -1833,15 +1833,15 @@ export function ReportsPage() {
     <div className="space-y-6 pb-8">
 
       {/* ── Banner ───────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-5 md:p-6 text-white shadow-lg">
+      <div className="bg-card border border-border rounded-xl p-5 md:p-6 text-card-foreground shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-2.5 shrink-0">
-              <img src="/icone_oficial.png" alt="ENCIVIL" className="w-10 h-10 object-contain" draggable={false} />
+            <div className="bg-muted rounded-lg p-2.5 shrink-0">
+              <img src="/icone_oficial.png" alt="ENCIVIL" className="w-10 h-10 object-contain grayscale mix-blend-multiply dark:invert dark:mix-blend-screen" draggable={false} />
             </div>
             <div>
               <h1 className="text-lg md:text-xl font-bold leading-tight">Relatório Executivo</h1>
-              <p className="text-white/70 text-sm mt-0.5">
+              <p className="text-muted-foreground text-sm mt-0.5">
                 {reportType === 'stock' ? 'Análise de armazém' : reportType === 'ferramentas' ? 'Análise de ferramentas' : reportType === 'obras' ? 'Análise de obras' : 'Análise de combustível'} · ENCIVIL
               </p>
             </div>
@@ -1851,7 +1851,7 @@ export function ReportsPage() {
               <select
                 value={period}
                 onChange={e => setPeriod(e.target.value as Period)}
-                className="px-3 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="px-3 py-2 bg-input-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="hoje"   className="text-foreground bg-card">Hoje</option>
                 <option value="semana" className="text-foreground bg-card">Esta Semana</option>
@@ -1863,7 +1863,7 @@ export function ReportsPage() {
               <select
                 value={toolsPeriod}
                 onChange={e => setToolsPeriod(e.target.value as Period)}
-                className="px-3 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="px-3 py-2 bg-input-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="hoje"   className="text-foreground bg-card">Hoje</option>
                 <option value="semana" className="text-foreground bg-card">Esta Semana</option>
@@ -1874,7 +1874,7 @@ export function ReportsPage() {
             <button
               onClick={() => void partilharSemanalWhatsApp()}
               disabled={sharingWA}
-              className="flex items-center gap-2 px-3 py-2 bg-[#25D366] hover:bg-[#20BD5C] text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 px-3 py-2 bg-[#25D366] hover:bg-[#20BD5C] text-[#04090F] rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
               title="Partilhar resumo semanal no WhatsApp"
             >
               <Share2 className={`w-4 h-4 ${sharingWA ? 'animate-pulse' : ''}`} />
@@ -1882,14 +1882,14 @@ export function ReportsPage() {
             </button>
             <button
               onClick={() => reportType === 'stock' ? setShowPrint(true) : reportType === 'ferramentas' ? setShowToolsPrint(true) : reportType === 'obras' ? setShowObrasPrint(true) : setShowCombPrint(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border rounded-lg text-sm font-medium transition-colors"
             >
               <Printer className="w-4 h-4" />
               <span className="hidden sm:inline">Exportar PDF</span>
             </button>
           </div>
         </div>
-        <p className="text-white/60 text-xs mt-3">
+        <p className="text-muted-foreground text-xs mt-3">
           {reportType === 'stock'
             ? `${periodLabel} · comparado com ${prevLabel}`
             : reportType === 'ferramentas'
@@ -1989,13 +1989,13 @@ export function ReportsPage() {
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={activityData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<ChartTooltip />} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-              <Line type="monotone" dataKey="Entradas" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 3, fill: '#16a34a' }} activeDot={{ r: 5 }} />
-              <Line type="monotone" dataKey="Saídas"   stroke="#dc2626" strokeWidth={2.5} dot={{ r: 3, fill: '#dc2626' }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="Entradas" stroke="var(--chart-2)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--chart-2)' }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="Saídas"   stroke="var(--chart-3)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--chart-3)' }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -2018,11 +2018,11 @@ export function ReportsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                <XAxis type="number"   tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11, fill: '#1e293b' }} tickLine={false} axisLine={false} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f1f5f9' }} />
-                <Bar dataKey="qty" name="Quantidade" fill="#1e3a8a" radius={[0, 6, 6, 0]} maxBarSize={24} />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--chart-grid)" />
+                <XAxis type="number"   tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11, fill: 'var(--chart-text)' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--muted)' }} />
+                <Bar dataKey="qty" name="Quantidade" fill="var(--chart-1)" radius={[0, 6, 6, 0]} maxBarSize={24} />
               </BarChart>
             </ResponsiveContainer>
           )}

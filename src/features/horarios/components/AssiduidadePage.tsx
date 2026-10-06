@@ -11,11 +11,11 @@ function fmt(h: number | undefined): string {
 
 function DesvioChip({ desvio }: { desvio: number | undefined }) {
   if (desvio === undefined) return <span className="text-muted-foreground text-xs">—</span>
-  if (Math.abs(desvio) < 0.1) return <span className="text-xs text-green-600 dark:text-green-400">OK</span>
+  if (Math.abs(desvio) < 0.1) return <span className="text-xs text-success">OK</span>
   if (desvio > 0) return (
-    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">+{desvio.toFixed(1)}h</span>
+    <span className="text-xs font-medium text-warning">+{desvio.toFixed(1)}h</span>
   )
-  return <span className="text-xs font-medium text-red-600 dark:text-red-400">{desvio.toFixed(1)}h</span>
+  return <span className="text-xs font-medium text-destructive">{desvio.toFixed(1)}h</span>
 }
 
 function LinhaResumo({
@@ -46,14 +46,14 @@ function LinhaResumo({
       </td>
       <td className="py-2 px-3 text-sm text-right">
         {(r.horasSuplPropostas ?? 0) > 0 ? (
-          <span className="text-amber-600 dark:text-amber-400 font-medium">
+          <span className="text-warning font-medium">
             {fmt(r.horasSuplPropostas)}
           </span>
         ) : '—'}
       </td>
       <td className="py-2 px-3 text-sm text-right">
         {r.horasSuplValidadas !== undefined ? (
-          <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1 justify-end">
+          <span className="text-success font-medium flex items-center gap-1 justify-end">
             <CheckCircle2 className="w-3.5 h-3.5" />
             {fmt(r.horasSuplValidadas)}
           </span>
@@ -78,7 +78,7 @@ function LinhaResumo({
           ) : (
             <button
               onClick={() => setEditando(true)}
-              className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
+              className="text-xs text-warning hover:underline"
             >
               Validar
             </button>
@@ -165,8 +165,8 @@ export function AssiduidadePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: 'Horas previstas', value: fmt(totalPrev),  icon: Clock,          color: 'text-muted-foreground' },
-              { label: 'Horas efetivas',  value: fmt(totalEf),    icon: CheckCircle2,   color: 'text-green-600 dark:text-green-400' },
-              { label: 'Supl. propostas', value: fmt(totalSuplP), icon: AlertTriangle,  color: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Horas efetivas',  value: fmt(totalEf),    icon: CheckCircle2,   color: 'text-success' },
+              { label: 'Supl. propostas', value: fmt(totalSuplP), icon: AlertTriangle,  color: 'text-warning' },
               { label: 'Supl. validadas', value: fmt(totalSuplV), icon: CheckCircle2,   color: 'text-primary' },
             ].map(stat => (
               <div key={stat.label} className="bg-card border border-border rounded-xl p-4">

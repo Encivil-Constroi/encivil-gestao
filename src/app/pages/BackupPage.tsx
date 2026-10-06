@@ -112,10 +112,10 @@ export function BackupPage() {
       </div>
 
       {/* Banner informativo */}
-      <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
-        <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+      <div className="flex items-start gap-3 p-4 bg-info/5 border border-info/20 rounded-xl">
+        <Info className="w-4 h-4 text-info mt-0.5 shrink-0" />
         <div className="text-sm space-y-1">
-          <p className="font-semibold text-primary">Backup automático pelo Supabase</p>
+          <p className="font-semibold text-info">Backup automático pelo Supabase</p>
           <p className="text-muted-foreground">
             A base de dados PostgreSQL é gerida pelo Supabase, que realiza backups
             automáticos diários nos planos pagos (Pro+). Plano Free não inclui backup

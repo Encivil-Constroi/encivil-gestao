@@ -13,7 +13,7 @@ function diasRestantes(dataValidade?: string): number | null {
 
 function ValidadeChip({ dataValidade, limiares }: { dataValidade?: string; limiares: { urgente: number; atencao: number } }) {
   if (!dataValidade) return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400">
+    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-info/10 text-info">
       <Infinity className="w-3 h-3" /> Vitalícia
     </span>
   )
@@ -29,12 +29,12 @@ function ValidadeChip({ dataValidade, limiares }: { dataValidade?: string; limia
     </span>
   )
   if (dias <= limiares.atencao) return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
+    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning">
       <Clock className="w-3 h-3" /> {dias}d
     </span>
   )
   return (
-    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400">
+    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
       <CheckCircle2 className="w-3 h-3" /> OK
     </span>
   )
@@ -100,7 +100,7 @@ function SeccaoFormacoes({ formacoes }: { formacoes: FormacaoColaborador[] }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className={`flex items-center justify-between px-4 py-3 border-b border-border/50 ${
-        expiradas.length > 0 ? 'bg-destructive/5' : urgentes.length > 0 ? 'bg-amber-500/5' : ''
+        expiradas.length > 0 ? 'bg-destructive/5' : urgentes.length > 0 ? 'bg-warning/5' : ''
       }`}>
         <div className="flex items-center gap-2">
           <GraduationCap className="w-4 h-4 text-primary" />
@@ -200,11 +200,11 @@ export function FichaSegurancaPage() {
             <div className={`rounded-xl border px-4 py-3 flex items-center gap-3 ${
               totalProblemas > 0
                 ? 'bg-destructive/5 border-destructive/30'
-                : 'bg-green-500/5 border-green-500/30'
+                : 'bg-success/5 border-success/30'
             }`}>
               {totalProblemas > 0
                 ? <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-                : <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+                : <CheckCircle2 className="w-5 h-5 text-success shrink-0" />}
               <div>
                 <p className="text-sm font-semibold">{colaborador.nome}</p>
                 <p className="text-xs text-muted-foreground">

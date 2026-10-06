@@ -160,23 +160,24 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       {/* Logo oficial no topo */}
       <div className="p-5 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-white rounded-lg p-1.5 w-10 h-10 flex items-center justify-center shrink-0">
+          <div className="bg-sidebar-accent rounded-lg p-1.5 w-10 h-10 flex items-center justify-center shrink-0 overflow-hidden">
             <img
               src="/icone_oficial.png"
               alt="ENCIVIL"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain enc-logo"
               draggable={false}
             />
           </div>
           <div>
-            <h1 className="text-white text-base font-semibold leading-tight">ENCIVIL</h1>
-            <p className="text-xs text-sidebar-foreground/70 leading-tight">Gestão</p>
+            <h1 className="text-sidebar-foreground text-base font-semibold leading-tight">ENCIVIL</h1>
+            <p className="text-xs text-muted-foreground leading-tight">Gestão</p>
           </div>
         </div>
         {onMobileClose && (
           <button
             onClick={onMobileClose}
-            className="md:hidden p-1 rounded text-sidebar-foreground/70 hover:text-white"
+            className="md:hidden p-1 rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            aria-label="Fechar menu"
           >
             <X className="w-5 h-5" />
           </button>
@@ -187,7 +188,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         {visibleSections.map((section, idx) => (
           <div key={section.title ?? idx} className={idx > 0 ? 'mt-5' : ''}>
             {section.title && (
-              <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+              <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {section.title}
               </p>
             )}
@@ -205,7 +206,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150
                         ${isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
                           : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5'}
                       `}
                     >
@@ -227,7 +228,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
-        <p className="text-xs text-sidebar-foreground/50">Versão 1.0.0 · © 2026 ENCIVIL</p>
+        <p className="text-xs text-muted-foreground">Versão 1.0.0 · © 2026 ENCIVIL</p>
       </div>
     </aside>
   );

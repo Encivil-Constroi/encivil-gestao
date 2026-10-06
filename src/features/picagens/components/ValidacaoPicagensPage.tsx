@@ -35,14 +35,14 @@ const TIPO_ICON: Record<TipoPicagem, typeof LogIn> = {
 }
 
 const TIPO_COR: Record<TipoPicagem, string> = {
-  ENTRADA: 'bg-green-500/10 text-green-600',
-  SAIDA: 'bg-amber-500/10 text-amber-600',
+  ENTRADA: 'bg-success/10 text-success',
+  SAIDA: 'bg-warning/10 text-warning',
   PAUSA_INI: 'bg-muted/50 text-muted-foreground',
   PAUSA_FIM: 'bg-muted/50 text-muted-foreground',
 }
 
 const RESULTADO_BADGE: Record<ResultadoPicagem, { label: string; icon: typeof CheckCircle2; cls: string }> = {
-  AUTORIZADA:          { label: 'Autorizada',    icon: CheckCircle2, cls: 'bg-green-500/10 text-green-700 dark:text-green-400' },
+  AUTORIZADA:          { label: 'Autorizada',    icon: CheckCircle2, cls: 'bg-success/10 text-success' },
   RECUSADA:            { label: 'Recusada',       icon: XCircle,      cls: 'bg-destructive/10 text-destructive' },
   PENDENTE_VALIDACAO:  { label: 'Pendente',       icon: Hourglass,    cls: 'bg-muted text-muted-foreground' },
 }
@@ -167,7 +167,7 @@ function PicagemRow({
           <button
             onClick={() => onValidar(picagem.id, 'AUTORIZADA')}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success rounded-lg text-xs font-medium hover:bg-success/20 transition-colors disabled:opacity-50"
           >
             <CheckCircle2 className="w-3.5 h-3.5" /> Autorizar
           </button>

@@ -86,27 +86,27 @@ export function DashboardPage() {
           {podeArmazem && (
             <Link
               to="/armazem/movimento/saida"
-              className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-4 text-xs sm:text-sm text-center bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
             >
-              <ArrowUpCircle className="w-5 h-5" />
+              <ArrowUpCircle className="w-5 h-5 shrink-0" />
               <span>Registar Saída</span>
             </Link>
           )}
           {podeArmazem && (
             <Link
               to="/armazem/movimento/entrada"
-              className="flex items-center justify-center gap-2 py-4 bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-4 text-xs sm:text-sm text-center bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
             >
-              <ArrowDownCircle className="w-5 h-5" />
+              <ArrowDownCircle className="w-5 h-5 shrink-0" />
               <span>Registar Entrada</span>
             </Link>
           )}
           {podePedirCombustivel && (
             <Link
               to="/abastecimento/pedir"
-              className="flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all font-medium shadow-sm"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-4 text-xs sm:text-sm text-center bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all font-medium shadow-sm"
             >
-              <Fuel className="w-5 h-5" />
+              <Fuel className="w-5 h-5 shrink-0" />
               <span>Pedir combustível</span>
             </Link>
           )}

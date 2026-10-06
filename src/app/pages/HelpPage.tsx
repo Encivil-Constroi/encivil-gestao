@@ -179,7 +179,7 @@ function Rule({ code, text, highlight }: { code: string; text: string; highlight
 }
 function Tag({ children, color }: { children: React.ReactNode; color: 'blue' | 'green' | 'red' | 'yellow' | 'gray' }) {
   const colors = {
-    blue:   'bg-primary/10 text-primary',
+    blue:   'bg-info/10 text-info',
     green:  'bg-success/10 text-success',
     red:    'bg-destructive/10 text-destructive',
     yellow: 'bg-warning/10 text-warning',
@@ -227,7 +227,7 @@ function Checklist({ items }: { items: { done: boolean; text: string }[] }) {
 }
 function DocAlert({ type, children }: { type: 'info' | 'warning' | 'danger'; children: React.ReactNode }) {
   const styles = {
-    info:    'bg-primary/10 border-primary/30 text-primary',
+    info:    'bg-info/10 border-info/30 text-info',
     warning: 'bg-warning/10 border-warning/30 text-warning',
     danger:  'bg-destructive/10 border-destructive/30 text-destructive',
   };
@@ -244,7 +244,7 @@ function DocSteps({ items }: { items: { t: string; d: string }[] }) {
     <div className="space-y-3 mb-4">
       {items.map((s, i) => (
         <div key={i} className="flex gap-3 p-3 bg-accent/40 rounded-lg border border-border">
-          <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center shrink-0 font-bold">{i + 1}</span>
+          <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center shrink-0 font-bold">{i + 1}</span>
           <div>
             <div className="text-sm font-medium text-foreground">{s.t}</div>
             {s.d && <div className="text-xs text-muted-foreground">{s.d}</div>}
@@ -597,7 +597,7 @@ function TechnicalRefSection() {
                     onClick={() => setActiveId(s.id)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap md:whitespace-normal transition-colors shrink-0 ${
                       isActive
-                        ? 'bg-primary text-white'
+                        ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
@@ -638,20 +638,20 @@ export function HelpPage() {
     <div className="max-w-2xl mx-auto space-y-6 pb-6">
 
       {/* ── Hero ─────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-card border border-border rounded-xl p-6 text-card-foreground shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 shrink-0">
+          <div className="bg-muted rounded-lg p-3 shrink-0">
             <img
               src="/icone_oficial.png"
               alt="ENCIVIL"
-              className="w-12 h-12 object-contain"
+              className="w-12 h-12 object-contain grayscale mix-blend-multiply dark:invert dark:mix-blend-screen"
               draggable={false}
             />
           </div>
           <div>
-            <p className="text-white/80 text-sm font-medium">Bem-vindo, {displayName}</p>
+            <p className="text-muted-foreground text-sm font-medium">Bem-vindo, {displayName}</p>
             <h1 className="text-xl font-bold leading-tight">Centro de Ajuda</h1>
-            <p className="text-white/70 text-xs mt-0.5">Tudo o que precisa para usar o sistema</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Tudo o que precisa para usar o sistema</p>
           </div>
         </div>
       </div>

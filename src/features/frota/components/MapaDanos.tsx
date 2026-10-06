@@ -53,7 +53,7 @@ export function MapaDanos({ value, onChange, existentes = [], readOnly = false, 
               aria-label={`Vista ${rotulo}`}
               data-vista={vista}
               onClick={editavel ? aoTocar(vista) : undefined}
-              className={`relative w-full aspect-[200/120] rounded-xl border border-border bg-white ${editavel && !cheio ? 'cursor-crosshair' : ''}`}
+              className={`relative w-full aspect-[200/120] rounded-xl border border-border bg-card ${editavel && !cheio ? 'cursor-crosshair' : ''}`}
             >
               <DesenhoVista vista={vista} />
               {todos.filter(t => t.d.vista === vista).map(t => (
@@ -61,7 +61,7 @@ export function MapaDanos({ value, onChange, existentes = [], readOnly = false, 
                   key={`${t.novo ? 'n' : 'e'}${t.n}`}
                   data-marcador={t.n}
                   className={`absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center pointer-events-none shadow ${
-                    t.novo ? 'bg-destructive text-white' : 'bg-muted-foreground/70 text-white'}`}
+                    t.novo ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground'}`}
                   style={{ left: `${t.d.x * 100}%`, top: `${t.d.y * 100}%` }}
                 >
                   {t.n}
@@ -93,7 +93,7 @@ export function MapaDanos({ value, onChange, existentes = [], readOnly = false, 
           {todos.map(t => (
             <li key={`${t.novo ? 'n' : 'e'}${t.n}`}
               className={`flex items-center gap-2 rounded-xl border p-2 ${t.novo ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-muted/40'}`}>
-              <span className={`w-6 h-6 shrink-0 rounded-full text-[11px] font-bold flex items-center justify-center text-white ${t.novo ? 'bg-destructive' : 'bg-muted-foreground/70'}`}>{t.n}</span>
+              <span className={`w-6 h-6 shrink-0 rounded-full text-[11px] font-bold flex items-center justify-center ${t.novo ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground'}`}>{t.n}</span>
               <span className="text-xs text-muted-foreground shrink-0 w-24">{ROTULO_VISTA[t.d.vista]}</span>
               {t.novo && editavel ? (
                 <>

@@ -18,11 +18,11 @@ import {
 // ── Ícones por categoria ───────────────────────────────────────────────────────
 
 const CAT_CONFIG: Record<CategoriaRegisto, { icon: ElementType; color: string; bg: string }> = {
-  OCORRENCIA:      { icon: AlertCircle, color: 'text-red-600 dark:text-red-400',       bg: 'bg-red-100 dark:bg-red-900/30'        },
-  VISITA:          { icon: Users,       color: 'text-blue-600 dark:text-blue-400',     bg: 'bg-blue-100 dark:bg-blue-900/30'      },
-  CONDICOES_METEO: { icon: Cloud,       color: 'text-sky-600 dark:text-sky-400',       bg: 'bg-sky-100 dark:bg-sky-900/30'        },
-  PESSOAL:         { icon: Users,       color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30'  },
-  EQUIPAMENTO:     { icon: Wrench,      color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-100 dark:bg-amber-900/30'    },
+  OCORRENCIA:      { icon: AlertCircle, color: 'text-destructive',       bg: 'bg-destructive/10'        },
+  VISITA:          { icon: Users,       color: 'text-info',     bg: 'bg-info/10'      },
+  CONDICOES_METEO: { icon: Cloud,       color: 'text-info',       bg: 'bg-info/10'        },
+  PESSOAL:         { icon: Users,       color: 'text-muted-foreground', bg: 'bg-muted'  },
+  EQUIPAMENTO:     { icon: Wrench,      color: 'text-warning',   bg: 'bg-warning/10'    },
 }
 
 const CATEGORIA_LABELS: Record<CategoriaRegisto, string> = {

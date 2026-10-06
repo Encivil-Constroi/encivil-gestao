@@ -34,8 +34,8 @@ export function ImprimirQrPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-center">
-          <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-          <p className="text-gray-600">Parâmetros inválidos. Aceda via Combustível → Viaturas.</p>
+          <AlertTriangle className="w-10 h-10 text-destructive mx-auto mb-3" />
+          <p className="text-muted-foreground">Parâmetros inválidos. Aceda via Combustível → Viaturas.</p>
         </div>
       </div>
     )
@@ -47,26 +47,26 @@ export function ImprimirQrPage() {
       <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors shadow-lg"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Printer className="w-4 h-4" />
           Imprimir
         </button>
         <button
           onClick={() => window.close()}
-          className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+          className="px-4 py-2.5 bg-secondary text-secondary-foreground rounded-xl font-medium hover:bg-secondary/80 transition-colors"
         >
           Fechar
         </button>
       </div>
 
       {/* Folha de impressão — A4 centrado */}
-      <div className="min-h-screen bg-white flex items-center justify-center p-8">
+      <div className="min-h-screen bg-white text-[#04090F] flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-6 max-w-sm w-full">
 
           {/* Cabeçalho ENCIVIL */}
           <div className="flex items-center gap-3 w-full justify-center border-b border-gray-200 pb-5">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 bg-[#001C7D] rounded-xl flex items-center justify-center shrink-0">
               <Fuel className="w-5 h-5 text-white" />
             </div>
             <div>

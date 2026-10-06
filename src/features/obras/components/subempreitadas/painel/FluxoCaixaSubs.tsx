@@ -25,7 +25,7 @@ export function FluxoCaixaSubs({ fluxo }: { fluxo: FluxoCaixaSemana[] }) {
       </p>
       <svg viewBox={`0 0 ${fluxo.length * LARGURA} ${TOPO + ALTURA + 18}`} className="w-full" role="img"
         aria-label={`Fluxo de caixa previsto: ${fmtEuro(totalAprovado)} aprovado e ${fmtEuro(totalEstimado)} estimado em ${fluxo.length} semanas`}>
-        <line x1="0" x2={fluxo.length * LARGURA} y1={TOPO + ALTURA} y2={TOPO + ALTURA} className="stroke-border" strokeWidth="1" />
+        <line x1="0" x2={fluxo.length * LARGURA} y1={TOPO + ALTURA} y2={TOPO + ALTURA} stroke="var(--chart-grid)" strokeWidth="1" />
         {fluxo.map((f, i) => {
           const x = i * LARGURA + 8
           const hA = escala(f.aprovado)
@@ -36,17 +36,17 @@ export function FluxoCaixaSubs({ fluxo }: { fluxo: FluxoCaixaSemana[] }) {
           return (
             <g key={f.semana_inicio}>
               <title>{`Semana de ${fmtData(f.semana_inicio)}: ${fmtEuro(f.aprovado)} aprovado, ${fmtEuro(f.em_aprovacao)} estimado, ${f.n_autos} ${f.n_autos === 1 ? 'auto' : 'autos'}`}</title>
-              {hA > 0 && <rect x={x} y={yA} width={LARGURA - 16} height={hA} rx="2" className="fill-primary" />}
-              {hE > 0 && <rect x={x} y={yE} width={LARGURA - 16} height={hE} rx="2" className="fill-primary/25 stroke-primary" strokeWidth="1" strokeDasharray="3 2" />}
-              {soma > 0 && <text x={x + (LARGURA - 16) / 2} y={yE - 3} textAnchor="middle" className="fill-foreground" fontSize="9">{compacto(soma)}</text>}
-              <text x={x + (LARGURA - 16) / 2} y={TOPO + ALTURA + 12} textAnchor="middle" className="fill-muted-foreground" fontSize="8">{fmtDataCurta(f.semana_inicio)}</text>
+              {hA > 0 && <rect x={x} y={yA} width={LARGURA - 16} height={hA} rx="2" className="fill-chart-1" />}
+              {hE > 0 && <rect x={x} y={yE} width={LARGURA - 16} height={hE} rx="2" className="fill-chart-1/25 stroke-chart-1" strokeWidth="1" strokeDasharray="3 2" />}
+              {soma > 0 && <text x={x + (LARGURA - 16) / 2} y={yE - 3} textAnchor="middle" fill="var(--chart-text)" fontSize="9">{compacto(soma)}</text>}
+              <text x={x + (LARGURA - 16) / 2} y={TOPO + ALTURA + 12} textAnchor="middle" fill="var(--chart-text)" fontSize="8">{fmtDataCurta(f.semana_inicio)}</text>
             </g>
           )
         })}
       </svg>
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground" aria-label="Legenda">
-        <li className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm bg-primary" aria-hidden="true" /> Aprovado (a pagar)</li>
-        <li className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm border border-dashed border-primary bg-primary/25" aria-hidden="true" /> Estimado (em aprovação)</li>
+        <li className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm bg-chart-1" aria-hidden="true" /> Aprovado (a pagar)</li>
+        <li className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm border border-dashed border-chart-1 bg-chart-1/25" aria-hidden="true" /> Estimado (em aprovação)</li>
       </ul>
       <table className="sr-only">
         <caption>Fluxo de caixa semanal previsto</caption>

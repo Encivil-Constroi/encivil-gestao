@@ -39,7 +39,7 @@ const EXPORTS = [
   {
     id:          'materiais' as const,
     icon:        Package,
-    color:       'bg-emerald-500/10 text-emerald-600',
+    color:       'bg-muted text-foreground',
     title:       'Saídas de Materiais',
     description: 'Produtos saídos do armazém com custo unitário e total, organizados por data e obra.',
     prefixo:     'materiais_saidas',
@@ -50,7 +50,7 @@ const EXPORTS = [
   {
     id:          'combustivel' as const,
     icon:        Fuel,
-    color:       'bg-amber-500/10 text-amber-600',
+    color:       'bg-muted text-foreground',
     title:       'Abastecimentos de Combustível',
     description: 'Registos de abastecimento com custo por litro, viatura e obra associada.',
     prefixo:     'combustivel',
@@ -61,7 +61,7 @@ const EXPORTS = [
   {
     id:          'autos' as const,
     icon:        HardHat,
-    color:       'bg-orange-500/10 text-orange-600',
+    color:       'bg-muted text-foreground',
     title:       'Autos de Medição Validados',
     description: 'Todos os autos com estado validado: valor bruto, retenção, valor líquido e estado de pagamento.',
     prefixo:     'autos_medicao_validados',
@@ -72,7 +72,7 @@ const EXPORTS = [
   {
     id:          'pl' as const,
     icon:        BarChart2,
-    color:       'bg-blue-500/10 text-blue-600',
+    color:       'bg-muted text-foreground',
     title:       'P&L Resumo por Obra',
     description: 'Uma linha por obra com orçamento, custos por categoria, margem total e percentagem.',
     prefixo:     'pl_obras',
