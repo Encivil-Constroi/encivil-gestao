@@ -1,0 +1,15 @@
+# Valores públicos por natureza ou placeholders (não dão acesso — a segurança é a RLS)
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Chaves públicas do frontend, placeholders e padrões de deteção dos hooks"
+paths = ['''\.githooks/''']
+regexes = [
+  # Chave publicável do Supabase (client.ts): pública por natureza
+  '''sb_publishable_[A-Za-z0-9_-]+''',
+  # Chave VAPID PÚBLICA de exemplo usada em src/__tests__/lib/push.test.ts (par público, sem chave privada)
+  '''BEl62iUYgUivxIkv69yViEuiBIa[A-Za-z0-9_-]+''',
+  # Placeholders do script Shelly (histórico de supabase/scripts/shelly-polo2.js): valores a substituir, não segredos
+  '''SUBSTITUIR_[A-Z0-9_]+''',
+]

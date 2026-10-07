@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSupabaseError } from '@/app/lib/parseSupabaseError'
+import { parseSupabaseError, mensagemErroFuncao } from '@/app/lib/parseSupabaseError'
 
 describe('parseSupabaseError', () => {
   // ── Erros de rede ────────────────────────────────────────────────────────
@@ -81,5 +81,29 @@ describe('parseSupabaseError', () => {
 
   it('fallback personalizado é retornado para erros desconhecidos sem mensagem', () => {
     expect(parseSupabaseError(42, 'Erro ao guardar')).toBe('Erro ao guardar')
+  })
+})
+
+describe('mensagemErroFuncao', () => {
+  const MSG = 'Demasiados pedidos. Tenta dentro de instantes.'
+  const erroHttp = (corpo: () => Promise<unknown>) =>
+    Object.assign(new Error('Edge Function returned a non-2xx status code'), { context: { json: corpo } })
+
+  it('devolve o erro do corpo (429) já em pt-PT', async () => {
+    expect(await mensagemErroFuncao(erroHttp(async () => ({ erro: MSG })), 'Falhou')).toBe(MSG)
+  })
+
+  it('corpo inválido usa o fallback', async () => {
+    const e = Object.assign(new Error(''), { context: { json: async () => { throw new Error('x') } } })
+    expect(await mensagemErroFuncao(e, 'Falhou')).toBe('Falhou')
+  })
+
+  it('corpo sem erro em texto usa o fallback', async () => {
+    expect(await mensagemErroFuncao(erroHttp(async () => ({ erro: 5 })), 'Falhou'))
+      .toBe('Edge Function returned a non-2xx status code')
+  })
+
+  it('erro de rede devolve a mensagem de rede', async () => {
+    expect(await mensagemErroFuncao(new Error('Failed to fetch'), 'Falhou')).toContain('ligação')
   })
 })

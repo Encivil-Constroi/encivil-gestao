@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { mensagemErroFuncao } from '@/app/lib/parseSupabaseError'
 
 export type { RoleUtilizador } from '../AuthContext'
 import type { RoleUtilizador } from '../AuthContext'
@@ -17,7 +18,7 @@ async function chamarAdmin<T>(action: string, payload?: Record<string, unknown>)
   const { data, error } = await supabase.functions.invoke<T>('admin-utilizadores', {
     body: { action, payload },
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(await mensagemErroFuncao(error, error.message))
   const resp = data as unknown as { erro?: string } & T
   if (resp?.erro) throw new Error(resp.erro)
   return data as T
