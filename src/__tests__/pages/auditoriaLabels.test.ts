@@ -5,7 +5,11 @@ describe('rótulos da auditoria', () => {
   it.each([
     ['colaboradores.insert', 'Criação em colaboradores'],
     ['obras.update', 'Alteração em obras'],
-    ['faturas.delete', 'Eliminação em faturas'],
+    ['faturas_fornecedor.delete', 'Eliminação em faturas de fornecedor'],
+    ['comb_aprovadores.insert', 'Criação em aprovadores de combustível'],
+    ['configuracoes_empresa.update', 'Alteração em configurações da empresa'],
+    ['seguranca_config.update', 'Alteração em configuração de segurança'],
+    ['tabela_desconhecida.update', 'Alteração em tabela_desconhecida'],
     ['mfa_obrigatorio', 'Verificação em dois passos obrigatória'],
     ['role_change', 'Alteração de papel'],
     ['delete_autos', 'Eliminação (autos)'],

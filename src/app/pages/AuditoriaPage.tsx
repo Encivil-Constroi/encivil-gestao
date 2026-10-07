@@ -3,7 +3,6 @@ import { Shield, ChevronLeft, ChevronRight, Download, ChevronDown, ChevronRight 
 import { useAsync } from '../lib/useAsync'
 import { exportarXlsx } from '../lib/exportXlsx'
 import { supabase } from '@/integrations/supabase/client'
-import { auditoriaDb } from '../lib/auditoriaDb'
 import { toast } from 'sonner'
 
 const PAGE_SIZE = 50
@@ -34,6 +33,20 @@ const TABELAS_AUDITADAS = [
   'configuracoes_empresa', 'seguranca_config', 'obras',
 ] as const
 
+const TABELA_LABEL: Record<string, string> = {
+  profiles:              'utilizadores',
+  colaboradores:         'colaboradores',
+  faturas_fornecedor:    'faturas de fornecedor',
+  comb_aprovadores:      'aprovadores de combustível',
+  configuracoes_empresa: 'configurações da empresa',
+  seguranca_config:      'configuração de segurança',
+  obras:                 'obras',
+}
+
+function labelTabela(tabela: string): string {
+  return TABELA_LABEL[tabela] ?? tabela
+}
+
 // Mudanças nestas tabelas mexem em acessos/segurança, seja qual for a operação
 const TABELAS_SENSIVEIS = new Set(['profiles', 'seguranca_config', 'comb_aprovadores'])
 
@@ -50,7 +63,7 @@ function separarAction(action: string): { tabela: string; operacao: string } | n
 
 export function labelAction(action: string): string {
   const generica = separarAction(action)
-  if (generica) return `${OPERACAO_LABEL[generica.operacao]} em ${generica.tabela}`
+  if (generica) return `${OPERACAO_LABEL[generica.operacao]} em ${labelTabela(generica.tabela)}`
   if (action.startsWith('delete_'))  return `Eliminação (${action.slice(7)})`
   switch (action) {
     case 'role_change':              return 'Alteração de papel'
@@ -120,7 +133,7 @@ export function AuditoriaPage() {
       const from = page * PAGE_SIZE
       const to   = from + PAGE_SIZE - 1
 
-      let query = auditoriaDb
+      let query = supabase
         .from('audit_log')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
@@ -129,7 +142,8 @@ export function AuditoriaPage() {
       const start = periodStart(period)
       if (start) query = query.gte('created_at', start)
       if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
-      if (tabela) query = query.eq('tabela', tabela)
+      // Prefixo da action e não a coluna tabela: funciona também com a BD sem a migration 20261008060000
+      if (tabela) query = query.like('action', `${tabela}.%`)
 
       const { data, count, error } = await query
       if (error) throw error
@@ -156,7 +170,7 @@ export function AuditoriaPage() {
   async function handleExport() {
     setExporting(true)
     try {
-      let query = auditoriaDb
+      let query = supabase
         .from('audit_log')
         .select('*')
         .order('created_at', { ascending: false })
@@ -164,7 +178,8 @@ export function AuditoriaPage() {
       const start = periodStart(period)
       if (start) query = query.gte('created_at', start)
       if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
-      if (tabela) query = query.eq('tabela', tabela)
+      // Prefixo da action e não a coluna tabela: funciona também com a BD sem a migration 20261008060000
+      if (tabela) query = query.like('action', `${tabela}.%`)
 
       const { data, error } = await query
       if (error) throw error
@@ -238,7 +253,7 @@ export function AuditoriaPage() {
               className={selectCls}
             >
               <option value="">Todas</option>
-              {TABELAS_AUDITADAS.map(t => <option key={t} value={t}>{t}</option>)}
+              {TABELAS_AUDITADAS.map(t => <option key={t} value={t}>{labelTabela(t)}</option>)}
             </select>
           </div>
           <div className="flex-1">
