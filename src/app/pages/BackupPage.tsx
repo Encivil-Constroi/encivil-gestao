@@ -4,7 +4,7 @@ import {
   Circle, Info, ShieldCheck, AlertTriangle, Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { TABELAS_BACKUP, exportarTabela, type BackupData } from '@/features/backup/backupService'
+import { TABELAS_BACKUP, AVISO_NIF_BACKUP, exportarTabela, type BackupData } from '@/features/backup/backupService'
 import { exportarJson } from '@/app/lib/exportJson'
 
 // ── Tipos de estado por tabela ────────────────────────────────────────────────
@@ -48,9 +48,9 @@ export function BackupPage() {
 
     const tabelas: Record<string, unknown[]> = {}
     let concluidas = 0
-    let erros = 0
+    const falhadas: string[] = []
 
-    for (const { id } of TABELAS_BACKUP) {
+    for (const { id, label } of TABELAS_BACKUP) {
       setEstadoMap(prev => ({ ...prev, [id]: { estado: 'a_exportar' } }))
 
       try {
@@ -61,7 +61,7 @@ export function BackupPage() {
         const mensagem = e instanceof Error ? e.message : 'Erro desconhecido'
         tabelas[id] = []
         setEstadoMap(prev => ({ ...prev, [id]: { estado: 'erro', mensagem } }))
-        erros++
+        falhadas.push(label)
       }
 
       concluidas++
@@ -74,6 +74,8 @@ export function BackupPage() {
       aplicacao:   'ENCIVIL Gestão',
       exportadoEm: agora,
       tabelas,
+      tabelasComErro: falhadas,
+      avisos: [AVISO_NIF_BACKUP],
     }
 
     exportarJson(backup, 'backup_encivil')
@@ -82,13 +84,14 @@ export function BackupPage() {
     setUltimoBackup(agora)
     setExportando(false)
 
-    if (erros === 0) {
+    if (falhadas.length === 0) {
       toast.success('Backup exportado com sucesso!', {
         description: `${total} tabelas · ${Object.values(tabelas).reduce((s, a) => s + a.length, 0).toLocaleString('pt-PT')} registos`,
       })
     } else {
-      toast.warning(`Backup exportado com ${erros} erro${erros > 1 ? 's' : ''}`, {
-        description: 'Verifique as tabelas marcadas a vermelho.',
+      toast.warning(`Backup incompleto: ${falhadas.length} tabela${falhadas.length > 1 ? 's' : ''} com erro`, {
+        description: `Sem dados de: ${falhadas.join(', ')}.`,
+        duration: 15000,
       })
     }
   }
@@ -158,7 +161,7 @@ export function BackupPage() {
             </button>
             <p className="text-xs text-muted-foreground">
               Descarrega um ficheiro <code className="bg-muted px-1 py-0.5 rounded text-[11px]">.json</code> com
-              todas as {total} tabelas. Guarde numa localização segura.
+              todas as {total} tabelas (o NIF dos colaboradores não é incluído). Guarde numa localização segura.
             </p>
           </div>
 

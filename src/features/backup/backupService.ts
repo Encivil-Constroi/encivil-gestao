@@ -82,6 +82,22 @@ export type BackupData = {
   aplicacao:  string
   exportadoEm: string
   tabelas:    Record<string, unknown[]>
+  tabelasComErro?: string[]
+  avisos?:    string[]
+}
+
+// Colunas de colaboradores sem o NIF: a migration 20261008030000 retira o SELECT da tabela e
+// deixa só grants por coluna (sem nif), por isso select('*') falharia para todos.
+// Cópia de SELECT_COLABORADOR sem o join obras(...) — features/backup não pode importar de colaboradores.
+const COLUNAS_COLABORADORES =
+  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at'
+
+const SELECT_POR_TABELA: Record<string, string> = { colaboradores: COLUNAS_COLABORADORES }
+
+export const AVISO_NIF_BACKUP = 'O NIF dos colaboradores não está incluído neste backup (dado protegido na base de dados).'
+
+export function colunasBackup(tabela: string): string {
+  return SELECT_POR_TABELA[tabela] ?? '*'
 }
 
 // Busca todas as linhas de uma tabela com paginação automática.
@@ -95,7 +111,7 @@ export async function exportarTabela(tabela: string): Promise<unknown[]> {
   while (true) {
     const { data, error } = await db
       .from(tabela)
-      .select('*')
+      .select(colunasBackup(tabela))
       .range(from, from + PAGE - 1)
 
     if (error) throw new Error(error.message)
