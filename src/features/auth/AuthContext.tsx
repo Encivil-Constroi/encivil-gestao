@@ -37,10 +37,28 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 // Sair = terminar a sessão no Supabase e apagar o que a app guardou no dispositivo
 async function terminarSessao() {
   try {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) esquecerSessaoGuardada()
+  } catch {
+    esquecerSessaoGuardada()
   } finally {
     await limparDadosLocais()
   }
+}
+
+// Sem rede o supabase-js devolve o erro e NÃO apaga a sessão guardada: num telemóvel
+// partilhado, o próximo a pegar nele voltava a entrar como o anterior. O supabase-js
+// lê a sessão do armazenamento a cada pedido, por isso apagá-la aqui chega.
+const CHAVE_SESSAO = /^sb-.+-auth-token(-code-verifier|-user)?$/
+function esquecerSessaoGuardada() {
+  try {
+    const chaves: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && CHAVE_SESSAO.test(k)) chaves.push(k)
+    }
+    chaves.forEach(k => localStorage.removeItem(k))
+  } catch { /* armazenamento bloqueado: nada guardado */ }
 }
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
@@ -104,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleTimeout = () => {
       if (!sessionRef.current) return
       toast.info('Sessão terminada por inatividade. Inicie sessão de novo.')
-      terminarSessao().catch(() => { /* sem rede: a sessão local expira sozinha; os dados locais já foram limpos */ })
+      void signOut()
     }
 
     const resetTimer = () => {
@@ -130,6 +148,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await terminarSessao()
+    // Com rede o SIGNED_OUT já o faz; sem rede não há evento e o ecrã ficava com a sessão
+    setSession(null)
+    setProfile(null)
+    clearSentryUser()
   }
 
   async function recarregarPerfil() {
