@@ -21,7 +21,7 @@
 | 8 | Migrations | Convenção + deteção de divergência produção × repositório | `supabase/scripts/verificar-migrations.mjs` | Secção 7 |
 | 9 | Rollback | Bloco `-- ROLLBACK` obrigatório nas migrations novas; rollback do site e das funções | fim de cada migration `20261008*`; secção 4 | Teste-guarda de BD |
 | 10 | Controlo de acesso | RLS + `pode_escrever`; **todas** as verificações de papel passam por `auth_role()`; NIF só para admin/gestor/próprio (RPC `colaborador_nif`); INSERT direto em `movimentos_stock` revogado | migrations `20261008000000`, `20261008030000`; `src/features/auth/useRole.ts` | Testes-guarda de BD; `npm test` |
-| 11 | Expiração de sessão | Inatividade 30 min no browser; limpeza de cache de API e `sessionStorage` em cada `SIGNED_OUT`; filas offline (movimentos e picagens) só enviadas por quem as criou. Timebox no servidor: só no Pro (secção 8) | `src/features/auth` (`limparDadosLocais`), `src/features/movimentos/offlineQueue.ts` | Sair e entrar com outro utilizador: a fila do anterior não é enviada |
+| 11 | Expiração de sessão | Inatividade 30 min no browser; em cada `SIGNED_OUT` limpa-se o cache em memória do `useAsync` (`limparCacheMemoria`), o `sessionStorage` e, se existir, o cache `supabase-api` do SW (a rota Workbox é cross-origin e provavelmente nunca o enche; o `caches.delete` é inofensivo); filas offline (movimentos e picagens) só enviadas por quem as criou. Timebox no servidor: só no Pro (secção 8) | `src/features/auth` (`limparDadosLocais`), `src/features/movimentos/offlineQueue.ts` | Sair e entrar com outro utilizador: a fila do anterior não é enviada |
 | 12 | Secrets | Pre-commit local + gitleaks no CI (histórico completo, `.gitleaks.toml`); inventário em doc 13 | `.githooks/`, `.github/workflows/ci.yml` | Job "Segurança" do CI |
 | 13 | CORS | Lista de origens: `app.encivilconstroi.com`, `encivil-gestao.pages.dev` (e previews), `localhost:5173`. Origem diferente recebe 403; sem `Origin` (cron, Shelly, servidor) funciona | `supabase/functions/_shared/cors.ts` | `npm run test:edge` |
 | 14 | Logs | `audit_log` imutável em `profiles`, `colaboradores`, `faturas_fornecedor`, `comb_aprovadores`, `configuracoes_empresa`, `seguranca_config`, `obras`; `eventos_seguranca` imutável, retenção 1 ano | migrations `20261008020000`, `20261008060000`; página Auditoria | Auditoria → separador Eventos de segurança |
@@ -238,3 +238,20 @@ As migrations anteriores a `20261008*` não foram comparadas com a produção: c
 - **WAF, SIEM e pentest externo**: fora do âmbito; recomendável um pentest externo anual quando houver orçamento.
 - **Passkeys/WebAuthn e cifra de coluna**: não implementados (decisão no desenho).
 - **MFA** só é obrigatório para admin e gestor; para os restantes papéis é opcional.
+
+---
+
+## 10. Publicação (checklist por ordem)
+
+1. Fazer commit do WIP em `main` e juntar a branch `seguranca-2026`. Em conflitos em `colaboradoresService`, usar `SELECT_COLABORADOR` (nunca `'*'`, nunca `nif`); depois `grep "from('colaboradores')"`, `npm run typecheck`, `npm test`, `npm run build`.
+2. Push e confirmar o job "Segurança" verde no GitHub CI.
+3. Merge para `main` = deploy do site. Depois: `curl -sI https://app.encivilconstroi.com` (cabeçalhos) e consola sem erros no login, mapa, faturas e `/sw-reset.html`.
+4. Esperar que os telemóveis atualizem a PWA.
+5. Dashboard Supabase → Authentication: registos (signups) desligados; senha com 12+ caracteres, minúsculas, maiúsculas e dígitos; TOTP (enroll + verify) ligado; `secure_password_change` (testar primeiro a alteração de senha com MFA).
+6. SQL Editor, migrations por ordem: `20261008000000` → `010000` → `020000` → `030000` → `050000` → `060000` (não existe `040000`).
+7. `EDGE_FUNCTION_SECRET` igual a `app.edge_function_secret` na BD (senão os e-mails de alertas param).
+8. Deploy das Edge Functions `admin-utilizadores`, `extrair-fatura`, `ler-foto-abastecimento`, `pump-status`, `enviar-resumo-alertas`; depois ver os Logs.
+9. Regenerar os tipos (`npx supabase gen types typescript`) e remover os remendos em `db.ts`.
+10. Segredos do GitHub `SUPABASE_DB_URL` (Session pooler) e `BACKUP_AGE_PUBLIC_KEY`; a chave privada age fica offline; correr "Backup BD" uma vez.
+11. Admins/gestores inscrevem o MFA; só depois um admin com aal2 liga o interruptor de obrigatoriedade.
+12. Preencher a tabela de migrations (§7), decidir o CodeQL e fazer a primeira exportação manual do Storage.

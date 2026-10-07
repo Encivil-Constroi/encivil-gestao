@@ -63,13 +63,13 @@ Enum `role_utilizador`, 7 papéis: `admin` (tudo, eliminar, validar), `gestor` (
   `grep -rn "FUNCTION public.pode_escrever" supabase/migrations`). Módulos válidos: `armazem`, `ferramentas`, `combustivel`,
   `obras`, `subempreitadas`, `frota` (outro valor devolve `false`). Hoje: armazem/ferramentas/combustivel → admin, gestor, armazem ·
   obras → admin, gestor · subempreitadas → admin, gestor, medicoes · frota → admin, gestor, mecanico. **`colaboradores` não passa
-  por `pode_escrever`**: tem policy RLS própria (`auth_role() IN ('admin','gestor')`). Espelho na UI: `src/features/auth/useRole.ts`
+  por `pode_escrever`**: tem policy RLS própria (`auth_role() IN ('admin','gestor')`). Espelho na UI: `src/features/auth/lib/permissoes.ts` (reexportado por `useRole.ts`)
   (`MATRIZ_ESCRITA`) — tem de coincidir com o SQL; um módulo novo exige migration (`CREATE OR REPLACE FUNCTION`) **e** entrada
   em `Modulo`/`MATRIZ_ESCRITA`.
 - Guardas de rota: `AuthGuard`, `RoleGuard require="gestor|admin"`. Esconder um botão **não** protege nada: toda a
   funcionalidade sensível precisa de policy RLS ou RPC com `public.pode_escrever()` / `public.auth_role()`.
 - Papel de utilizador: nunca `UPDATE profiles SET role` (bloqueado por GRANT de coluna, ADR-007); usar a RPC `promover_role()`.
-- Auto-logout por inatividade aos 30 min. Sem MFA (indisponível no plano Supabase atual).
+- Auto-logout por inatividade aos 30 min. MFA TOTP, obrigatório para admin/gestor via `seguranca_config` (ver `docs/22-seguranca-operacao.md` §2).
 
 ## Regras de negócio imutáveis (stock)
 - `produtos.stock_atual` **nunca** se edita diretamente; só por movimentos via RPC `registar_movimento` (atómica, com
