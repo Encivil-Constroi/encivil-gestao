@@ -110,6 +110,10 @@ const { mutate: salvar, loading } = useMutation(salvarFoo, 'Erro ao guardar', { 
 - Migrations: `supabase/migrations/YYYYMMDDHHMMSS_nome.sql`, cronologia estritamente crescente (a última é a de maior timestamp).
   **"Automatically expose new tables" está OFF**: toda tabela/view/sequência/função nova leva `GRANT` explícito
   (`GRANT SELECT, INSERT, UPDATE ON TABLE … TO authenticated; GRANT EXECUTE ON FUNCTION … TO authenticated;`) **e** `ENABLE ROW LEVEL SECURITY` + policies.
+  **Colunas novas em `colaboradores` precisam do seu próprio `GRANT SELECT (coluna)`** (o SELECT global foi revogado por causa do NIF; o NIF só sai pela RPC `colaborador_nif`).
+  Migrations novas são idempotentes e **terminam com um bloco `-- ROLLBACK`** (SQL comentado que desfaz); um teste-guarda impõe-no.
+  **Ordem de publicação: site → migrations → Edge Functions** — o site novo tem de funcionar com a BD antiga (tabela/RPC inexistente ⇒ comportamento de antes).
+  Operação, backups, MFA e recuperação: `docs/22-seguranca-operacao.md`.
 - Policies: usar `public.auth_role()` / `public.pode_escrever('modulo')`; **nunca** `auth.jwt()->>'role'`. Funções `SECURITY DEFINER`
   levam sempre `SET search_path = public`. Funções só de leitura: `STABLE`.
 - **Migrations não são aplicadas por ti em produção**: o utilizador aplica-as à mão no SQL Editor do Dashboard (docs/09-implantacao.md).
