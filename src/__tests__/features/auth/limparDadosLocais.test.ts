@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
+import { useAsync } from '@/app/lib/useAsync'
 import { limparDadosLocais, CACHES_COM_DADOS } from '@/features/auth/lib/limparDadosLocais'
 
 // O localStorage/sessionStorage do ambiente de testes não é fiável; um Map chega
@@ -42,5 +44,20 @@ describe('limparDadosLocais', () => {
     vi.stubGlobal('caches', undefined)
     await expect(limparDadosLocais()).resolves.toBeUndefined()
     vi.stubGlobal('caches', undefined)
+  })
+
+  it('esquece o cache em memória do useAsync (o utilizador seguinte não vê dados do anterior)', async () => {
+    const a = renderHook(() => useAsync(() => Promise.resolve('dados do utilizador A'), [], { cacheKey: 'seg-teste-a' }))
+    await waitFor(() => expect(a.result.current.data).toBe('dados do utilizador A'))
+    a.unmount()
+    const b1 = renderHook(() => useAsync(() => new Promise<string>(() => {}), [], { cacheKey: 'seg-teste-a' }))
+    expect(b1.result.current.data).toBe('dados do utilizador A') // cache servida antes do logout
+    b1.unmount()
+
+    await limparDadosLocais()
+
+    const b2 = renderHook(() => useAsync(() => new Promise<string>(() => {}), [], { cacheKey: 'seg-teste-a' }))
+    expect(b2.result.current.data).toBeNull()
+    b2.unmount()
   })
 })

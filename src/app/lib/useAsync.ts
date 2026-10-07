@@ -24,6 +24,13 @@ export function invalidateCache(...keys: string[]): void {
   for (const ouvinte of [..._ouvintes]) ouvinte(keys)
 }
 
+/** Esquece todo o cache em memória (logout num telemóvel partilhado: o utilizador
+ *  seguinte não pode ver dados do anterior). Não recarrega hooks montados: sem sessão
+ *  só daria erros, e o logout desmonta as páginas. */
+export function limparCacheMemoria(): void {
+  _cache.clear()
+}
+
 /**
  * Generic async data-fetching hook. Runs `asyncFn` whenever `deps` change or
  * `enabled` flips to true. Avoids the loading/error/useCallback/useEffect

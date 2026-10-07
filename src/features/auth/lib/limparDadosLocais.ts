@@ -1,3 +1,5 @@
+import { limparCacheMemoria } from '@/app/lib/useAsync'
+
 // Telemóveis partilhados em obra: ao sair, nada do utilizador anterior pode
 // ficar legível. Os caches de assets ficam (a app tem de arrancar offline);
 // a fila offline fica (é de outro utilizador e só ele a envia — ver offlineQueue).
@@ -7,6 +9,7 @@ export const CACHES_COM_DADOS = ['supabase-api'] as const
 export const CHAVES_LOCAIS_COM_DADOS: readonly string[] = []
 
 export async function limparDadosLocais(): Promise<void> {
+  limparCacheMemoria()
   try {
     sessionStorage.clear()
     CHAVES_LOCAIS_COM_DADOS.forEach(k => localStorage.removeItem(k))
