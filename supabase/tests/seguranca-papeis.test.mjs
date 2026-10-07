@@ -133,16 +133,17 @@ describe('verificações convertidas mantêm o comportamento', () => {
     expect((await ler(semPerfil)).rows).toHaveLength(0)
   })
 
-  it('movimentos_stock: insert direto só para admin e gestor', async () => {
+  // Desde 20261008050000 ninguém insere diretamente (só por registar_movimento);
+  // a policy movimentos_insert_admin_gestor convertida aqui foi removida.
+  it('movimentos_stock: insert direto recusado a todos (stock só pela RPC)', async () => {
     const { rows: [p] } = await db.query(
       `INSERT INTO public.produtos (nome, categoria, unidade) VALUES ('Cimento', 'Materiais', 'saco') RETURNING id`)
     const ins = uid => u(uid, tx => tx.query(
       `INSERT INTO public.movimentos_stock (produto_id, tipo, quantidade, stock_antes, stock_depois, responsavel)
        VALUES ($1, 'entrada', 1, 0, 1, 'Teste')`, [p.id]))
-    await expect(ins(admin)).resolves.toBeTruthy()
-    await expect(ins(gestor)).resolves.toBeTruthy()
-    await expect(ins(armazem)).rejects.toThrow(/row-level security/)
-    await expect(ins(semPerfil)).rejects.toThrow(/row-level security/)
+    for (const uid of [admin, gestor, armazem, semPerfil]) {
+      await expect(ins(uid)).rejects.toThrow(/permission denied/)
+    }
   })
 
   it('arquivar_subempreiteiro: só admin e gestor', async () => {

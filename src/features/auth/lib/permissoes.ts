@@ -1,5 +1,22 @@
 import type { RoleUtilizador } from '../AuthContext'
 
+// Módulos com escrita controlada por papel.
+export type Modulo = 'armazem' | 'ferramentas' | 'combustivel' | 'obras' | 'subempreitadas' | 'colaboradores' | 'frota'
+
+// Fonte única da verdade no frontend — TEM de espelhar public.pode_escrever()
+// e a policy colab_write. A segurança real é a RLS; isto serve só para
+// mostrar/esconder ações na UI. Aqui (sem React nem cliente Supabase) para o
+// teste supabase/tests/permissoes-espelho.test.mjs a comparar com a BD.
+export const MATRIZ_ESCRITA: Record<Modulo, RoleUtilizador[]> = {
+  armazem:        ['admin', 'gestor', 'armazem'],
+  ferramentas:    ['admin', 'gestor', 'armazem'],
+  combustivel:    ['admin', 'gestor', 'armazem'],
+  obras:          ['admin', 'gestor'],
+  subempreitadas: ['admin', 'gestor', 'medicoes'],
+  colaboradores:  ['admin', 'gestor'],
+  frota:          ['admin', 'gestor', 'mecanico'],
+}
+
 // Interruptores da ficha de pessoal. O acesso real continua a ser UM papel
 // (enum role_utilizador, aplicado pela RLS): estas funções traduzem os
 // interruptores para esse papel e de volta, para a UI nunca prometer mais

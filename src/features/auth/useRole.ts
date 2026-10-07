@@ -1,21 +1,8 @@
 import { useAuth } from './AuthContext'
 import type { RoleUtilizador } from './AuthContext'
+import { MATRIZ_ESCRITA, type Modulo } from './lib/permissoes'
 
-// Módulos com escrita controlada por papel.
-export type Modulo = 'armazem' | 'ferramentas' | 'combustivel' | 'obras' | 'subempreitadas' | 'colaboradores' | 'frota'
-
-// Fonte única da verdade no frontend — TEM de espelhar public.pode_escrever()
-// no backend (migration 20260702000004_rbac_permissoes.sql). A segurança real
-// é a RLS; isto serve só para mostrar/esconder ações na UI.
-const MATRIZ_ESCRITA: Record<Modulo, RoleUtilizador[]> = {
-  armazem:        ['admin', 'gestor', 'armazem'],
-  ferramentas:    ['admin', 'gestor', 'armazem'],
-  combustivel:    ['admin', 'gestor', 'armazem'],
-  obras:          ['admin', 'gestor'],
-  subempreitadas: ['admin', 'gestor', 'medicoes'],
-  colaboradores:  ['admin', 'gestor'],
-  frota:          ['admin', 'gestor', 'mecanico'],
-}
+export { MATRIZ_ESCRITA, type Modulo }
 
 export function useRole() {
   const { profile, loading } = useAuth()
