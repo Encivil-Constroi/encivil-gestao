@@ -11,7 +11,7 @@ const q = vi.hoisted(() => {
   return b
 })
 
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: vi.fn() } }))
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: vi.fn(), rpc: vi.fn() } }))
 
 beforeEach(() => {
   vi.mocked(supabase.from).mockReturnValue(q as never)
