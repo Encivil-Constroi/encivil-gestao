@@ -20,6 +20,7 @@ vi.mock('@/integrations/supabase/client', () => ({
       },
       signOut: m.signOut,
     },
+    rpc: vi.fn(),
     from: () => ({ select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) }),
   },
 }))

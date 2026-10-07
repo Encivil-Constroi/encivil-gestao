@@ -4,6 +4,7 @@ import { Lock, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { registarLoginFalhado } from '@/features/auth/services/eventosSegurancaService';
 
 type Mode = 'login' | 'request-reset' | 'reset-sent';
 
@@ -28,6 +29,7 @@ export function LoginPage() {
     setIsLoading(true);
     const { error } = await signIn(email, password);
     if (error) {
+      void registarLoginFalhado(email);
       toast.error('Credenciais inválidas. Verifique o e-mail e a palavra-passe.');
       setIsLoading(false);
       return;

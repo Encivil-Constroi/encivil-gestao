@@ -4,6 +4,7 @@ import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import { useAuth } from '../AuthContext'
 import { listarFatores, verificarCodigo } from '../services/mfaService'
+import { registarEvento } from '../services/eventosSegurancaService'
 
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-center text-2xl tracking-[0.5em] font-mono'
 
@@ -18,7 +19,7 @@ export function MfaDesafio({ onConcluido }: { onConcluido: () => void }) {
     e.preventDefault()
     if (!fator) return
     if ((await verificar(fator.id, codigo)) === true) onConcluido()
-    else setCodigo('')
+    else { setCodigo(''); void registarEvento('mfa_falhado') }
   }
 
   return (

@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client'
 import type { Enums } from '@/integrations/supabase/types'
 import { setSentryUser, clearSentryUser } from '@/app/lib/sentry'
 import { limparDadosLocais } from './lib/limparDadosLocais'
+import { registarEvento } from './services/eventosSegurancaService'
 
 // 'mecanico' (Fase 9, migration 20260929020000) e 'motorista' (abastecimento v2,
 // 20260930000000) ainda não estão nos tipos gerados — saem daqui quando os
@@ -122,6 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    // Aqui e não em SIGNED_IN: o supabase-js volta a emitir SIGNED_IN ao regressar ao separador
+    if (!error) void registarEvento('login_ok')
     return { error: error?.message ?? null }
   }
 

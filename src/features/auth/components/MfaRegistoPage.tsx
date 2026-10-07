@@ -8,6 +8,7 @@ import { fmtData } from '@/app/lib/format'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
 import { useAuth } from '../AuthContext'
 import { useEstadoMfa } from '../hooks/useEstadoMfa'
+import { registarEvento } from '../services/eventosSegurancaService'
 import { iniciarRegisto, listarFatores, mfaObrigatorio, removerFator, verificarCodigo, type RegistoTotp } from '../services/mfaService'
 
 const PAPEIS_OBRIGADOS = new Set(['admin', 'gestor'])
@@ -49,6 +50,7 @@ export function MfaRegistoPage() {
     e.preventDefault()
     if (!registo) return
     if ((await verificar(registo.fatorId, codigo)) !== true) { setCodigo(''); return }
+    void registarEvento('mfa_registado')
     toast.success('Verificação em dois passos ativada.')
     setRegisto(null)
     setCodigo('')
@@ -62,6 +64,7 @@ export function MfaRegistoPage() {
     const ok = (await remover(fator.id)) === true
     setConfirmarRemocao(false)
     if (!ok) return
+    void registarEvento('mfa_removido')
     toast.success('Verificação em dois passos desativada.')
     recarregarFatores()
     recarregar()
