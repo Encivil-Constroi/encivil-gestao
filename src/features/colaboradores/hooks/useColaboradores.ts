@@ -8,6 +8,7 @@ import {
   arquivarColaborador,
   restaurarColaborador,
   listarContasApp,
+  obterNif,
   type NovoColaborador,
   type AtualizarColaborador,
 } from '../services/colaboradoresService'
@@ -71,4 +72,11 @@ export function useContasApp(enabled: boolean) {
   const { data, loading } = useAsync(listarContasApp, [],
     { enabled, errorMsg: 'Erro ao carregar as contas', cacheKey: 'colaboradores-contas', cacheTtl: 60_000 })
   return { contas: data ?? [], loading }
+}
+
+// Sem cacheKey: o NIF é dado pessoal, lê-se fresco a cada abertura da ficha
+export function useNifColaborador(id: string | undefined, enabled: boolean) {
+  const { data, loading } = useAsync(() => obterNif(id!), [id],
+    { enabled: enabled && !!id, errorMsg: 'Erro ao carregar o NIF' })
+  return { nif: data ?? null, loading }
 }

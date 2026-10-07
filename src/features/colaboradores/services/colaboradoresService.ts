@@ -2,14 +2,15 @@ import { supabase } from '@/integrations/supabase/client'
 import { colaboradoresDb } from '../db'
 import type { Colaborador } from '@/app/types'
 
-// Inclui o nome da obra via join para evitar N+1
-const SELECT = '*, obras(id, nome)'
+// Colunas explícitas: authenticated não tem SELECT em nif (20261008030000);
+// o NIF lê-se só com obterNif(). Inclui o nome da obra via join (sem N+1).
+export const SELECT_COLABORADOR =
+  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at, obras(id, nome)'
 
 type ColaboradorRow = {
   id: string
   nome: string
   numero_mecan: string
-  nif: string | null
   cargo: string
   obra_id: string | null
   user_id: string | null
@@ -28,7 +29,6 @@ function toColaborador(row: ColaboradorRow): Colaborador {
     id: row.id,
     nome: row.nome,
     numeroMecan: row.numero_mecan,
-    nif: row.nif ?? undefined,
     cargo: row.cargo,
     obraId: row.obra_id ?? undefined,
     obraNome: row.obras?.nome ?? undefined,
@@ -44,7 +44,7 @@ function toColaborador(row: ColaboradorRow): Colaborador {
 }
 
 export async function listarColaboradores(apenasAtivos = true): Promise<Colaborador[]> {
-  let query = colaboradoresDb.from('colaboradores').select(SELECT).order('nome')
+  let query = colaboradoresDb.from('colaboradores').select(SELECT_COLABORADOR).order('nome')
   if (apenasAtivos) query = query.eq('ativo', true)
   const { data, error } = await query
   if (error) throw error
@@ -54,11 +54,24 @@ export async function listarColaboradores(apenasAtivos = true): Promise<Colabora
 export async function buscarColaborador(id: string): Promise<Colaborador> {
   const { data, error } = await colaboradoresDb
     .from('colaboradores')
-    .select(SELECT)
+    .select(SELECT_COLABORADOR)
     .eq('id', id)
     .single()
   if (error) throw error
   return toColaborador(data as ColaboradorRow)
+}
+
+// Função da BD inexistente: site publicado antes da migration do NIF
+const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
+
+// NIF só para admin, gestor e o próprio (a RPC devolve null aos outros)
+export async function obterNif(id: string): Promise<string | null> {
+  const { data, error } = await colaboradoresDb.rpc('colaborador_nif', { p_id: id })
+  if (!error) return data ?? null
+  if (!RPC_INEXISTENTE.has(error.code)) throw error
+  const antiga = await colaboradoresDb.from('colaboradores').select('nif').eq('id', id).single()
+  if (antiga.error) throw antiga.error
+  return antiga.data.nif ?? null
 }
 
 export type NovoColaborador = {
@@ -95,7 +108,7 @@ export async function criarColaborador(input: NovoColaborador): Promise<Colabora
   const { data, error } = await colaboradoresDb
     .from('colaboradores')
     .insert(linha)
-    .select(SELECT)
+    .select(SELECT_COLABORADOR)
     .single()
   if (error) throw error
   return toColaborador(data as ColaboradorRow)
@@ -137,7 +150,7 @@ export async function atualizarColaborador(id: string, input: AtualizarColaborad
     .from('colaboradores')
     .update(patch)
     .eq('id', id)
-    .select(SELECT)
+    .select(SELECT_COLABORADOR)
     .single()
   if (error) throw error
   return toColaborador(data as ColaboradorRow)

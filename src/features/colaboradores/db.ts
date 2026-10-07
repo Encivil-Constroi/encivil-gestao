@@ -40,7 +40,10 @@ export type ColaboradoresDatabase = {
       obras: { Row: { id: string; nome: string }; Insert: never; Update: never; Relationships: [] }
     }
     Views: { [_ in never]: never }
-    Functions: { [_ in never]: never }
+    Functions: {
+      // 20261008030000: NIF só para admin, gestor e o próprio
+      colaborador_nif: { Args: { p_id: string }; Returns: string | null }
+    }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
   }

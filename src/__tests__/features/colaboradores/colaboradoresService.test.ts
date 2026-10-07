@@ -75,16 +75,11 @@ describe('listarColaboradores', () => {
     })
   })
 
-  it('inclui NIF quando presente', async () => {
+  it('a listagem nunca traz o NIF (só obterNif, 20261008030000)', async () => {
     b.eq.mockResolvedValue({ data: [colaboradorRow], error: null })
     const [c] = await listarColaboradores()
-    expect(c.nif).toBe('123456789')
-  })
-
-  it('mapeia NIF null para undefined', async () => {
-    b.eq.mockResolvedValue({ data: [{ ...colaboradorRow, nif: null }], error: null })
-    const [c] = await listarColaboradores()
     expect(c.nif).toBeUndefined()
+    expect(b.select.mock.calls[0][0]).not.toMatch(/\bnif\b|\*/)
   })
 
   it('aplica filtro ativo=true por defeito', async () => {
