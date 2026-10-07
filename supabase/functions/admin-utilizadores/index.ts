@@ -18,6 +18,9 @@ const APP_URL       = Deno.env.get('APP_URL') ?? 'https://encivil-gestao.pages.d
 type Role = 'admin' | 'gestor' | 'armazem' | 'medicoes' | 'mecanico' | 'motorista' | 'leitura'
 const ROLES_VALIDOS: Role[] = ['admin', 'gestor', 'armazem', 'medicoes', 'mecanico', 'motorista', 'leitura']
 
+// Dígitos, espaços, + e separadores usuais (912-345-678, (+351) 912 345 678)
+export const PADRAO_TELEMOVEL = /^[+0-9 ()-]+$/
+
 const ACOES = ['listar', 'convidar', 'alterarPapel', 'desativar', 'reativar', 'removerMfa'] as const
 
 export function temMfaVerificado(u: { factors?: { status: string }[] | null }): boolean {
@@ -31,7 +34,7 @@ const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
     nome:          { tipo: 'texto', max: 120 },
     role:          { tipo: 'enum', valores: ROLES_VALIDOS, obrigatorio: true },
     colaboradorId: { tipo: 'uuid' },
-    telemovel:     { tipo: 'texto', max: 30, padrao: /^[+0-9 ]+$/ },
+    telemovel:     { tipo: 'texto', max: 30, padrao: PADRAO_TELEMOVEL },
     fotoPath:      { tipo: 'texto', max: 300 },
   },
   alterarPapel: {
