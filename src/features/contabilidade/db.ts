@@ -40,23 +40,19 @@ export type LinhaMapaAssiduidade = {
   faltas_detalhe: FaltaDetalhe[]
 }
 
-export type DadosLaboraisEmbed = {
+// Linha da RPC contabilidade_dados_laborais (migration 20261008080000)
+export type LinhaDadosLaborais = {
+  numero_mecan: string
+  nome: string
+  nif: string | null
+  cargo: string | null
+  ativo: boolean
   niss: string | null
   iban: string | null
   data_admissao: string | null
   tipo_contrato: string | null
   data_fim_contrato: string | null
   categoria_profissional: string | null
-}
-
-export type ColaboradorExportRow = {
-  numero_mecan: string
-  nome: string
-  nif: string | null
-  cargo: string | null
-  ativo: boolean
-  // 1:1 por PK — o PostgREST devolve objeto, mas aceitamos lista por segurança
-  colaboradores_dados_laborais: DadosLaboraisEmbed | DadosLaboraisEmbed[] | null
 }
 
 export type FaturaExportRow = {

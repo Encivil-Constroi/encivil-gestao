@@ -52,7 +52,7 @@ projeto prevalecem sobre as skills.
 - ❌ Não colocar a chave `sb_secret_...` no frontend (Vite) — só `sb_publishable_...` em `VITE_`
 - ❌ Não misturar regra de negócio dentro de componentes visuais
 - ❌ Não criar ecrãs ou funcionalidades fora da fase indicada quando a tarefa é de uma fase específica do plano v3
-- ❌ Não alterar a estrutura da base de dados sem criar uma migration SQL, com `GRANT` explícito (a exposição automática de novas tabelas está desligada — ver `CLAUDE.md`)
+- ❌ Não alterar a estrutura da base de dados sem criar uma migration SQL, com `GRANT` explícito (a exposição automática de novas tabelas está desligada — ver `CLAUDE.md`). Colunas novas em `colaboradores` precisam de `GRANT SELECT (coluna)` próprio; migrations novas terminam com bloco `-- ROLLBACK`; ordem de publicação: site → migrations → Edge Functions (`docs/22-seguranca-operacao.md`)
 - ❌ Não fazer `UPDATE profiles SET role = ...` direto — está bloqueado por GRANT a nível de coluna; usar sempre a RPC `promover_role()`
 - ❌ Não usar `as any` para contornar tipos do Supabase — filtros ficam inline, nunca em helpers genéricos
 - ❌ Não confiar só no frontend (`RoleGuard`, esconder botões) para restringir acesso — a defesa real é RLS/GRANT na DB; toda nova funcionalidade sensível precisa de policy ou RPC com verificação de papel no servidor (`public.pode_escrever()`/`public.auth_role()`)

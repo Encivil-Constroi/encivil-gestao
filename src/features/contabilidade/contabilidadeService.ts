@@ -5,8 +5,7 @@ import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/se
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
 import {
   contabDb,
-  type ColaboradorExportRow,
-  type DadosLaboraisEmbed,
+  type LinhaDadosLaborais,
   type FaturaExportRow,
   type LinhaMapaAssiduidade,
 } from './db'
@@ -299,29 +298,21 @@ const TIPO_CONTRATO: Record<string, string> = {
 }
 
 export async function exportarDadosLaborais(): Promise<ExportRow[]> {
-  const { data, error } = await contabDb
-    .from('colaboradores')
-    .select('numero_mecan, nome, nif, cargo, ativo, colaboradores_dados_laborais(niss, iban, data_admissao, tipo_contrato, data_fim_contrato, categoria_profissional)')
-    .order('nome', { ascending: true })
-  if (error) throw new Error(`Dados laborais: ${error.message}`)
-
-  return ((data as ColaboradorExportRow[] | null) ?? []).map(c => {
-    const emb = c.colaboradores_dados_laborais
-    const dl: DadosLaboraisEmbed | null = Array.isArray(emb) ? (emb[0] ?? null) : emb
-    return {
-      'Nº Mecanográfico':       c.numero_mecan,
-      'Nome':                   c.nome,
-      'NIF':                    c.nif ?? '',
-      'NISS':                   dl?.niss ?? '',
-      'IBAN':                   dl?.iban ?? '',
-      'Cargo':                  c.cargo ?? '',
-      'Categoria Profissional': dl?.categoria_profissional ?? '',
-      'Data Admissão':          fmtData(dl?.data_admissao),
-      'Tipo Contrato':          dl?.tipo_contrato ? (TIPO_CONTRATO[dl.tipo_contrato] ?? dl.tipo_contrato) : '',
-      'Fim Contrato':           fmtData(dl?.data_fim_contrato),
-      'Ativo':                  c.ativo ? 'Sim' : 'Não',
-    }
-  })
+  // RPC: o NIF deixou de ser legível diretamente na tabela (20261008030000)
+  const linhas = await rpcSemTipos<LinhaDadosLaborais[] | null>('contabilidade_dados_laborais')
+  return (linhas ?? []).map(c => ({
+    'Nº Mecanográfico':       c.numero_mecan,
+    'Nome':                   c.nome,
+    'NIF':                    c.nif ?? '',
+    'NISS':                   c.niss ?? '',
+    'IBAN':                   c.iban ?? '',
+    'Cargo':                  c.cargo ?? '',
+    'Categoria Profissional': c.categoria_profissional ?? '',
+    'Data Admissão':          fmtData(c.data_admissao),
+    'Tipo Contrato':          c.tipo_contrato ? (TIPO_CONTRATO[c.tipo_contrato] ?? c.tipo_contrato) : '',
+    'Fim Contrato':           fmtData(c.data_fim_contrato),
+    'Ativo':                  c.ativo ? 'Sim' : 'Não',
+  }))
 }
 
 // ─── 7. Faturas de fornecedor ─────────────────────────────────────────────────

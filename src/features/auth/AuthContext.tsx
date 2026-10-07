@@ -5,14 +5,16 @@ import { supabase } from '@/integrations/supabase/client'
 import type { Enums } from '@/integrations/supabase/types'
 import { setSentryUser, clearSentryUser } from '@/app/lib/sentry'
 import { clearAsyncCache } from '@/app/lib/useAsync'
+import { limparDadosLocais } from './lib/limparDadosLocais'
+import { registarEvento } from './services/eventosSegurancaService'
 
 // 'mecanico' (Fase 9, migration 20260929020000) e 'motorista' (abastecimento v2,
 // 20260930000000) ainda não estão nos tipos gerados — saem daqui quando os
 // tipos forem regenerados (etapa 3 do plano de segurança)
 export type RoleUtilizador = Enums<'role_utilizador'> | 'mecanico' | 'motorista'
 
-// Sem MFA disponível no plano atual, a sessão expira após inatividade —
-// reduz o risco de um telemóvel/laptop desbloqueado ficar logado indefinidamente.
+// Complementa o MFA: limita a exposição de um dispositivo desbloqueado.
+// A sessão expira após inatividade em vez de ficar aberta indefinidamente.
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000 // 30 minutos
 const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'] as const
 
@@ -32,6 +34,33 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+// Sair = terminar a sessão no Supabase e apagar o que a app guardou no dispositivo
+async function terminarSessao() {
+  try {
+    const { error } = await supabase.auth.signOut()
+    if (error) esquecerSessaoGuardada()
+  } catch {
+    esquecerSessaoGuardada()
+  } finally {
+    await limparDadosLocais()
+  }
+}
+
+// Sem rede o supabase-js devolve o erro e NÃO apaga a sessão guardada: num telemóvel
+// partilhado, o próximo a pegar nele voltava a entrar como o anterior. O supabase-js
+// lê a sessão do armazenamento a cada pedido, por isso apagá-la aqui chega.
+const CHAVE_SESSAO = /^sb-.+-auth-token(-code-verifier|-user)?$/
+function esquecerSessaoGuardada() {
+  try {
+    const chaves: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && CHAVE_SESSAO.test(k)) chaves.push(k)
+    }
+    chaves.forEach(k => localStorage.removeItem(k))
+  } catch { /* armazenamento bloqueado: nada guardado */ }
+}
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
@@ -80,6 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         setProfile(null)
         clearSentryUser()
+        // Também cobre sessões terminadas fora do nosso signOut (refresh falhado, outro separador)
+        void limparDadosLocais()
       }
     })
 
@@ -97,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleTimeout = () => {
       if (!sessionRef.current) return
       toast.info('Sessão terminada por inatividade. Inicie sessão de novo.')
-      supabase.auth.signOut()
+      void signOut()
     }
 
     const resetTimer = () => {
@@ -116,11 +147,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    // Aqui e não em SIGNED_IN: o supabase-js volta a emitir SIGNED_IN ao regressar ao separador
+    if (!error) void registarEvento('login_ok')
     return { error: error?.message ?? null }
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await terminarSessao()
+    // Com rede o SIGNED_OUT já o faz; sem rede não há evento e o ecrã ficava com a sessão
+    setSession(null)
+    setProfile(null)
+    clearSentryUser()
   }
 
   async function recarregarPerfil() {

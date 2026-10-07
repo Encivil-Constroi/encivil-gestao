@@ -22,9 +22,10 @@ describe('contaInterna', () => {
     expect(loginDeEmail(`joao@${DOMINIO_CONTA_INTERNA}`)).toBe('joao')
     expect(loginDeEmail('a@b.pt')).toBeNull()
   })
-  it('senhaValida exige 8', () => {
-    expect(senhaValida('1234567')).toBe(false)
-    expect(senhaValida('12345678')).toBe(true)
+  it('senhaValida segue a política (12+, maiúscula, minúscula, algarismo)', () => {
+    expect(senhaValida('Abc12345678')).toBe(false)
+    expect(senhaValida('abc123456789')).toBe(false)
+    expect(senhaValida('Abc123456789')).toBe(true)
   })
   it('paraEmailLogin mantém email e converte utilizador', () => {
     expect(paraEmailLogin(' A@B.pt ')).toBe('a@b.pt')

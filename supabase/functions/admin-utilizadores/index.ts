@@ -6,6 +6,9 @@
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
+import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
+import { validar, type Esquema } from '../_shared/validar.ts'
 import { emailEfetivo, loginDeEmail, senhaValida, SENHA_MIN, traduzErroAuth } from './regras.ts'
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
@@ -13,21 +16,64 @@ const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON_KEY      = Deno.env.get('SUPABASE_ANON_KEY')!
 const APP_URL       = Deno.env.get('APP_URL') ?? 'https://encivil-gestao.pages.dev'
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-
-function ok(data: unknown)    { return new Response(JSON.stringify(data),               { status: 200, headers: JSON_HEADERS }) }
-function err(msg: string, s = 400) { return new Response(JSON.stringify({ erro: msg }), { status: s,   headers: JSON_HEADERS }) }
-
 type Role = 'admin' | 'gestor' | 'armazem' | 'medicoes' | 'mecanico' | 'motorista' | 'leitura'
 const ROLES_VALIDOS: Role[] = ['admin', 'gestor', 'armazem', 'medicoes', 'mecanico', 'motorista', 'leitura']
 
+// Dígitos, espaços, + e separadores usuais (912-345-678, (+351) 912 345 678)
+export const PADRAO_TELEMOVEL = /^[+0-9 ()-]+$/
+
+const ACOES = ['listar', 'convidar', 'criar', 'redefinirSenha', 'alterarPapel', 'desativar', 'reativar', 'removerMfa'] as const
+
+export function temMfaVerificado(u: { factors?: { status: string }[] | null }): boolean {
+  return (u.factors ?? []).some(f => f.status === 'verified')
+}
+
+// A listagem da Admin API (GET /admin/users) não traz `factors`: a fonte é a RPC
+// utilizadores_com_mfa. Sem a RPC (migration por aplicar) usa os `factors`, se vierem.
+export function mfaAtivo(u: { id: string; factors?: { status: string }[] | null }, comMfa: Set<string> | null): boolean {
+  return comMfa ? comMfa.has(u.id) : temMfaVerificado(u)
+}
+
+const ESQUEMA_ACAO: Esquema = { action: { tipo: 'enum', valores: ACOES, obrigatorio: true } }
+const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
+  convidar: {
+    email:         { tipo: 'email', obrigatorio: true },
+    nome:          { tipo: 'texto', max: 120 },
+    role:          { tipo: 'enum', valores: ROLES_VALIDOS, obrigatorio: true },
+    colaboradorId: { tipo: 'uuid' },
+    telemovel:     { tipo: 'texto', max: 30, padrao: PADRAO_TELEMOVEL },
+    fotoPath:      { tipo: 'texto', max: 300 },
+  },
+  criar: {
+    email:         { tipo: 'email' },
+    login:         { tipo: 'texto', max: 60 },
+    senha:         { tipo: 'texto', max: 128, obrigatorio: true },
+    nome:          { tipo: 'texto', max: 120, obrigatorio: true },
+    role:          { tipo: 'enum', valores: ROLES_VALIDOS, obrigatorio: true },
+    colaboradorId: { tipo: 'uuid' },
+    telemovel:     { tipo: 'texto', max: 30, padrao: PADRAO_TELEMOVEL },
+    fotoPath:      { tipo: 'texto', max: 300 },
+  },
+  redefinirSenha: {
+    userId: { tipo: 'uuid', obrigatorio: true },
+    senha:  { tipo: 'texto', max: 128, obrigatorio: true },
+  },
+  alterarPapel: {
+    userId: { tipo: 'uuid', obrigatorio: true },
+    role:   { tipo: 'enum', valores: ROLES_VALIDOS, obrigatorio: true },
+  },
+  desativar:  { userId: { tipo: 'uuid', obrigatorio: true } },
+  reativar:   { userId: { tipo: 'uuid', obrigatorio: true } },
+  removerMfa: { userId: { tipo: 'uuid', obrigatorio: true } },
+}
+
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
+  if (req.method === 'OPTIONS') return respostaPreflight(req)
+  const cors = cabecalhosCors(req)
+  const JSON_HEADERS = { ...cors, 'Content-Type': 'application/json' }
+  const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: JSON_HEADERS })
+  const err = (msg: string, s = 400) => new Response(JSON.stringify({ erro: msg }), { status: s, headers: JSON_HEADERS })
+  if (origemRecusada(req)) return err('Origem não permitida', 403)
   if (req.method !== 'POST')    return err('Method not allowed', 405)
 
   // ── Verificar autenticação ────────────────────────────────────────────
@@ -46,7 +92,21 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const { action, payload } = await req.json().catch(() => ({}))
+  const { data: dadosUser } = await userClient.auth.getUser(jwt)
+  if (!dadosUser?.user) return err('Sessão inválida', 401)
+  if (!await dentroDoLimite(admin, `admin-utilizadores:${dadosUser.user.id}`, 600, 60)) return respostaLimite(cors, 600)
+
+  const corpo = await req.json().catch(() => null)
+  const vAcao = validar(ESQUEMA_ACAO, corpo)
+  if (!vAcao.ok) return err(vAcao.erro)
+  const action = vAcao.valor.action as typeof ACOES[number]
+  const esquemaPayload = ESQUEMAS_PAYLOAD[action]
+  let payload: Record<string, unknown> = {}
+  if (esquemaPayload) {
+    const vPayload = validar(esquemaPayload, (corpo as { payload?: unknown }).payload)
+    if (!vPayload.ok) return err(vPayload.erro)
+    payload = vPayload.valor
+  }
 
   // ── Listar utilizadores ───────────────────────────────────────────────
   if (action === 'listar') {
@@ -55,6 +115,10 @@ Deno.serve(async (req) => {
 
     const { data: profiles, error: pErr } = await admin.from('profiles').select('id, nome, role')
     if (pErr) return err(pErr.message, 500)
+
+    const { data: idsMfa, error: mfaErr } = await admin.rpc('utilizadores_com_mfa')
+    if (mfaErr) console.warn('[admin-utilizadores] utilizadores_com_mfa indisponível:', mfaErr.message)
+    const comMfa = mfaErr ? null : new Set((idsMfa ?? []) as string[])
 
     const profileMap = new Map((profiles ?? []).map((p: { id: string; nome: string; role: string }) => [p.id, p]))
 
@@ -71,6 +135,7 @@ Deno.serve(async (req) => {
         semEmail:   loginDeEmail(u.email ?? '') !== null,
         ultimoLogin: u.last_sign_in_at ?? null,
         criadoEm:   u.created_at,
+        mfa:        mfaAtivo(u, comMfa),
       }
     })
 
@@ -79,10 +144,10 @@ Deno.serve(async (req) => {
 
   // ── Convidar utilizador ───────────────────────────────────────────────
   if (action === 'convidar') {
-    const { email, nome, role, colaboradorId, telemovel, fotoPath } = payload ?? {}
-    if (!email || typeof email !== 'string') return err('Email obrigatório')
-    if (!nome  || typeof nome  !== 'string') return err('Nome obrigatório')
-    if (!ROLES_VALIDOS.includes(role))       return err('Papel inválido')
+    const { email, nome, role, colaboradorId, telemovel, fotoPath } = payload as {
+      email: string; nome?: string; role: Role; colaboradorId?: string; telemovel?: string; fotoPath?: string
+    }
+    if (!nome) return err('Nome obrigatório')
 
     const { data, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
       data:       { nome },
@@ -113,10 +178,12 @@ Deno.serve(async (req) => {
 
   // ── Criar utilizador com senha (email opcional) ───────────────────────
   if (action === 'criar') {
-    const { email, login, senha, nome, role, colaboradorId, telemovel, fotoPath } = payload ?? {}
-    if (!nome || typeof nome !== 'string' || !nome.trim()) return err('Nome obrigatório')
-    if (!ROLES_VALIDOS.includes(role)) return err('Papel inválido')
-    if (!senhaValida(senha)) return err(`A senha tem de ter pelo menos ${SENHA_MIN} caracteres`)
+    const { email, login, senha, nome, role, colaboradorId, telemovel, fotoPath } = payload as {
+      email?: string; login?: string; senha: string; nome: string; role: Role
+      colaboradorId?: string; telemovel?: string; fotoPath?: string
+    }
+    if (!nome.trim()) return err('Nome obrigatório')
+    if (!senhaValida(senha)) return err(`A palavra-passe tem de ter pelo menos ${SENHA_MIN} caracteres, uma maiúscula, uma minúscula e um algarismo.`)
     const emailFinal = emailEfetivo(typeof email === 'string' ? email : '', typeof login === 'string' ? login : '')
     if (!emailFinal) return err('Indique um email válido ou um utilizador (3 a 40 letras, números, ponto, hífen)')
 
@@ -151,9 +218,8 @@ Deno.serve(async (req) => {
 
   // ── Redefinir senha ───────────────────────────────────────────────────
   if (action === 'redefinirSenha') {
-    const { userId, senha } = payload ?? {}
-    if (!userId) return err('userId obrigatório')
-    if (!senhaValida(senha)) return err(`A senha tem de ter pelo menos ${SENHA_MIN} caracteres`)
+    const { userId, senha } = payload as { userId: string; senha: string }
+    if (!senhaValida(senha)) return err(`A palavra-passe tem de ter pelo menos ${SENHA_MIN} caracteres, uma maiúscula, uma minúscula e um algarismo.`)
     const { error: sErr } = await admin.auth.admin.updateUserById(userId, { password: senha })
     if (sErr) return err(traduzErroAuth(sErr.message), 500)
     return ok({ sucesso: true })
@@ -161,9 +227,7 @@ Deno.serve(async (req) => {
 
   // ── Alterar papel ─────────────────────────────────────────────────────
   if (action === 'alterarPapel') {
-    const { userId, role } = payload ?? {}
-    if (!userId) return err('userId obrigatório')
-    if (!ROLES_VALIDOS.includes(role)) return err('Papel inválido')
+    const { userId, role } = payload as { userId: string; role: Role }
 
     const { error: uErr } = await admin.from('profiles').update({ role }).eq('id', userId)
     if (uErr) return err(uErr.message, 500)
@@ -172,8 +236,7 @@ Deno.serve(async (req) => {
 
   // ── Desativar (banir) ─────────────────────────────────────────────────
   if (action === 'desativar') {
-    const { userId } = payload ?? {}
-    if (!userId) return err('userId obrigatório')
+    const { userId } = payload as { userId: string }
 
     // Verificar que não é o próprio admin que se está a banir
     const { data: caller } = await userClient.auth.getUser()
@@ -188,14 +251,30 @@ Deno.serve(async (req) => {
 
   // ── Reativar ──────────────────────────────────────────────────────────
   if (action === 'reativar') {
-    const { userId } = payload ?? {}
-    if (!userId) return err('userId obrigatório')
+    const { userId } = payload as { userId: string }
 
     const { error: rErr } = await admin.auth.admin.updateUserById(userId, {
       ban_duration: 'none',
     })
     if (rErr) return err(rErr.message, 500)
     return ok({ sucesso: true })
+  }
+
+  // ── Remover MFA (perda do telemóvel) ──────────────────────────────────
+  if (action === 'removerMfa') {
+    const { userId } = payload as { userId: string }
+    const { data: fatores, error: lErr } = await admin.auth.admin.mfa.listFactors({ userId })
+    if (lErr) return err(lErr.message, 500)
+    const removidos = fatores?.factors?.length ?? 0
+    for (const f of fatores?.factors ?? []) {
+      const { error: dErr } = await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId })
+      if (dErr) return err(dErr.message, 500)
+    }
+    // Evento de segurança: se a migration ainda não existir, não bloqueia a remoção
+    await admin.rpc('_registar_evento', {
+      p_tipo: 'mfa_removido_admin', p_utilizador: userId, p_detalhe: { removidos },
+    }).then(() => {}, () => {})
+    return ok({ removidos })
   }
 
   return err('Ação desconhecida')

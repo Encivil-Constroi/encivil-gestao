@@ -34,7 +34,12 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 - **Função:** guarda todo o código-fonte e o histórico de alterações; corre
   os testes automáticos (`.github/workflows/ci.yml`) e um code review
   automático em cada Pull Request (`pr-review.yml`)
-- **Segredo usado:** `ANTHROPIC_API_KEY` (Settings → Secrets → Actions) — para o code review automático
+- **Segredos usados** (Settings → Secrets and variables → Actions):
+  - `ANTHROPIC_API_KEY` — code review automático
+  - `SUPABASE_DB_URL` — ligação à BD para o backup noturno; tem de ser o URL do **Session pooler** (Dashboard → Connect; IPv4, modo sessão), com a password da BD
+  - `BACKUP_AGE_PUBLIC_KEY` — chave **pública** `age` que cifra o backup; a chave privada fica no gestor de passwords e no envelope da Direção, nunca no GitHub
+- **Backup noturno:** `.github/workflows/backup-bd.yml` (~03:17 Lisboa; artefactos cifrados 30 dias). Procedimentos: `docs/22-seguranca-operacao.md` §3
+- **CI de segurança:** job "Segurança" (`npm audit` high em produção + gitleaks) e Dependabot semanal
 - **Titulares/acesso hoje:** A CONFIRMAR — quem é owner da organização, quem tem acesso de escrita
 - **Custo:** A CONFIRMAR — plano gratuito cobre esta escala; confirmar se há alguma subscrição paga associada
 - **2FA:** A CONFIRMAR
@@ -70,15 +75,15 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
   - (notificações imediatas do abastecimento: idem — segredo em
     `privado.segredos`, enviado pelo trigger do banco à `notificar-abastecimento`;
     ver migration `20260930010000`)
-  - `EDGE_FUNCTION_SECRET` — chamadas entre funções
+  - `EDGE_FUNCTION_SECRET` — chamadas entre funções. **Obrigatório** para os alertas por e-mail: `enviar-resumo-alertas` recusa tudo (falha fechada) se não existir, e o valor tem de ser igual ao `app.edge_function_secret` da BD
   - URL do projeto, chave anónima e a chave de papel de serviço — geridas automaticamente pelo próprio Supabase, não precisam de configuração manual
 - **Acesso ao CLI:** **ainda não configurado** com a conta da organização —
   todas as migrations são aplicadas manualmente no SQL Editor do Dashboard, o
   que já causou divergências entre produção e o repositório (ver Etapa 3 de
   `docs/plano-seguranca-desempenho.md`)
-- **Backup do banco de dados:** **nunca foi feito** — ver §5
+- **Backup do banco de dados:** automático e noturno por GitHub Actions desde a entrega "Segurança 2026" (workflow `backup-bd.yml`), mas só funciona depois de criados os secrets do GitHub (ver "GitHub" acima) — ver §5 e `docs/22-seguranca-operacao.md`
 - **Titulares/acesso hoje:** A CONFIRMAR
-- **Plano:** A CONFIRMAR se é Pro (o Free não faz backup automático nem MFA/TOTP para os utilizadores da app)
+- **Plano:** A CONFIRMAR se é Pro. O desenho de segurança assume Free (RPO 24 h via backup noturno; TOTP funciona no Free). O Pro acrescenta backups diários, PITR, senhas vazadas e timebox de sessão (`docs/22-seguranca-operacao.md` §8)
 - **Custo:** A CONFIRMAR
 - **2FA na conta Supabase (não confundir com MFA dos utilizadores finais):** A CONFIRMAR
 
@@ -166,7 +171,7 @@ Origem: `docs/11-transferencia-titularidade.md` (checklist completo lá).
 | Item | Estado |
 |---|---|
 | Backup do código (GitHub, histórico completo) | ✅ |
-| Backup da base de dados | ❌ Nunca foi feito — depende do login do Supabase CLI com a conta da organização |
+| Backup da base de dados | 🟡 Automático (GitHub Actions, noturno, cifrado, com restauro de teste) — fica ✅ quando os secrets `SUPABASE_DB_URL` e `BACKUP_AGE_PUBLIC_KEY` existirem e a primeira execução passar. Não cobre contas de `auth.users` nem ficheiros do Storage (exportação manual trimestral) |
 | Exportação manual de tabelas de negócio (`/backup` no sistema, admin) | 🟡 Existe, mas tinha um erro (tabela `comb_viaturas` não existe — a corrigir) e não cobre todas as tabelas |
 | 2FA nas contas novas | ❌ |
 | Gestor de passwords partilhado + envelope de emergência para a Direção | ❌ |

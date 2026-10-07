@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { mensagemErroFuncao } from '@/app/lib/parseSupabaseError'
 
 export type { RoleUtilizador } from '../AuthContext'
 import type { RoleUtilizador } from '../AuthContext'
@@ -13,24 +14,14 @@ export interface Utilizador {
   criadoEm: string
   login: string | null
   semEmail: boolean
-}
-
-async function mensagemErro(error: { message: string; context?: unknown }): Promise<string> {
-  const ctx = error.context
-  if (ctx instanceof Response) {
-    try {
-      const corpo = (await ctx.clone().json()) as { erro?: string }
-      if (corpo?.erro) return corpo.erro
-    } catch { /* corpo não-JSON */ }
-  }
-  return error.message.includes('non-2xx') ? 'Erro no servidor de contas. Tente novamente.' : error.message
+  mfa: boolean
 }
 
 async function chamarAdmin<T>(action: string, payload?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>('admin-utilizadores', {
     body: { action, payload },
   })
-  if (error) throw new Error(await mensagemErro(error))
+  if (error) throw new Error(await mensagemErroFuncao(error, error.message))
   const resp = data as unknown as { erro?: string } & T
   if (resp?.erro) throw new Error(resp.erro)
   return data as T
@@ -56,6 +47,11 @@ export async function desativarUtilizador(userId: string): Promise<void> {
 
 export async function reativarUtilizador(userId: string): Promise<void> {
   await chamarAdmin('reativar', { userId })
+}
+
+export async function removerMfaUtilizador(userId: string): Promise<true> {
+  await chamarAdmin('removerMfa', { userId })
+  return true
 }
 
 export type NovoUtilizador = {

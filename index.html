@@ -9,19 +9,8 @@
     <meta name="description" content="Sistema interno de gestão da ENCIVIL — armazém, obras, ferramentas e mais" />
     <meta name="robots" content="noindex, nofollow" />
 
-    <!-- Anti-FOUC: aplica .dark/.light no <html> antes da primeira renderização.
-         Sem isto o browser mostra um flash do tema claro antes do React hidratação. -->
-    <script>
-      (function () {
-        try {
-          var t = localStorage.getItem('encivil-theme')
-          if (t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches))
-            document.documentElement.classList.add('dark')
-          else if (t === 'light')
-            document.documentElement.classList.add('light')
-        } catch (e) {}
-      })()
-    </script>
+    <!-- Anti-FOUC: aplica .dark/.light antes da primeira renderização (síncrono, de propósito) -->
+    <script src="/tema-inicial.js"></script>
 
     <!-- Tema -->
     <meta name="theme-color" content="#04090F" />

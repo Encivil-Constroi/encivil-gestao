@@ -18,9 +18,12 @@ Deno.test('loginDeEmail', () => {
   assertEquals(loginDeEmail(`joao@${DOMINIO_CONTA_INTERNA}`), 'joao')
   assertEquals(loginDeEmail('a@b.pt'), null)
 })
-Deno.test('senhaValida exige 8', () => {
-  assertEquals(senhaValida('1234567'), false)
-  assertEquals(senhaValida('12345678'), true)
+Deno.test('senhaValida segue a política do Supabase (12+, maiúscula, minúscula, algarismo)', () => {
+  assertEquals(senhaValida('Abc12345678'), false)
+  assertEquals(senhaValida('abc123456789'), false)
+  assertEquals(senhaValida('ABC123456789'), false)
+  assertEquals(senhaValida('Abcdefghijkl'), false)
+  assertEquals(senhaValida('Abc123456789'), true)
 })
 Deno.test('traduzErroAuth mapeia duplicado e senha fraca', () => {
   assertEquals(traduzErroAuth('User already registered'), 'Este email/utilizador já está registado no sistema.')

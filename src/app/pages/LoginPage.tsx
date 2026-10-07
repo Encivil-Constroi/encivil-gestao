@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { paraEmailLogin, loginDeEmail } from '@/features/auth/lib/contaInterna';
+import { registarLoginFalhado } from '@/features/auth/services/eventosSegurancaService';
 
 type Mode = 'login' | 'request-reset' | 'reset-sent';
 
@@ -29,6 +30,7 @@ export function LoginPage() {
     setIsLoading(true);
     const { error } = await signIn(paraEmailLogin(email), password);
     if (error) {
+      void registarLoginFalhado(paraEmailLogin(email));
       toast.error('Credenciais inválidas. Verifique o e-mail e a palavra-passe.');
       setIsLoading(false);
       return;

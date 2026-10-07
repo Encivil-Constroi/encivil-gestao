@@ -14,21 +14,21 @@ const base: PedidoConta = {
 }
 const util = {
   id: 'u1', email: 'rui@teste.pt', nome: 'Rui', role: 'leitura' as const, ativo: true,
-  ultimoLogin: null, criadoEm: '', login: null, semEmail: false,
+  ultimoLogin: null, criadoEm: '', login: null, semEmail: false, mfa: false,
 }
 
 beforeEach(() => { Object.values(m).forEach(f => f.mockClear()) })
 
 describe('sincronizarConta', () => {
   it('sem conta, com email e senha: cria a conta e liga a ficha', async () => {
-    expect(await sincronizarConta({ ...base, senha: 'abcdefgh' })).toBeNull()
+    expect(await sincronizarConta({ ...base, senha: 'Abcdefgh1234' })).toBeNull()
     expect(m.criarUtilizador).toHaveBeenCalledWith({
-      nome: 'Rui', role: 'armazem', senha: 'abcdefgh', email: 'rui@teste.pt', login: undefined,
+      nome: 'Rui', role: 'armazem', senha: 'Abcdefgh1234', email: 'rui@teste.pt', login: undefined,
       colaboradorId: 'c1', telemovel: '912 345 678', fotoPath: undefined,
     })
   })
   it('com login e senha (sem email): cria com colaboradorId', async () => {
-    expect(await sincronizarConta({ ...base, email: '', login: 'rui.silva', senha: 'abcdefgh' })).toBeNull()
+    expect(await sincronizarConta({ ...base, email: '', login: 'rui.silva', senha: 'Abcdefgh1234' })).toBeNull()
     expect(m.criarUtilizador).toHaveBeenCalledWith(expect.objectContaining({ login: 'rui.silva', email: undefined, colaboradorId: 'c1' }))
   })
   it('sem conta e conta desligada: não faz nada', async () => {
@@ -36,7 +36,7 @@ describe('sincronizarConta', () => {
     expect(m.criarUtilizador).not.toHaveBeenCalled()
   })
   it('sem email nem login avisa em vez de falhar', async () => {
-    expect(await sincronizarConta({ ...base, email: ' ', senha: 'abcdefgh' }))
+    expect(await sincronizarConta({ ...base, email: ' ', senha: 'Abcdefgh1234' }))
       .toBe('Ficha guardada, mas a conta não foi criada: indique email ou utilizador e uma senha.')
     expect(m.criarUtilizador).not.toHaveBeenCalled()
   })
@@ -55,6 +55,6 @@ describe('sincronizarConta', () => {
   })
   it('erro da Edge Function vira aviso (a ficha já foi guardada)', async () => {
     m.criarUtilizador.mockRejectedValueOnce(new Error('Acesso negado'))
-    expect(await sincronizarConta({ ...base, senha: 'abcdefgh' })).toMatch(/Ficha guardada.*Acesso negado/)
+    expect(await sincronizarConta({ ...base, senha: 'Abcdefgh1234' })).toMatch(/Ficha guardada.*Acesso negado/)
   })
 })

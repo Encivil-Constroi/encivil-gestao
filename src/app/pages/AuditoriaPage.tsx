@@ -4,6 +4,7 @@ import { useAsync } from '../lib/useAsync'
 import { exportarXlsx } from '../lib/exportXlsx'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { EventosSegurancaPainel } from './auditoria/EventosSegurancaPainel'
 
 const PAGE_SIZE = 50
 
@@ -27,18 +28,60 @@ const PERIOD_OPTS: { value: PeriodFilter; label: string }[] = [
   { value: 'mes',    label: 'Este mês' },
 ]
 
-function labelAction(action: string): string {
+// Tabelas com o trigger auditar_alteracao (20261008060000_seguranca_auditoria.sql)
+const TABELAS_AUDITADAS = [
+  'profiles', 'colaboradores', 'faturas_fornecedor', 'comb_aprovadores',
+  'configuracoes_empresa', 'seguranca_config', 'obras',
+] as const
+
+const TABELA_LABEL: Record<string, string> = {
+  profiles:              'utilizadores',
+  colaboradores:         'colaboradores',
+  faturas_fornecedor:    'faturas de fornecedor',
+  comb_aprovadores:      'aprovadores de combustível',
+  configuracoes_empresa: 'configurações da empresa',
+  seguranca_config:      'configuração de segurança',
+  obras:                 'obras',
+}
+
+function labelTabela(tabela: string): string {
+  return TABELA_LABEL[tabela] ?? tabela
+}
+
+// Mudanças nestas tabelas mexem em acessos/segurança, seja qual for a operação
+const TABELAS_SENSIVEIS = new Set(['profiles', 'seguranca_config', 'comb_aprovadores'])
+
+const OPERACAO_LABEL: Record<string, string> = {
+  insert: 'Criação',
+  update: 'Alteração',
+  delete: 'Eliminação',
+}
+
+function separarAction(action: string): { tabela: string; operacao: string } | null {
+  const m = /^([a-z0-9_]+)\.(insert|update|delete)$/.exec(action)
+  return m ? { tabela: m[1], operacao: m[2] } : null
+}
+
+export function labelAction(action: string): string {
+  const generica = separarAction(action)
+  if (generica) return `${OPERACAO_LABEL[generica.operacao]} em ${labelTabela(generica.tabela)}`
   if (action.startsWith('delete_'))  return `Eliminação (${action.slice(7)})`
   switch (action) {
     case 'role_change':              return 'Alteração de papel'
+    case 'mfa_obrigatorio':          return 'Verificação em dois passos obrigatória'
     case 'validar_subempreiteiro':   return 'Validação subempreiteiro'
     case 'validar_auto':             return 'Validação auto'
     default: return action
   }
 }
 
-function severidadeAction(action: string): 'high' | 'medium' | 'low' {
-  if (action === 'role_change' || action.startsWith('delete_')) return 'high'
+export function severidadeAction(action: string): 'high' | 'medium' | 'low' {
+  const generica = separarAction(action)
+  if (generica) {
+    if (generica.operacao === 'delete' || TABELAS_SENSIVEIS.has(generica.tabela)) return 'high'
+    return 'medium'
+  }
+  if (action === 'role_change' || action === 'mfa_obrigatorio' || action.startsWith('delete_')) return 'high'
   if (action.startsWith('validar_')) return 'medium'
   return 'low'
 }
@@ -62,10 +105,27 @@ function periodStart(period: PeriodFilter): string | null {
   return null
 }
 
+type Separador = 'registos' | 'seguranca'
+
 export function AuditoriaPage() {
+  const [separador, setSeparador] = useState<Separador>('registos')
+  const tabCls = (ativo: boolean) => `px-4 py-2 text-sm font-medium rounded-xl transition-colors ${ativo ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`
+  return (
+    <div className="space-y-4">
+      <div role="tablist" aria-label="Auditoria" className="flex gap-2 no-print">
+        <button type="button" role="tab" aria-selected={separador === 'registos'} className={tabCls(separador === 'registos')} onClick={() => setSeparador('registos')}>Registos</button>
+        <button type="button" role="tab" aria-selected={separador === 'seguranca'} className={tabCls(separador === 'seguranca')} onClick={() => setSeparador('seguranca')}>Eventos de segurança</button>
+      </div>
+      {separador === 'registos' ? <RegistosAuditoria /> : <EventosSegurancaPainel />}
+    </div>
+  )
+}
+
+function RegistosAuditoria() {
   const [page,         setPage]         = useState(0)
   const [period,       setPeriod]       = useState<PeriodFilter>('todos')
   const [actionFilter, setActionFilter] = useState('')
+  const [tabela,       setTabela]       = useState('')
   const [expanded,     setExpanded]     = useState<Set<string>>(new Set())
   const [exporting,    setExporting]    = useState(false)
 
@@ -83,7 +143,7 @@ export function AuditoriaPage() {
     return m
   }, [profiles])
 
-  const deps = [page, period, actionFilter] as const
+  const deps = [page, period, actionFilter, tabela] as const
 
   const { data: result, loading } = useAsync(
     async () => {
@@ -99,6 +159,8 @@ export function AuditoriaPage() {
       const start = periodStart(period)
       if (start) query = query.gte('created_at', start)
       if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
+      // Prefixo da action e não a coluna tabela: funciona também com a BD sem a migration 20261008060000
+      if (tabela) query = query.like('action', `${tabela}.%`)
 
       const { data, count, error } = await query
       if (error) throw error
@@ -112,7 +174,7 @@ export function AuditoriaPage() {
   const totalCount = result?.count ?? 0
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
-  const hasFilter = period !== 'todos' || actionFilter.trim() !== ''
+  const hasFilter = period !== 'todos' || actionFilter.trim() !== '' || tabela !== ''
 
   function toggleExpand(id: string) {
     setExpanded(prev => {
@@ -133,6 +195,8 @@ export function AuditoriaPage() {
       const start = periodStart(period)
       if (start) query = query.gte('created_at', start)
       if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
+      // Prefixo da action e não a coluna tabela: funciona também com a BD sem a migration 20261008060000
+      if (tabela) query = query.like('action', `${tabela}.%`)
 
       const { data, error } = await query
       if (error) throw error
@@ -198,6 +262,17 @@ export function AuditoriaPage() {
               {PERIOD_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Tabela</label>
+            <select
+              value={tabela}
+              onChange={e => { setTabela(e.target.value); setPage(0) }}
+              className={selectCls}
+            >
+              <option value="">Todas</option>
+              {TABELAS_AUDITADAS.map(t => <option key={t} value={t}>{labelTabela(t)}</option>)}
+            </select>
+          </div>
           <div className="flex-1">
             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Acção</label>
             <input
@@ -211,7 +286,7 @@ export function AuditoriaPage() {
           {hasFilter && (
             <div className="flex items-end">
               <button
-                onClick={() => { setPeriod('todos'); setActionFilter(''); setPage(0) }}
+                onClick={() => { setPeriod('todos'); setActionFilter(''); setTabela(''); setPage(0) }}
                 className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-accent transition-colors"
               >
                 Limpar

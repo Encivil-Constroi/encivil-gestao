@@ -1,6 +1,7 @@
 // Importação dinâmica — xlsx só carrega quando o utilizador clica em exportar,
 // sem impacto no bundle inicial.
 import type * as XLSXType from 'xlsx'
+import { neutralizarFormula } from './neutralizarFormula'
 
 // Colunas cujo nome sugere valor monetário → formato "€ 1.234,56"
 function ehColunaMonetaria(chave: string): boolean {
@@ -25,7 +26,10 @@ type Linhas = Record<string, unknown>[]
 // Constrói o worksheet com larguras, cabeçalho congelado e formato monetário.
 function construirFolha(XLSX: typeof XLSXType, rows: Linhas): XLSXType.WorkSheet {
   const headers = Object.keys(rows[0])
-  const ws = XLSX.utils.json_to_sheet(rows)
+  // Neutraliza fórmulas (=, +, -, @) antes de escrever as células
+  const seguras = rows.map(r =>
+    Object.fromEntries(Object.entries(r).map(([k, v]) => [k, neutralizarFormula(v)])))
+  const ws = XLSX.utils.json_to_sheet(seguras)
 
   // Largura automática de cada coluna (máximo entre cabeçalho e conteúdo, cap 55)
   ws['!cols'] = headers.map(h => ({
@@ -45,7 +49,7 @@ function construirFolha(XLSX: typeof XLSXType, rows: Linhas): XLSXType.WorkSheet
     for (let row = range.s.r + 1; row <= range.e.r; row++) {
       const addr = XLSX.utils.encode_cell({ r: row, c: colIdx })
       const cell = ws[addr]
-      if (cell?.t === 'n') cell.z = '"€" #,##0.00'
+      if (cell?.t === 'n') cell.z = '"€" #,##0.00'
     }
   })
   return ws

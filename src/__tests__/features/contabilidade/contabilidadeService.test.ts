@@ -440,14 +440,15 @@ describe('exportarFaltas', () => {
 })
 
 describe('exportarDadosLaborais', () => {
-  it('embebe os dados laborais (objeto ou lista) e traduz o contrato', async () => {
-    mockData = [
+  it('usa a RPC (o NIF não se lê da tabela) e traduz o contrato', async () => {
+    ;(rpcSemTipos as ReturnType<typeof vi.fn>).mockResolvedValue([
       { numero_mecan: '1', nome: 'Ana', nif: '1', cargo: 'Eng.', ativo: true,
-        colaboradores_dados_laborais: { niss: '11', iban: 'PT50', data_admissao: '2025-01-02', tipo_contrato: 'SEM_TERMO', data_fim_contrato: null, categoria_profissional: 'Técnico' } },
-      { numero_mecan: '2', nome: 'Rui', nif: null, cargo: 'Ajudante', ativo: false, colaboradores_dados_laborais: null },
-    ]
+        niss: '11', iban: 'PT50', data_admissao: '2025-01-02', tipo_contrato: 'SEM_TERMO', data_fim_contrato: null, categoria_profissional: 'Técnico' },
+      { numero_mecan: '2', nome: 'Rui', nif: null, cargo: 'Ajudante', ativo: false,
+        niss: null, iban: null, data_admissao: null, tipo_contrato: null, data_fim_contrato: null, categoria_profissional: null },
+    ])
     const rows = await exportarDadosLaborais()
-    expect(builder.select).toHaveBeenCalledWith(expect.stringContaining('colaboradores_dados_laborais('))
+    expect(rpcSemTipos).toHaveBeenCalledWith('contabilidade_dados_laborais')
     expect(rows[0]).toMatchObject({ 'NISS': '11', 'IBAN': 'PT50', 'Tipo Contrato': 'Sem termo', 'Data Admissão': '02/01/2025', 'Ativo': 'Sim' })
     expect(rows[1]).toMatchObject({ 'NISS': '', 'Tipo Contrato': '', 'Ativo': 'Não' })
   })

@@ -9,6 +9,7 @@ import {
   restaurarColaborador,
   listarContasApp,
   buscarMeuColaborador,
+  obterNif,
   type NovoColaborador,
   type AtualizarColaborador,
 } from '../services/colaboradoresService'
@@ -78,4 +79,11 @@ export function useMeuColaborador(userId: string | undefined) {
   const { data, loading, error, reload } = useAsync(() => buscarMeuColaborador(userId!), [userId],
     { enabled: !!userId, errorMsg: 'Não foi possível carregar a sua ficha', cacheKey: userId ? `colaboradores-meu-${userId}` : undefined, cacheTtl: 60_000 })
   return { colaborador: data ?? null, loading, error, reload }
+}
+
+// Sem cacheKey: o NIF é dado pessoal, lê-se fresco a cada abertura da ficha
+export function useNifColaborador(id: string | undefined, enabled: boolean) {
+  const { data, loading } = useAsync(() => obterNif(id!), [id],
+    { enabled: enabled && !!id, errorMsg: 'Erro ao carregar o NIF' })
+  return { nif: data ?? null, loading }
 }

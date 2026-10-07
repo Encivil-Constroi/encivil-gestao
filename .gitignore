@@ -47,3 +47,7 @@ _referencia/
 
 # Script da bomba com o segredo injetado (gerado por shelly-preparar.mjs)
 supabase/scripts/_pronto/
+.wrangler/
+
+# Supabase local para validação ponta a ponta (gerado por supabase/scripts/supabase-local.mjs)
+.supabase-local/

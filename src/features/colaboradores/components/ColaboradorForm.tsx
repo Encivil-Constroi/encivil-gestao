@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { FotoPerfilInput } from '@/app/components/FotoPerfilInput'
-import { useGuardarColaborador, useContasApp, useColaboradores } from '../hooks/useColaboradores'
+import { useGuardarColaborador, useContasApp, useColaboradores, useNifColaborador } from '../hooks/useColaboradores'
+import { camposNif } from '../lib/nif'
 import { sincronizarConta } from '../services/contaFicha'
 import { PermissoesSwitches } from './PermissoesSwitches'
 import { useRole } from '@/features/auth/useRole'
 import { useUtilizadores } from '@/features/auth/hooks/useUtilizadores'
-import { gerarSenha, normalizarLogin, senhaValida, SENHA_MIN } from '@/features/auth/lib/contaInterna'
+import { gerarSenha, normalizarLogin, senhaValida } from '@/features/auth/lib/contaInterna'
+import { mensagemSenha, validarSenha } from '@/features/auth/lib/politicaSenha'
 import {
   PERMISSOES_INICIAIS, papelDasPermissoes, permissoesDoPapel, type PermissoesFicha,
 } from '@/features/auth/lib/permissoes'
@@ -30,7 +32,10 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
   const isEdit = !!colaborador
   const { criar, atualizar, loading } = useGuardarColaborador()
   const { obras } = useObras()
-  const { isAdmin } = useRole()
+  const { isAdmin, isGestor } = useRole()
+  const podeVerNif = isAdmin || isGestor
+  const { nif: nifGuardado } = useNifColaborador(colaborador?.id, podeVerNif)
+  const [nifAlterado, setNifAlterado] = useState(false)
   const { contas } = useContasApp(isAdmin)
   const { utilizadores } = useUtilizadores(isAdmin)
   const { colaboradores } = useColaboradores()
@@ -55,13 +60,18 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
       setor:       colaborador.setor ?? '',
       telemovel:   colaborador.telemovel ?? '',
       email:       colaborador.email ?? '',
-      nif:         colaborador.nif ?? '',
       obraId:      colaborador.obraId ?? '',
       notas:       colaborador.notas ?? '',
       userId:      colaborador.userId ?? '',
       fotoPath:    colaborador.fotoPath ?? null,
     }))
   }, [colaborador])
+
+  // O NIF chega à parte; não sobrepõe o que o utilizador já escreveu
+  useEffect(() => {
+    if (nifGuardado == null || nifAlterado) return
+    setForm(f => ({ ...f, nif: nifGuardado }))
+  }, [nifGuardado, nifAlterado])
 
   // Conta ligada: as permissões mostradas são as que a conta tem de facto
   const utilizador = useMemo(() => utilizadores.find(u => u.id === form.userId), [utilizadores, form.userId])
@@ -91,7 +101,7 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
     const payload = {
       nome:      form.nome,
       cargo:     form.cargo,
-      nif:       form.nif || undefined,
+      ...camposNif(form.nif, nifAlterado),
       obraId:    form.obraId || undefined,
       notas:     form.notas || undefined,
       telemovel: form.telemovel,
@@ -181,8 +191,14 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
           </div>
           <div>
             <label htmlFor="colab-nif" className={labelCls}>NIF <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-            <input id="colab-nif" type="text" inputMode="numeric" value={form.nif} onChange={e => set({ nif: e.target.value })}
-              className={inputCls} placeholder="123456789" maxLength={9} pattern="\d{9}" />
+            {podeVerNif ? (
+              <input id="colab-nif" type="text" inputMode="numeric" value={form.nif}
+                onChange={e => { set({ nif: e.target.value }); setNifAlterado(true) }}
+                className={inputCls} placeholder="123456789" maxLength={9} pattern="\d{9}" />
+            ) : (
+              <input id="colab-nif" type="text" value="" disabled
+                className={`${inputCls} opacity-60`} placeholder="Só visível para administração" />
+            )}
           </div>
           <div className={cheio}>
             <label htmlFor="colab-notas" className={labelCls}>Notas <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
@@ -234,7 +250,7 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
                       </button>
                     </div>
                     {form.senha.length > 0 && !senhaValida(form.senha) && (
-                      <p className="text-xs text-destructive mt-1">A senha tem de ter pelo menos {SENHA_MIN} caracteres.</p>
+                      <p className="text-xs text-destructive mt-1">{mensagemSenha(validarSenha(form.senha))}</p>
                     )}
                   </div>
                 </div>

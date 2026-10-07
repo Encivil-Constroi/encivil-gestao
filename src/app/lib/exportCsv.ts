@@ -1,8 +1,10 @@
+import { neutralizarFormula } from './neutralizarFormula'
+
 // UTF-8 BOM necessário para o Excel abrir caracteres portugueses (ã, ç, €) corretamente
 const BOM = '﻿'
 
 function escapeCsv(val: unknown): string {
-  const str = val == null ? '' : String(val)
+  const str = val == null ? '' : String(neutralizarFormula(val))
   // Citar se contiver vírgula, aspas ou newline
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`

@@ -19,6 +19,7 @@ vi.mock('@/features/colaboradores/hooks/useColaboradores', () => ({
     return { contas: ativo ? [{ id: 'u1', nome: 'Zé Gaitas', role: 'motorista' }, { id: 'u2', nome: 'Rui', role: 'motorista' }] : [], loading: false }
   },
   useColaboradores: () => ({ colaboradores: [{ id: 'c9', nome: 'Rui Costa', userId: 'u2' }] }),
+  useNifColaborador: () => ({ nif: null, loading: false }),
 }))
 
 vi.mock('@/features/colaboradores/components/DadosLaboraisSecao', () => ({ DadosLaboraisSecao: () => null }))

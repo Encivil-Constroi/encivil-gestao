@@ -32,16 +32,16 @@ describe('NovoUtilizadorModal', () => {
     preencher()
     fireEvent.change(screen.getByLabelText(/^Senha/), { target: { value: 'abc' } })
     expect((screen.getByRole('button', { name: 'Criar conta' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText(/pelo menos 8 caracteres/)).toBeTruthy()
+    expect(screen.getByText(/pelo menos 12 caracteres, uma maiúscula e um algarismo/)).toBeTruthy()
   })
 
   it('senha válida cria a conta com o login normalizado', async () => {
     render(<NovoUtilizadorModal onClose={() => {}} onSuccess={() => {}} />)
     preencher()
-    fireEvent.change(screen.getByLabelText(/^Senha/), { target: { value: 'abcdefgh' } })
+    fireEvent.change(screen.getByLabelText(/^Senha/), { target: { value: 'Abcdefgh1234' } })
     expect(screen.getByText(/Entra com: ana\.costa/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
-    await waitFor(() => expect(m.criar).toHaveBeenCalledWith({ nome: 'Ana', login: 'ana.costa', senha: 'abcdefgh', role: 'leitura' }))
+    await waitFor(() => expect(m.criar).toHaveBeenCalledWith({ nome: 'Ana', login: 'ana.costa', senha: 'Abcdefgh1234', role: 'leitura' }))
   })
 
   it('mostra a mensagem de erro específica da Edge Function', () => {
@@ -50,11 +50,11 @@ describe('NovoUtilizadorModal', () => {
     expect(screen.getByRole('alert').textContent).toBe('Este email/utilizador já está registado no sistema.')
   })
 
-  it('Gerar preenche a senha com 12 caracteres, visível', () => {
+  it('Gerar preenche a senha com 14 caracteres, visível', () => {
     render(<NovoUtilizadorModal onClose={() => {}} onSuccess={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Gerar' }))
     const input = screen.getByLabelText(/^Senha/) as HTMLInputElement
-    expect(input.value).toHaveLength(12)
+    expect(input.value).toHaveLength(14)
     expect(input.type).toBe('text')
   })
 })

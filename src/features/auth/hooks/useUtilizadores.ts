@@ -9,6 +9,7 @@ import {
   criarUtilizador,
   redefinirSenha,
   type NovoUtilizador,
+  removerMfaUtilizador,
   type RoleUtilizador,
 } from '../services/utilizadoresService'
 
@@ -59,6 +60,16 @@ export function useReativarUtilizador() {
   )
   const reativar = async (userId: string) => (await mutate(userId)) === true
   return { reativar, loading }
+}
+
+export function useRemoverMfa() {
+  const { mutate, loading } = useMutation(
+    removerMfaUtilizador,
+    'Erro ao remover a verificação em dois passos',
+    { invalidates: INV_UTILIZADORES }
+  )
+  const remover = async (userId: string) => (await mutate(userId)) === true
+  return { remover, loading }
 }
 
 export function useCriarUtilizador() {

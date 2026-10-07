@@ -19,6 +19,8 @@ const CODE_MAP: Record<string, string> = {
   '23514': 'Valor fora dos limites permitidos.',
   // PostgreSQL — permissões
   '42501': 'Sem permissão para esta operação.',
+  // Supabase Auth
+  'weak_password': 'A palavra-passe não cumpre os requisitos de segurança.',
   // PostgREST
   'PGRST116': 'Registo não encontrado.',
   'PGRST301': 'Sessão expirada — faça login novamente.',
@@ -56,4 +58,17 @@ export function parseSupabaseError(e: unknown, fallback = 'Ocorreu um erro inesp
 
   // Mensagem original como último recurso antes do fallback genérico
   return e.message || fallback
+}
+
+// Erro de Edge Function: o corpo { erro } já vem em pt-PT
+export async function mensagemErroFuncao(e: unknown, fallback: string): Promise<string> {
+  const contexto = typeof e === 'object' && e !== null && 'context' in e ? (e as { context: unknown }).context : null
+  if (contexto && typeof (contexto as { json?: unknown }).json === 'function') {
+    try {
+      const corpo: unknown = await (contexto as { json: () => Promise<unknown> }).json()
+      const erro = typeof corpo === 'object' && corpo !== null ? (corpo as { erro?: unknown }).erro : undefined
+      if (typeof erro === 'string' && erro) return erro
+    } catch { /* corpo ilegível: segue para a mensagem genérica */ }
+  }
+  return parseSupabaseError(e, fallback)
 }

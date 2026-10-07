@@ -18,11 +18,19 @@ Os serviços e hooks herdados de contratos, autos, pagamentos e retenções resi
 
 ## Publicação
 
-Aplicar primeiro `supabase/migrations/20261003000000_obras_completo.sql` no projeto Supabase correto e confirmar as RPCs, políticas RLS, GRANTs e buckets. Só depois publicar o frontend: as novas páginas chamam as funções da migration. O push para `main` desencadeia deploy automático na Cloudflare Pages, pelo que não se deve fazer antes de confirmar a migration.
+Seguir a ordem vigente do `CLAUDE.md`: site → migrations → Edge Functions, com compatibilidade do site com o banco anterior durante a transição. Aplicar `supabase/migrations/20261003000000_obras_completo.sql` e as posteriores ainda pendentes, em ordem cronológica, no projeto Supabase correto; confirmar RPCs, políticas RLS, GRANTs e buckets antes da liberação operacional. O push para `main` desencadeia deploy automático na Cloudflare Pages. A publicação do site, isoladamente, não comprova a ativação das guardas SQL nem a homologação dos fluxos de escrita.
 
 ## Verificação
 
 Executar `npm run typecheck`, `npm test`, `npm run build`, `npm run check:edge`, `npm run test:edge` e os testes de banco em `supabase/tests/obras-completo.test.mjs`. Verificar no browser com os papéis aplicáveis e uma obra de teste depois da publicação.
+
+## Auditoria de produção — 07/10/2026
+
+Relatório e limites de homologação: `docs/auditorias/2026-10-07-obras.md`. Migration aditiva: `20261007110000_obras_producao.sql`, após as migrations anteriores. Executar primeiro as consultas de preflight de arquivos faltantes no início do ficheiro; não apagar dados para corrigir inconsistências.
+
+`obra_visao` devolve um composto único (objeto JSON), não uma lista. A tipagem local/serviço foi corrigida mantendo a assinatura SQL. Uploads pendentes bloqueiam conclusão de aferições/fotos/relatórios; edição e saída durante submissão são protegidas. Autores designados seguem as permissões do servidor, e caches são atualizados após mutações e descartados ao trocar de sessão.
+
+Autoria de auto novo passa a ser atribuída pelo servidor. Evidências, documentos, faturas e fotos gerais novas precisam de objeto no bucket correto; arquivos vinculados não podem ser alterados/apagados. Registros antigos continuam legíveis e editáveis pelas regras existentes, mas nova submissão/verificação/aprovação/pagamento revalida os arquivos. GPS/hash enviados pelo browser não comprovam captura física; a API real de Storage e os fluxos por papel devem ser homologados antes da liberação operacional.
 
 ## Controlo de subempreitadas
 Orçamento (EAP), auto-medição com verificação, evidências com GPS, glosas, alçadas, documentos e painel do CEO: ver `docs/20-subempreitadas-controlo.md`. Migrations A e B depois da `20261003000000`.

@@ -75,16 +75,11 @@ describe('listarColaboradores', () => {
     })
   })
 
-  it('inclui NIF quando presente', async () => {
+  it('a listagem nunca traz o NIF (só obterNif, 20261008030000)', async () => {
     b.eq.mockResolvedValue({ data: [colaboradorRow], error: null })
     const [c] = await listarColaboradores()
-    expect(c.nif).toBe('123456789')
-  })
-
-  it('mapeia NIF null para undefined', async () => {
-    b.eq.mockResolvedValue({ data: [{ ...colaboradorRow, nif: null }], error: null })
-    const [c] = await listarColaboradores()
     expect(c.nif).toBeUndefined()
+    expect(b.select.mock.calls[0][0]).not.toMatch(/\bnif\b|\*/)
   })
 
   it('aplica filtro ativo=true por defeito', async () => {
@@ -193,5 +188,15 @@ describe('restaurarColaborador', () => {
 
     expect(b.update).toHaveBeenCalledWith({ ativo: true })
     expect(b.eq).toHaveBeenCalledWith('id', 'uuid-colab-1')
+  })
+})
+
+// obras.responsavel_id/engenheiro_id (20261003000000) também apontam para colaboradores:
+// sem o nome da FK o PostgREST recusa o embed (PGRST201, HTTP 300) e a lista do RH vem vazia.
+describe('SELECT_COLABORADOR', () => {
+  it('embebe a obra pela FK colaboradores.obra_id', async () => {
+    const { SELECT_COLABORADOR } = await import('@/features/colaboradores/services/colaboradoresService')
+    expect(SELECT_COLABORADOR).toMatch(/obras!colaboradores_obra_id_fkey\(id, nome\)/)
+    expect(SELECT_COLABORADOR).not.toMatch(/(^|[ ,])obras\(/)
   })
 })

@@ -129,3 +129,11 @@ describe('exportarCsv', () => {
     expect(text).toContain('1.234,56 €')
   })
 })
+
+describe('exportarCsv — injeção de fórmulas', () => {
+  it('texto começado por = sai como texto; número negativo continua número', async () => {
+    exportarCsv([{ obs: '=1+1', qtd: -3, nota: '-5 sacos' }], 'x')
+    const linha = (await csvText()).replace('﻿', '').split('\r\n')[1]
+    expect(linha).toBe("'=1+1,-3,'-5 sacos")
+  })
+})

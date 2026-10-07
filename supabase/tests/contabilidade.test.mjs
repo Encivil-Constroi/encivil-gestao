@@ -113,3 +113,20 @@ describe('colaboradores_dados_laborais', () => {
     expect((await mapa(gestor)).rows.find(x => x.numero_mecan === '900').niss).toBe('12345678901')
   })
 })
+
+describe('contabilidade_dados_laborais', () => {
+  const exportar = uid => comoU(uid, tx => tx.query(`SELECT * FROM public.contabilidade_dados_laborais()`))
+
+  it('gestor recebe o NIF (coluna restrita) e os dados laborais', async () => {
+    const l = (await exportar(gestor)).rows.find(r => r.numero_mecan === '900')
+    expect(l.nif).toBe('123456789')
+    expect(l.niss).toBe('12345678901')
+    expect(l.tipo_contrato).toBe('SEM_TERMO')
+  })
+  it('armazem é recusado', async () => {
+    await expect(exportar(armazem)).rejects.toThrow(/permissão/i)
+  })
+  it('authenticated não lê o NIF diretamente da tabela', async () => {
+    await expect(comoU(gestor, tx => tx.query(`SELECT nif FROM public.colaboradores`))).rejects.toThrow(/permission denied/i)
+  })
+})

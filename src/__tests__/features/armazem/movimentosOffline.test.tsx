@@ -3,14 +3,17 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 
 const m = vi.hoisted(() => ({
   rpc: [] as { fn: string; args: Record<string, unknown> }[],
+  sessaoId: 'u',
+  utilizador: { id: 'u' } as { id: string } | null,
   resposta: { data: null as unknown, error: null as { message: string; code?: string } | Error | null },
 }))
 
+vi.mock('@/features/auth/AuthContext', () => ({ useAuth: () => ({ user: m.utilizador }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }))
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     rpc: (fn: string, args: Record<string, unknown> = {}) => { m.rpc.push({ fn, args }); return Promise.resolve(m.resposta) },
-    auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: 'u' } } } }) },
+    auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: m.sessaoId } } } }) },
   },
 }))
 
@@ -43,7 +46,7 @@ function onLine(valor: boolean) {
 }
 
 beforeEach(() => {
-  m.rpc = []; m.resposta = { data: null, error: null }; localStorage.clear(); onLine(true)
+  m.sessaoId = 'u'; m.utilizador = { id: 'u' }; m.rpc = []; m.resposta = { data: null, error: null }; localStorage.clear(); onLine(true)
 })
 afterEach(() => onLine(true))
 
@@ -118,6 +121,56 @@ describe('registo offline', () => {
     await waitFor(() => expect(getQueue()).toHaveLength(0))
     expect(m.rpc.map(c => c.fn)).toEqual(['registar_movimento_armazem'])
     expect(Object.keys(m.rpc[0].args).sort()).toEqual(parametros('registar_movimento_armazem').sort())
+  })
+
+  it('movimentos de outro utilizador não são enviados com a sessão atual (telemóvel partilhado)', async () => {
+    onLine(false)
+    m.utilizador = { id: 'user-a' }
+    const { result: reg } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await reg.current.registar(entrada) })
+    expect(getQueue()[0]).toMatchObject({ userId: 'user-a' })
+
+    onLine(true)
+    m.utilizador = { id: 'u' } // a sessão (mock do Supabase) é a de 'u'
+    const { result: fila } = renderHook(() => useOfflineQueue())
+    await act(async () => { await fila.current.flushNow() })
+    expect(m.rpc).toHaveLength(0)
+    expect(getQueue()).toHaveLength(1)
+    expect(fila.current.pendingCount).toBe(0)
+    expect(fila.current.deOutros).toBe(1)
+  })
+
+  it('não envia se a sessão real já não for a do dono (estado de UI atrasado)', async () => {
+    onLine(false)
+    m.utilizador = { id: 'user-a' }
+    const { result: reg } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await reg.current.registar(entrada) })
+    onLine(true)
+    m.sessaoId = 'user-b'
+    const { result: fila } = renderHook(() => useOfflineQueue())
+    await act(async () => { await fila.current.flushNow() })
+    expect(m.rpc).toHaveLength(0)
+    expect(getQueue()).toHaveLength(1)
+  })
+
+  it('o dono dos movimentos envia-os quando volta a entrar', async () => {
+    onLine(false)
+    const { result: reg } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await reg.current.registar(entrada) })
+    onLine(true)
+    const { result: fila } = renderHook(() => useOfflineQueue())
+    await act(async () => { await fila.current.flushNow() })
+    await waitFor(() => expect(getQueue()).toHaveLength(0))
+    expect(m.rpc).toHaveLength(1)
+  })
+
+  it('sem sessão não enfileira e avisa em pt-PT', async () => {
+    onLine(false)
+    m.utilizador = null
+    const { result } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await result.current.registar(entrada) })
+    expect(getQueue()).toHaveLength(0)
+    expect(result.current.error).toBe('Sessão terminada. Entre de novo para registar.')
   })
 
   it('registo antigo ainda na fila sincroniza pela RPC antiga', async () => {

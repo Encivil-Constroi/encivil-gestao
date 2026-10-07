@@ -8,6 +8,9 @@
 //                       configurar via: supabase secrets set GOOGLE_AI_API_KEY=AIza...
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
+import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
+import { validar } from '../_shared/validar.ts'
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -18,16 +21,6 @@ const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')!
 // descontinuado). Segredo GEMINI_MODEL permite fixar outro sem mexer no código.
 const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
 const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-
-function ok(data: unknown)         { return new Response(JSON.stringify(data),             { status: 200, headers: JSON_HEADERS }) }
-function err(msg: string, s = 400) { return new Response(JSON.stringify({ erro: msg }),    { status: s,   headers: JSON_HEADERS }) }
 
 // Normaliza a descrição para o sistema de aprendizagem:
 // minúsculas, sem acentos, sem pontuação, sem espaços duplos.
@@ -80,7 +73,12 @@ function toBase64(buffer: ArrayBuffer): string {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
+  if (req.method === 'OPTIONS') return respostaPreflight(req)
+  const cors = cabecalhosCors(req)
+  const JSON_HEADERS = { ...cors, 'Content-Type': 'application/json' }
+  const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: JSON_HEADERS })
+  const err = (msg: string, s = 400) => new Response(JSON.stringify({ erro: msg }), { status: s, headers: JSON_HEADERS })
+  if (origemRecusada(req)) return err('Origem não permitida', 403)
   if (req.method !== 'POST')    return err('Método não permitido', 405)
 
   // ── Verificar autenticação ──────────────────────────────────────────────────
@@ -95,17 +93,20 @@ Deno.serve(async (req) => {
     return err('Acesso negado — apenas gestores podem extrair faturas', 403)
   }
 
+  const { data: dadosUser } = await userClient.auth.getUser(jwt)
+  if (!dadosUser?.user) return err('Sessão inválida', 401)
+
   // ── Parsear body ────────────────────────────────────────────────────────────
-  const body = await req.json().catch(() => null)
-  if (!body?.fatura_id || typeof body.fatura_id !== 'string') {
-    return err('fatura_id obrigatório')
-  }
-  const { fatura_id } = body as { fatura_id: string }
+  const validado = validar({ fatura_id: { tipo: 'uuid', obrigatorio: true } }, await req.json().catch(() => null))
+  if (!validado.ok) return err(validado.erro)
+  const fatura_id = validado.valor.fatura_id as string
 
   // ── Cliente service role (contorna RLS para operações internas) ─────────────
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  if (!await dentroDoLimite(admin, `extrair-fatura:${dadosUser.user.id}`, 600, 20)) return respostaLimite(cors, 600)
 
   // ── Buscar fatura ───────────────────────────────────────────────────────────
   const { data: fatura, error: faturaErr } = await admin

@@ -63,13 +63,13 @@ Enum `role_utilizador`, 7 papéis: `admin` (tudo, eliminar, validar), `gestor` (
   `grep -rn "FUNCTION public.pode_escrever" supabase/migrations`). Módulos válidos: `armazem`, `ferramentas`, `combustivel`,
   `obras`, `subempreitadas`, `frota` (outro valor devolve `false`). Hoje: armazem/ferramentas/combustivel → admin, gestor, armazem ·
   obras → admin, gestor · subempreitadas → admin, gestor, medicoes · frota → admin, gestor, mecanico. **`colaboradores` não passa
-  por `pode_escrever`**: tem policy RLS própria (`auth_role() IN ('admin','gestor')`). Espelho na UI: `src/features/auth/useRole.ts`
+  por `pode_escrever`**: tem policy RLS própria (`auth_role() IN ('admin','gestor')`). Espelho na UI: `src/features/auth/lib/permissoes.ts` (reexportado por `useRole.ts`)
   (`MATRIZ_ESCRITA`) — tem de coincidir com o SQL; um módulo novo exige migration (`CREATE OR REPLACE FUNCTION`) **e** entrada
   em `Modulo`/`MATRIZ_ESCRITA`.
 - Guardas de rota: `AuthGuard`, `RoleGuard require="gestor|admin"`. Esconder um botão **não** protege nada: toda a
   funcionalidade sensível precisa de policy RLS ou RPC com `public.pode_escrever()` / `public.auth_role()`.
 - Papel de utilizador: nunca `UPDATE profiles SET role` (bloqueado por GRANT de coluna, ADR-007); usar a RPC `promover_role()`.
-- Auto-logout por inatividade aos 30 min. Sem MFA (indisponível no plano Supabase atual).
+- Auto-logout por inatividade aos 30 min. MFA TOTP, obrigatório para admin/gestor via `seguranca_config` (ver `docs/22-seguranca-operacao.md` §2).
 
 ## Regras de negócio imutáveis (stock)
 - `produtos.stock_atual` **nunca** se edita diretamente; só por movimentos via RPC `registar_movimento` (atómica, com
@@ -110,6 +110,10 @@ const { mutate: salvar, loading } = useMutation(salvarFoo, 'Erro ao guardar', { 
 - Migrations: `supabase/migrations/YYYYMMDDHHMMSS_nome.sql`, cronologia estritamente crescente (a última é a de maior timestamp).
   **"Automatically expose new tables" está OFF**: toda tabela/view/sequência/função nova leva `GRANT` explícito
   (`GRANT SELECT, INSERT, UPDATE ON TABLE … TO authenticated; GRANT EXECUTE ON FUNCTION … TO authenticated;`) **e** `ENABLE ROW LEVEL SECURITY` + policies.
+  **Colunas novas em `colaboradores` precisam do seu próprio `GRANT SELECT (coluna)`** (o SELECT global foi revogado por causa do NIF; o NIF só sai pela RPC `colaborador_nif`).
+  Migrations novas são idempotentes e **terminam com um bloco `-- ROLLBACK`** (SQL comentado que desfaz); um teste-guarda impõe-no.
+  **Ordem de publicação: site → migrations → Edge Functions** — o site novo tem de funcionar com a BD antiga (tabela/RPC inexistente ⇒ comportamento de antes).
+  Operação, backups, MFA e recuperação: `docs/22-seguranca-operacao.md`.
 - Policies: usar `public.auth_role()` / `public.pode_escrever('modulo')`; **nunca** `auth.jwt()->>'role'`. Funções `SECURITY DEFINER`
   levam sempre `SET search_path = public`. Funções só de leitura: `STABLE`.
 - **Migrations não são aplicadas por ti em produção**: o utilizador aplica-as à mão no SQL Editor do Dashboard (docs/09-implantacao.md).

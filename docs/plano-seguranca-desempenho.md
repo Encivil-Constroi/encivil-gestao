@@ -163,9 +163,25 @@ Login do Supabase CLI com a conta dona da organização ENCIVIL →
 
 ---
 
+## Etapa 4 — Segurança 2026 (iniciada 2026-10-06)
+
+Reforço de segurança em 7 fases sobre os 20 pontos pedidos pela Direção (HSTS/CSP, MFA, rate limit,
+CORS e validação, auditoria imutável, NIF restrito, backup cifrado, dependências e CI, recuperação).
+
+- Desenho: `docs/superpowers/specs/2026-10-06-seguranca-2026-design.md`
+- Plano de implementação: `docs/superpowers/plans/2026-10-06-seguranca-2026.md`
+- Operação, recuperação e incidentes: `docs/22-seguranca-operacao.md`
+- Ordem de publicação: **site → migrations → Edge Functions** (o site novo funciona com a BD antiga)
+- Migrations novas, por ordem: `20261008000000`, `20261008010000`, `20261008020000`, `20261008030000`, `20261008050000`, `20261008060000`
+
+Estado: código e documentação concluídos no repositório; **por publicar/aplicar em produção** (passos manuais do utilizador: migrations, Dashboard do Supabase, secrets do GitHub, ligar o MFA obrigatório).
+
+---
+
 ## Estado
 | Etapa | Estado |
 |---|---|
 | 1 — Segurança | **concluída** (2026-09-29) |
 | 2 — Desempenho | em curso: 2.1 e 2.2 feitos; faltam 2.2b, 2.3 |
 | 3 — Processo | aguarda login do CLI |
+| 4 — Segurança 2026 | código e docs prontos; aguarda publicação e passos manuais (ver acima) |
