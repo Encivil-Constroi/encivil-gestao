@@ -45,3 +45,6 @@ _referencia/
 # clone aninhado do superpowers (não é submódulo)
 .claude/skills/superpowers/
 .wrangler/
+
+# Supabase local para validação ponta a ponta (gerado por supabase/scripts/supabase-local.mjs)
+.supabase-local/

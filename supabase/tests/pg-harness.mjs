@@ -23,6 +23,13 @@ const STUBS_SUPABASE = `
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
   );
+  -- Fatores MFA (no GoTrue o status é um enum; aqui texto)
+  CREATE TABLE auth.mfa_factors (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+    factor_type text DEFAULT 'totp',
+    status text DEFAULT 'unverified'
+  );
   CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE
     AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE
@@ -55,7 +62,7 @@ const STUBS_SUPABASE = `
   CREATE SCHEMA extensions;
 `
 
-function adaptar(nome, sql) {
+export function adaptar(nome, sql) {
   // PostGIS não existe no PGlite; só o módulo de picagens (oculto) o usa
   if (/geofence/.test(nome)) {
     return sql
