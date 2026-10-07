@@ -199,7 +199,7 @@ Nota sobre dados pessoais: o `audit_log` guarda linhas completas (incluindo dado
 
 - Ficheiros `supabase/migrations/YYYYMMDDHHMMSS_nome.sql`, cronologia crescente, **idempotentes** (`IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP … IF EXISTS`), com `GRANT` + RLS e, nas novas, **bloco `-- ROLLBACK` no fim**.
 - **Ordem de publicação desta entrega: site → migrations → Edge Functions.** O site novo funciona com a BD antiga; as Edge Functions novas funcionam sem a RPC de rate limit (falham abertas, com log).
-- Aplicação à mão no SQL Editor, por esta ordem: `20261008000000`, `20261008010000`, `20261008020000`, `20261008030000`, `20261008050000`, `20261008060000` (não existe `…040000`: os buckets já estavam corretos). Depois regenerar tipos (`npx supabase gen types typescript --local > src/integrations/supabase/types.ts`) e `npm run typecheck`.
+- Aplicação à mão no SQL Editor, por esta ordem: `20261008000000`, `20261008010000`, `20261008020000`, `20261008030000`, `20261008050000`, `20261008060000`, `20261008070000` (não existe `…040000`: os buckets já estavam corretos). Depois regenerar tipos (`npx supabase gen types typescript --local > src/integrations/supabase/types.ts`) e `npm run typecheck`.
 - Colunas novas em `colaboradores` precisam do seu próprio `GRANT SELECT` de coluna (o SELECT global foi revogado por causa do NIF).
 - O bucket `certificados` foi criado à mão no Dashboard (não está nas migrations): confirmar o limite de tamanho e os tipos permitidos em produção.
 
@@ -215,6 +215,7 @@ Nota sobre dados pessoais: o `audit_log` guarda linhas completas (incluindo dado
 | `20261008030000` seguranca_colaboradores_nif | por aplicar | — |
 | `20261008050000` seguranca_search_path | por aplicar | — |
 | `20261008060000` seguranca_auditoria | por aplicar | — |
+| `20261008070000` seguranca_mfa_listagem | por aplicar | — |
 
 As migrations anteriores a `20261008*` não foram comparadas com a produção: correr o script acima e anotar o resultado aqui. A CONFIRMAR pelo utilizador (só ele lê a produção).
 
@@ -248,7 +249,7 @@ As migrations anteriores a `20261008*` não foram comparadas com a produção: c
 3. Merge para `main` = deploy do site. Depois: `curl -sI https://app.encivilconstroi.com` (cabeçalhos) e consola sem erros no login, mapa, faturas e `/sw-reset.html`.
 4. Esperar que os telemóveis atualizem a PWA.
 5. Dashboard Supabase → Authentication: registos (signups) desligados; senha com 12+ caracteres, minúsculas, maiúsculas e dígitos; TOTP (enroll + verify) ligado; `secure_password_change` (testar primeiro a alteração de senha com MFA).
-6. SQL Editor, migrations por ordem: `20261008000000` → `010000` → `020000` → `030000` → `050000` → `060000` (não existe `040000`).
+6. SQL Editor, migrations por ordem: `20261008000000` → `010000` → `020000` → `030000` → `050000` → `060000` → `070000` (não existe `040000`; a `070000` antes de publicar a Edge Function admin-utilizadores).
 7. `EDGE_FUNCTION_SECRET` igual a `app.edge_function_secret` na BD (senão os e-mails de alertas param).
 8. Deploy das Edge Functions `admin-utilizadores`, `extrair-fatura`, `ler-foto-abastecimento`, `pump-status`, `enviar-resumo-alertas`; depois ver os Logs.
 9. Regenerar os tipos (`npx supabase gen types typescript`) e remover os remendos em `db.ts`.
