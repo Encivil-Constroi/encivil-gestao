@@ -56,7 +56,7 @@ function menu(papel: string) {
 afterEach(() => { cleanup(); m.podeAprovar = false; m.aguardam = 0; m.contagemPedida = [] })
 
 describe('isolamento do motorista', () => {
-  it.each(['/', '/produtos', '/frota'])('motorista em %s vai para o pedido de abastecimento', async caminho => {
+  it.each(['/produtos', '/frota'])('motorista em %s vai para o pedido de abastecimento', async caminho => {
     m.papel = 'motorista'
     abrir(caminho)
     expect(await screen.findByText('PEDIR')).toBeInTheDocument()
@@ -82,20 +82,20 @@ describe('isolamento do motorista', () => {
     abrir('/abastecimento/pedido/p1')
     const nav = screen.getAllByRole('navigation').at(-1)!
     const links = within(nav).getAllByRole('link')
-    expect(links.map(l => l.getAttribute('href'))).toEqual(['/abastecimento/pedir', '/abastecimento', '/ajuda'])
+    expect(links.map(l => l.getAttribute('href'))).toEqual(['/', '/abastecimento/pedir', '/abastecimento', '/ajuda'])
     // No ecrã de um pedido, o separador ativo é "Pedidos"
-    expect(links[1].firstElementChild?.className).toMatch(/text-primary/)
-    expect(links[0].firstElementChild?.className).not.toMatch(/text-primary/)
+    expect(links[2].firstElementChild?.className).toMatch(/text-primary/)
+    expect(links[1].firstElementChild?.className).not.toMatch(/text-primary/)
   })
 })
 
 describe('menu lateral do abastecimento', () => {
-  it('motorista vê só o pedido, os pedidos e a ajuda', () => {
-    expect(menu('motorista')).toEqual(['Pedir combustível', 'Os meus pedidos', 'O meu perfil', 'Ajuda'])
+  it('motorista vê o início, o pedido, os pedidos e a ajuda', () => {
+    expect(menu('motorista')).toEqual(['Início', 'Pedir combustível', 'Os meus pedidos', 'O meu perfil', 'Ajuda'])
   })
 
   it('o mecânico continua só com a Frota e a Ajuda', () => {
-    expect(menu('mecanico')).toEqual(['Frota', 'O meu perfil', 'Ajuda'])
+    expect(menu('mecanico')).toEqual(['Início', 'Frota', 'O meu perfil', 'Ajuda'])
   })
 
   it('os outros papéis têm um só item "Abastecimento" (sem duplicados de combustível)', () => {
@@ -139,5 +139,14 @@ describe('menu lateral do abastecimento', () => {
     m.podeAprovar = true
     menu('motorista')
     expect(m.contagemPedida.every(a => a === false)).toBe(true)
+  })
+})
+
+describe('Início do motorista', () => {
+  it('motorista abre o seu Início em / sem ser redirecionado', async () => {
+    m.papel = 'motorista'
+    abrir('/')
+    expect(await screen.findByText('DASHBOARD')).toBeInTheDocument()
+    expect(screen.getByTestId('onde')).toHaveTextContent(/^\/$/)
   })
 })

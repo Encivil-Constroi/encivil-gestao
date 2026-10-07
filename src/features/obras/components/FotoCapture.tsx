@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Camera, ImagePlus, Loader2, X } from 'lucide-react'
 import type { FotoObra, PastaFotoObra } from '../db'
 import { enviarFotoObra, urlFotoObra } from '../lib/fotosObras'
@@ -13,23 +13,39 @@ type Props = {
   desativado?: boolean
   // Permite escrever uma legenda em cada foto
   legendas?: boolean
+  onUploadingChange?: (uploading: boolean) => void
 }
 
 const botao = 'inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50'
 
 // Várias fotos de uma vez: câmara do telemóvel ou galeria. Envia logo para o
 // bucket e devolve a lista no formato guardado em jsonb ({ path, legenda }).
-export function FotoCapture({ obraId, pasta, valor, onChange, rotulo = 'Fotografias', max = 12, desativado = false, legendas = true }: Props) {
+export function FotoCapture({ obraId, pasta, valor, onChange, rotulo = 'Fotografias', max = 12, desativado = false, legendas = true, onUploadingChange }: Props) {
   const id = useId()
   const camRef = useRef<HTMLInputElement>(null)
   const galRef = useRef<HTMLInputElement>(null)
   const [aEnviar, setAEnviar] = useState(0)
   const [erro, setErro] = useState<string | null>(null)
+  const valorRef = useRef(valor)
+  valorRef.current = valor
+  const envioRef = useRef(false)
+  const montadoRef = useRef(true)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+  const uploadChangeRef = useRef(onUploadingChange)
+  uploadChangeRef.current = onUploadingChange
+  useEffect(() => {
+    montadoRef.current = true
+    return () => { montadoRef.current = false }
+  }, [])
   const livres = max - valor.length
 
   const enviar = async (lista: FileList | null) => {
+    if (desativado || envioRef.current) return
     const ficheiros = [...(lista ?? [])].filter(f => !f.type || f.type.startsWith('image/')).slice(0, Math.max(0, livres))
     if (ficheiros.length === 0) return
+    envioRef.current = true
+    uploadChangeRef.current?.(true)
     setErro(null)
     setAEnviar(n => n + ficheiros.length)
     const novas: FotoObra[] = []
@@ -37,12 +53,14 @@ export function FotoCapture({ obraId, pasta, valor, onChange, rotulo = 'Fotograf
       try {
         novas.push(await enviarFotoObra(obraId, pasta, f))
       } catch (e) {
-        setErro(e instanceof Error ? e.message : 'Não foi possível enviar a foto.')
+        if (montadoRef.current) setErro(e instanceof Error ? e.message : 'Não foi possível enviar a foto.')
       } finally {
-        setAEnviar(n => n - 1)
+        if (montadoRef.current) setAEnviar(n => n - 1)
       }
     }
-    if (novas.length > 0) onChange([...valor, ...novas])
+    if (montadoRef.current && novas.length > 0) onChangeRef.current([...valorRef.current, ...novas])
+    envioRef.current = false
+    if (montadoRef.current) uploadChangeRef.current?.(false)
   }
 
   const mudarLegenda = (i: number, legenda: string) =>

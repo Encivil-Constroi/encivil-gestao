@@ -21,6 +21,8 @@ vi.mock('@/features/colaboradores/hooks/useColaboradores', () => ({
   useColaboradores: () => ({ colaboradores: [{ id: 'c9', nome: 'Rui Costa', userId: 'u2' }] }),
 }))
 
+vi.mock('@/features/colaboradores/components/DadosLaboraisSecao', () => ({ DadosLaboraisSecao: () => null }))
+
 import { ColaboradorDrawer } from '@/features/colaboradores/components/ColaboradorDrawer'
 
 const colab: Colaborador = {

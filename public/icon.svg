@@ -1,18 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Background -->
-  <rect width="512" height="512" rx="96" fill="#1e3a8a"/>
-  <!-- Warehouse roof / triangle -->
-  <polygon points="256,80 440,200 72,200" fill="#ffffff" opacity="0.95"/>
-  <!-- Main building body -->
-  <rect x="112" y="200" width="288" height="200" rx="4" fill="#ffffff" opacity="0.95"/>
-  <!-- Door (center) -->
-  <rect x="216" y="300" width="80" height="100" rx="4" fill="#1e3a8a"/>
-  <!-- Left window -->
-  <rect x="136" y="232" width="64" height="56" rx="4" fill="#1e3a8a" opacity="0.6"/>
-  <!-- Right window -->
-  <rect x="312" y="232" width="64" height="56" rx="4" fill="#1e3a8a" opacity="0.6"/>
-  <!-- Ground line -->
-  <rect x="72" y="396" width="368" height="12" rx="6" fill="#ffffff" opacity="0.4"/>
-  <!-- "E" letter subtle mark -->
-  <text x="256" y="160" font-family="Arial,sans-serif" font-size="52" font-weight="900" fill="#1e3a8a" text-anchor="middle" opacity="0.15">E</text>
-</svg>
+<rect width="512" height="512" rx="96" fill="#04090F"/>
+<g fill="#FFFFFF" transform="translate(256 256) scale(0.68) translate(-540.5 -540.5)">
+<polygon points="359,424 512,300 722,423 722,449 512,330 370,449"/>
+<polygon points="513,368 720,474 720,497 513,402"/>
+<polygon points="513,429 720,518 720,542 513,465"/>
+<polygon points="513,490 720,567 720,590 513,523"/>
+<polygon points="513,549 720,606 720,631 513,587"/>
+<polygon points="513,614 720,656 720,685 513,654"/>
+<polygon points="513,683 720,707 720,734 513,719"/>
+<polygon points="360,751 720,754 720,781 360,779"/></g></svg>

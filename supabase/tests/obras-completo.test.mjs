@@ -21,6 +21,13 @@ const sup = async (sql, p = []) => (await db.query(sql, p)).rows
 
 // Chamada com argumentos nomeados: rpc(uid, 'fn', { p_x: 1 }) → linhas
 async function rpc(uid, nome, args = {}) {
+  if (Array.isArray(args.p_fotos)) {
+    for (const foto of args.p_fotos) {
+      if (typeof foto?.path !== 'string') continue
+      await db.query(`INSERT INTO storage.objects (bucket_id, name) SELECT 'obras', $1
+        WHERE NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = 'obras' AND name = $1)`, [foto.path])
+    }
+  }
   const ks = Object.keys(args)
   const sql = `SELECT * FROM public.${nome}(${ks.map((k, i) => `${k} => $${i + 1}`).join(', ')})`
   return q(uid, sql, ks.map(k => args[k]))

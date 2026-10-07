@@ -61,6 +61,20 @@ export async function buscarColaborador(id: string): Promise<Colaborador> {
   return toColaborador(data as ColaboradorRow)
 }
 
+// A ficha ligada à conta de quem está dentro da app (null: conta sem ficha de pessoal)
+export async function buscarMeuColaborador(userId: string): Promise<Colaborador | null> {
+  const { data, error } = await colaboradoresDb
+    .from('colaboradores')
+    .select(SELECT)
+    .eq('user_id', userId)
+    .eq('ativo', true)
+    .order('created_at')
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data ? toColaborador(data as ColaboradorRow) : null
+}
+
 export type NovoColaborador = {
   nome: string
   // Vazio: a BD gera ENC-nnnn (trigger colaborador_numero_auto)

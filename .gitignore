@@ -44,3 +44,6 @@ _referencia/
 
 # clone aninhado do superpowers (não é submódulo)
 .claude/skills/superpowers/
+
+# Script da bomba com o segredo injetado (gerado por shelly-preparar.mjs)
+supabase/scripts/_pronto/

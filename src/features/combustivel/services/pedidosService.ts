@@ -185,6 +185,19 @@ export async function listarParaAnalise(inicio: string, fim: string): Promise<Ab
   }))
 }
 
+// Abastecimentos de uma viatura desde uma data (painel pessoal de quem a conduz)
+export async function listarAbastecimentosVeiculo(veiculoId: string, desde: string): Promise<AbastecimentoAnaliseRow[]> {
+  const { data, error } = await combDb.from('comb_abastecimentos').select(SELECT_ANALISE)
+    .eq('veiculo_id', veiculoId)
+    .gte('data', desde)
+    .order('data')
+    .limit(500)
+  if (error) throw error
+  return (data ?? []).map(r => ({
+    ...r, litros: Number(r.litros), custo_total: Number(r.custo_total), contador: r.contador == null ? null : Number(r.contador),
+  }))
+}
+
 export async function cancelarAutorizacaoBomba(id: string): Promise<void> {
   const { error } = await combDb.rpc('cancelar_autorizacao_bomba', { p_id: id })
   if (error) throw error

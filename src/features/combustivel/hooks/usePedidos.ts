@@ -6,7 +6,7 @@ import {
   fetchContexto, listarPedidos, fetchPedido, criarPedido,
   autorizarPedido, recusarPedido, aprovarRegistoAntigo, cancelarPedido, registarContadorInicial, ligarBomba, cancelarAutorizacaoBomba,
   concluirPedido, listarPrecos, definirPreco, listarAprovadores, definirAprovador, listarUtilizadores,
-  listarViaturasAtivas, listarParaAnalise,
+  listarViaturasAtivas, listarParaAnalise, listarAbastecimentosVeiculo,
   type FiltrosPedidos, type NovoPedido, type Conclusao,
 } from '../services/pedidosService'
 
@@ -20,6 +20,13 @@ export function useContextoAbastecimento() {
 }
 
 export { usePodeAprovar, useContagemAguardam } from './useAprovacao'
+
+export function useAbastecimentosVeiculo(veiculoId: string | null | undefined, desde: string) {
+  const chave = `abastecimentos-veiculo-${veiculoId}-${desde}`
+  const { data, loading, error, reload } = useAsync(() => listarAbastecimentosVeiculo(veiculoId!, desde), [veiculoId, desde],
+    { enabled: !!veiculoId, errorMsg: 'Erro ao carregar o consumo da viatura', cacheKey: chave, cacheTtl: 30_000 })
+  return { abastecimentos: data ?? [], loading, error, reload }
+}
 
 export function useViaturasAtivas(enabled = true) {
   const { data, loading } = useAsync(listarViaturasAtivas, [],

@@ -33,6 +33,8 @@ export const TABELAS_BACKUP = [
   { id: 'comb_aprovadores',         label: 'Aprovadores de Abastecimento', grupo: 'Combustível' },
   // Recursos Humanos
   { id: 'colaboradores',            label: 'Colaboradores',               grupo: 'RH' },
+  // Dados pessoais sensíveis (NISS/IBAN): a RLS só os devolve a admin/gestor
+  { id: 'colaboradores_dados_laborais', label: 'Dados Laborais (NISS, IBAN, contrato)', grupo: 'RH' },
   { id: 'horarios',                 label: 'Horários',                    grupo: 'RH' },
   { id: 'horario_colaborador',      label: 'Horários por Colaborador',    grupo: 'RH' },
   { id: 'faltas',                   label: 'Faltas',                      grupo: 'RH' },

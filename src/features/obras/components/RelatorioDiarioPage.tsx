@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useBlocker, useNavigate, useParams } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
 import type { ClimaObra } from '../db'
@@ -8,6 +8,7 @@ import { hojeLisboa, validarRelatorioParaSubmissao, type DadosRelatorio } from '
 import { urlFotoObra } from '../lib/fotosObras'
 import { useEquipaRelatorio, useGuardarRelatorioDiario, usePodeRelatarObra, useReabrirRelatorioDiario, useRelatorioDiario, useSubempreitadasRelatorio, useSubmeterRelatorioDiario } from '../hooks/useRelatoriosDiarios'
 import { FotoCapture } from './FotoCapture'
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '@/app/components/print'
 import { Cabecalho, Seccao, botaoPrimario, botaoSecundario, inputCls } from './ui'
 
 function dadosIniciais(): DadosRelatorio {
@@ -15,8 +16,9 @@ function dadosIniciais(): DadosRelatorio {
 }
 
 function RelatorioImprimivel({ relatorio }: { relatorio: NonNullable<ReturnType<typeof useRelatorioDiario>['relatorio']> }) {
-  return <article className="bg-card rounded-2xl border border-border p-5 print:border-0 print:p-0 space-y-5">
-    <header><h2 className="text-xl font-semibold">Relatório diário · {relatorio.obra_nome}</h2><p className="text-sm text-muted-foreground">{new Date(`${relatorio.data}T12:00:00`).toLocaleDateString('pt-PT')} · {relatorio.autor_nome || 'Autor desconhecido'} · {relatorio.estado === 'submetido' ? 'Submetido' : 'Rascunho'}</p></header>
+  return <article id="relatorio-diario-root" className="bg-card rounded-2xl border border-border p-5 print:border-0 print:p-0 print:bg-white space-y-5" style={{ fontFamily: PRINT.FONTE }}>
+    <style>{estiloPaginaImpressa('relatorio-diario-root')}</style>
+    <CabecalhoImpresso titulo={`Relatório diário · ${relatorio.obra_nome}`} subtitulo={`${new Date(`${relatorio.data}T12:00:00`).toLocaleDateString('pt-PT')} · ${relatorio.autor_nome || 'Autor desconhecido'} · ${relatorio.estado === 'submetido' ? 'Submetido' : 'Rascunho'}`} />
     <div className="grid sm:grid-cols-2 gap-4 text-sm"><div><strong>Clima</strong><p>{rotuloClima(relatorio.clima)}{relatorio.temperatura_c != null ? ` · ${relatorio.temperatura_c} °C` : ''}</p><p>{relatorio.clima_descricao}</p></div><div><strong>Equipa presente</strong><p>{[...relatorio.equipa.map(e => e.nome), relatorio.equipa_outros].filter(Boolean).join(', ') || '—'}</p></div></div>
     <div className="text-sm"><strong>Subempreiteiros presentes</strong><p>{relatorio.subempreiteiros.map(s => s.nome).join(', ') || '—'}</p></div>
     <div className="text-sm"><strong>Trabalhos realizados</strong><p className="whitespace-pre-wrap">{relatorio.trabalhos || '—'}</p></div>
@@ -24,10 +26,16 @@ function RelatorioImprimivel({ relatorio }: { relatorio: NonNullable<ReturnType<
     {relatorio.observacoes && <div className="text-sm"><strong>Observações</strong><p className="whitespace-pre-wrap">{relatorio.observacoes}</p></div>}
     {relatorio.fotos.length > 0 && <div><strong className="text-sm">Fotografias</strong><div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">{relatorio.fotos.map(f => <figure key={f.path}><img src={urlFotoObra(f.path) ?? ''} alt={f.legenda || 'Foto do relatório'} className="w-full aspect-square object-cover rounded-lg" /><figcaption className="text-xs mt-1">{f.legenda}</figcaption></figure>)}</div></div>}
     {relatorio.reaberto_motivo && <p className="text-xs text-muted-foreground">Reaberto por {relatorio.reaberto_por_nome || 'admin'}: {relatorio.reaberto_motivo}</p>}
+    <RodapeImpresso nota="Relatório diário de obra" />
   </article>
 }
 
 export function RelatorioDiarioPage() {
+  const { id, rid } = useParams()
+  return <RelatorioFormulario key={rid || id} />
+}
+
+function RelatorioFormulario() {
   const { id: novaObraId, rid } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -44,6 +52,30 @@ export function RelatorioDiarioPage() {
   const [dados, setDados] = useState<DadosRelatorio>(dadosIniciais)
   const [revisao, setRevisao] = useState(0)
   const [guardado, setGuardado] = useState(false)
+  const [aEnviarFotos, setAEnviarFotos] = useState(false)
+  const [aSubmeter, setASubmeter] = useState(false)
+  const [aSair, setASair] = useState(false)
+  const uploadRef = useRef(false)
+  const aSairRef = useRef(false)
+  const mudarUpload = (valor: boolean) => { uploadRef.current = valor; setAEnviarFotos(valor) }
+  const submeterRef = useRef(false)
+  const montadoRef = useRef(true)
+  const navegacaoInternaRef = useRef(false)
+  const alteracoesPendentes = (revisao > 0 && !guardado) || aEnviarFotos || aSubmeter || aSair || guardarMut.loading
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    !navegacaoInternaRef.current && alteracoesPendentes && currentLocation.pathname !== nextLocation.pathname)
+  const bloqueioRef = useRef(blocker.state)
+  bloqueioRef.current = blocker.state
+  useEffect(() => {
+    montadoRef.current = true
+    return () => { montadoRef.current = false }
+  }, [])
+  useEffect(() => {
+    if (!alteracoesPendentes) return
+    const avisar = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', avisar)
+    return () => window.removeEventListener('beforeunload', avisar)
+  }, [alteracoesPendentes])
   const [erroLocal, setErroLocal] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [mostrarReabrir, setMostrarReabrir] = useState(false)
@@ -62,16 +94,20 @@ export function RelatorioDiarioPage() {
   }, [relatorio])
 
   const editar = (patch: Partial<DadosRelatorio>) => { setDados(d => ({ ...d, ...patch })); revisaoRef.current++; setRevisao(revisaoRef.current); setGuardado(false); setErroLocal(null) }
-  const guardarNaFila = (snapshot: DadosRelatorio): Promise<string | null> => {
-    if (!obraId) return Promise.resolve(null)
+  const guardarNaFila = (snapshot: DadosRelatorio, navegar = true): Promise<string | null> => {
+    if (!obraId || aEnviarFotos) return Promise.resolve(null)
     const revisaoGuardada = revisaoRef.current
     const tarefa = filaRef.current.catch(() => null).then(async () => {
       const resultado = await guardarMut.guardar(idRef.current, obraId, snapshot)
       if (resultado) {
         const eraNovo = !idRef.current
         idRef.current = resultado
-        if (revisaoRef.current === revisaoGuardada) setGuardado(true)
-        if (eraNovo) { iniciouRef.current = true; navigate(`/obras/relatorio-diario/${resultado}`, { replace: true }) }
+        if (montadoRef.current && revisaoRef.current === revisaoGuardada) setGuardado(true)
+        if (eraNovo) iniciouRef.current = true
+        if (!rid && navegar && montadoRef.current && !uploadRef.current && !aSairRef.current && !submeterRef.current && bloqueioRef.current === 'unblocked' && revisaoRef.current === revisaoGuardada) {
+          navegacaoInternaRef.current = true
+          navigate(`/obras/relatorio-diario/${resultado}`, { replace: true })
+        }
       }
       return resultado
     })
@@ -80,20 +116,43 @@ export function RelatorioDiarioPage() {
   }
 
   useEffect(() => {
-    if (revisao === 0 || !obraId || (rid && !iniciouRef.current)) return
+    if (revisao === 0 || !obraId || aEnviarFotos || aSubmeter || blocker.state === 'blocked' || (rid && !iniciouRef.current)) return
     temporizadorRef.current = window.setTimeout(() => { temporizadorRef.current = null; void guardarNaFila(dados) }, 1000)
     return () => { if (temporizadorRef.current != null) window.clearTimeout(temporizadorRef.current) }
   // Autosave depende da revisão; outras alterações antes do prazo reiniciam o temporizador.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revisao, obraId])
+  }, [revisao, obraId, aEnviarFotos, aSubmeter, blocker.state])
 
   const submeter = async () => {
+    if (aEnviarFotos || submeterRef.current) return
     const problema = validarRelatorioParaSubmissao(dados)
     if (problema) { setErroLocal(problema); return }
     if (temporizadorRef.current != null) { window.clearTimeout(temporizadorRef.current); temporizadorRef.current = null }
-    const id = await guardarNaFila(dados)
-    if (!id) return
-    if (await submeterMut.submeter(id)) { reload(); navigate(`/obras/relatorio-diario/${id}`, { replace: true }) }
+    submeterRef.current = true
+    setASubmeter(true)
+    try {
+      const id = await guardarNaFila(dados, false)
+      if (!id) return
+      if (await submeterMut.submeter(id)) {
+        navegacaoInternaRef.current = true
+        reload(); navigate(`/obras/relatorio-diario/${id}`, { replace: true })
+      }
+    } finally {
+      submeterRef.current = false
+      if (montadoRef.current) setASubmeter(false)
+    }
+  }
+  const guardarESair = async () => {
+    if (blocker.state !== 'blocked' || uploadRef.current || submeterRef.current || aSairRef.current || guardarMut.loading) return
+    aSairRef.current = true
+    setASair(true)
+    if (temporizadorRef.current != null) window.clearTimeout(temporizadorRef.current)
+    try {
+      if (await guardarNaFila(dados, false)) blocker.proceed()
+    } finally {
+      aSairRef.current = false
+      if (montadoRef.current) setASair(false)
+    }
   }
   const reabrir = async () => {
     if (!rid || !motivo.trim()) { setErroLocal('Indique o motivo da reabertura.'); return }
@@ -104,9 +163,14 @@ export function RelatorioDiarioPage() {
   if (rid && !relatorio) return <p className="text-sm text-muted-foreground">{loading ? 'A carregar relatório…' : 'A preparar relatório…'}</p>
   if (!obraId) return <p role="alert">Obra não encontrada.</p>
   const submetido = relatorio?.estado === 'submetido'
-  const podeEditar = !submetido && (isAdmin || isGestor || (podeRelatar && (!rid || relatorio?.autor_id === user?.id)))
+  const podeEditar = !submetido && !aSubmeter && !aSair && (isAdmin || isGestor || (podeRelatar && (!rid || relatorio?.autor_id === user?.id)))
   const erro = erroLocal || guardarMut.error || submeterMut.error || reabrirMut.error
   return <div className="max-w-3xl mx-auto space-y-4 pb-24 print:max-w-none print:pb-0">
+    {blocker.state === 'blocked' && <div role="alert" className="rounded-xl border border-border p-4 space-y-3">
+      <p>Existem alterações por guardar. Guarde o rascunho antes de sair.</p>
+      <button type="button" className={botaoPrimario} disabled={aEnviarFotos || aSubmeter || aSair || guardarMut.loading} onClick={() => void guardarESair()}>Guardar e sair</button>
+      <button type="button" className={botaoSecundario} disabled={aSair} onClick={() => blocker.reset()}>Continuar a editar</button>
+    </div>}
     <div className="print:hidden"><Cabecalho titulo={submetido ? 'Relatório diário' : rid ? 'Editar relatório diário' : 'Novo relatório diário'} subtitulo={relatorio?.obra_nome} acoes={<Link to={`/obras/${obraId}?sec=relatorios`} className={botaoSecundario}>Ver obra</Link>} /></div>
     {submetido ? <>
       <RelatorioImprimivel relatorio={relatorio} />
@@ -120,8 +184,8 @@ export function RelatorioDiarioPage() {
       <Seccao titulo="Equipa presente"><div className="flex gap-2 flex-wrap"><button type="button" className={botaoSecundario} disabled={!podeEditar} onClick={() => editar({ equipa_ids: equipa.filter(e => e.presente_hoje).map(e => e.colaborador_id) })}>Marcar presentes hoje</button><button type="button" className={botaoSecundario} disabled={!podeEditar} onClick={() => editar({ equipa_ids: equipa.map(e => e.colaborador_id) })}>Marcar todos</button></div><div className="grid sm:grid-cols-2 gap-2">{equipa.map(e => <label key={e.colaborador_id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={dados.equipa_ids.includes(e.colaborador_id)} disabled={!podeEditar} onChange={ev => editar({ equipa_ids: ev.target.checked ? [...dados.equipa_ids, e.colaborador_id] : dados.equipa_ids.filter(x => x !== e.colaborador_id) })} />{e.nome}</label>)}</div><label className="text-sm">Outros presentes<textarea value={dados.equipa_outros} onChange={e => editar({ equipa_outros: e.target.value })} disabled={!podeEditar} placeholder="Nomes de pessoas fora da equipa alocada" className={inputCls} /></label></Seccao>
       <Seccao titulo="Subempreiteiros presentes"><div className="grid sm:grid-cols-2 gap-2">{subempreitadas.map(s => <label key={s.sub_id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={dados.subempreiteiros_ids.includes(s.sub_id)} disabled={!podeEditar} onChange={e => editar({ subempreiteiros_ids: e.target.checked ? [...dados.subempreiteiros_ids, s.sub_id] : dados.subempreiteiros_ids.filter(x => x !== s.sub_id) })} />{s.nome}</label>)}</div>{subempreitadas.length === 0 && <p className="text-sm text-muted-foreground">Sem subempreitadas nesta obra.</p>}</Seccao>
       <Seccao titulo="Trabalhos e ocorrências"><label className="text-sm">Trabalhos realizados<textarea value={dados.trabalhos} onChange={e => editar({ trabalhos: e.target.value })} disabled={!podeEditar} rows={4} className={inputCls} /></label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={dados.houve_ocorrencias} disabled={!podeEditar} onChange={e => editar({ houve_ocorrencias: e.target.checked, ocorrencias: e.target.checked ? dados.ocorrencias : '' })} />Houve ocorrências</label>{dados.houve_ocorrencias && <label className="text-sm">Descreva as ocorrências<textarea value={dados.ocorrencias} onChange={e => editar({ ocorrencias: e.target.value })} disabled={!podeEditar} rows={3} className={inputCls} /></label>}<label className="text-sm">Observações<textarea value={dados.observacoes} onChange={e => editar({ observacoes: e.target.value })} disabled={!podeEditar} rows={3} className={inputCls} /></label></Seccao>
-      <Seccao titulo="Fotografias"><FotoCapture obraId={obraId} pasta="relatorios" valor={dados.fotos} onChange={fotos => editar({ fotos })} desativado={!podeEditar} /></Seccao>
-      {podeEditar && <div className="flex gap-2 flex-wrap"><button type="button" onClick={() => void guardarNaFila(dados)} disabled={guardarMut.loading} className={botaoSecundario}>Guardar rascunho</button><button type="button" onClick={() => void submeter()} disabled={guardarMut.loading || submeterMut.loading} className={botaoPrimario}>Submeter relatório</button></div>}
+      <Seccao titulo="Fotografias"><FotoCapture obraId={obraId} pasta="relatorios" valor={dados.fotos} onChange={fotos => editar({ fotos })} onUploadingChange={mudarUpload} desativado={!podeEditar} /></Seccao>
+      {podeEditar && <div className="flex gap-2 flex-wrap"><button type="button" onClick={() => void guardarNaFila(dados)} disabled={guardarMut.loading || aEnviarFotos || aSubmeter} className={botaoSecundario}>Guardar rascunho</button><button type="button" onClick={() => void submeter()} disabled={guardarMut.loading || submeterMut.loading || aEnviarFotos || aSubmeter} className={botaoPrimario}>Submeter relatório</button></div>}
     </>}
     {erro && <p role="alert" className="text-sm text-destructive print:hidden">{erro}</p>}
   </div>

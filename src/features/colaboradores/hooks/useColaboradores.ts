@@ -8,6 +8,7 @@ import {
   arquivarColaborador,
   restaurarColaborador,
   listarContasApp,
+  buscarMeuColaborador,
   type NovoColaborador,
   type AtualizarColaborador,
 } from '../services/colaboradoresService'
@@ -71,4 +72,10 @@ export function useContasApp(enabled: boolean) {
   const { data, loading } = useAsync(listarContasApp, [],
     { enabled, errorMsg: 'Erro ao carregar as contas', cacheKey: 'colaboradores-contas', cacheTtl: 60_000 })
   return { contas: data ?? [], loading }
+}
+
+export function useMeuColaborador(userId: string | undefined) {
+  const { data, loading, error, reload } = useAsync(() => buscarMeuColaborador(userId!), [userId],
+    { enabled: !!userId, errorMsg: 'Não foi possível carregar a sua ficha', cacheKey: userId ? `colaboradores-meu-${userId}` : undefined, cacheTtl: 60_000 })
+  return { colaborador: data ?? null, loading, error, reload }
 }

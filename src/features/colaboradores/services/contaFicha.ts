@@ -1,12 +1,16 @@
 import {
-  alterarPapel, convidarUtilizador, desativarUtilizador, reativarUtilizador,
+  alterarPapel, criarUtilizador, desativarUtilizador, reativarUtilizador,
   type Utilizador, type RoleUtilizador,
 } from '@/features/auth/services/utilizadoresService'
+import { emailEfetivo, senhaValida } from '@/features/auth/lib/contaInterna'
 
 export type PedidoConta = {
   colaboradorId: string
   nome: string
   email: string
+  // Utilizador de entrada e senha inicial (vazios = não criar conta)
+  login: string
+  senha: string
   telemovel: string
   fotoPath: string | null
   role: RoleUtilizador
@@ -27,8 +31,13 @@ export async function sincronizarConta(p: PedidoConta): Promise<string | null> {
       return null
     }
     if (!p.contaAtiva) return null
-    if (!p.email.trim()) return 'Ficha guardada, mas a conta não foi criada: falta o email.'
-    await convidarUtilizador(p.email.trim().toLowerCase(), p.nome, p.role, {
+    if (!emailEfetivo(p.email, p.login) || !senhaValida(p.senha)) {
+      return 'Ficha guardada, mas a conta não foi criada: indique email ou utilizador e uma senha.'
+    }
+    await criarUtilizador({
+      nome: p.nome, role: p.role, senha: p.senha,
+      email: p.email.trim().toLowerCase() || undefined,
+      login: p.login.trim() || undefined,
       colaboradorId: p.colaboradorId,
       telemovel: p.telemovel.trim() || undefined,
       fotoPath: p.fotoPath ?? undefined,

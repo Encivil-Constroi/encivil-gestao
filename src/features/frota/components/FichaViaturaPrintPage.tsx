@@ -5,6 +5,7 @@ import { formatarData } from '@/app/lib/prazoFrota'
 import { useFichaViatura, useCatalogo } from '../hooks/useFrota'
 import { prazosDaViatura, hojeIso, type Severidade } from '../lib/frota'
 import { formatarEuros, formatarKm } from './ui'
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '@/app/components/print'
 
 const SEV_TXT: Record<string, string> = { URGENTE: 'URGENTE', ATENCAO: 'A vencer', OK: 'Em dia' }
 const EST_TXT: Record<string, string> = { OK: 'OK', ATENCAO: 'Atenção', MAU: 'Mau' }
@@ -39,7 +40,8 @@ export function FichaViaturaPrintPage() {
   const td = 'py-1.5 pr-3 border-b border-gray-100 align-top'
 
   return (
-    <div className="bg-white text-gray-900 min-h-screen p-6 print:p-0">
+    <div id="ficha-viatura-root" className="bg-white text-gray-900 min-h-screen p-6 print:p-0" style={{ fontFamily: PRINT.FONTE, color: PRINT.TINTA }}>
+      <style>{estiloPaginaImpressa('ficha-viatura-root')}</style>
       <div className="print:hidden fixed top-4 right-4 flex gap-2">
         <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl font-medium">
           <Printer className="w-4 h-4" aria-hidden="true" /> Imprimir / PDF
@@ -48,18 +50,17 @@ export function FichaViaturaPrintPage() {
       </div>
 
       <div className="max-w-3xl mx-auto space-y-5 text-sm">
-        <header className="flex items-start justify-between border-b-2 border-gray-900 pb-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">ENCIVIL · Frota</p>
-            <h1 className="text-2xl font-black">Ficha da viatura</h1>
-            <p className="text-xl font-bold text-blue-700">{ficha.viatura.nome}</p>
-          </div>
-          <div className="text-right text-xs text-gray-600 space-y-0.5">
-            <p>{ficha.viatura.identificacao ?? '—'} · {ficha.viatura.codigo}</p>
-            <p>Km atual: <strong>{formatarKm(ficha.kmAtual)}</strong></p>
-            <p>Emitida em {formatarData(hojeIso())}</p>
-          </div>
-        </header>
+        <CabecalhoImpresso
+          titulo="Ficha da viatura"
+          subtitulo={`Frota · ${ficha.viatura.nome}`}
+          direita={
+            <div className="space-y-0.5">
+              <p>{ficha.viatura.identificacao ?? '—'} · {ficha.viatura.codigo}</p>
+              <p>Km atual: <strong>{formatarKm(ficha.kmAtual)}</strong></p>
+              <p>Emitida em {formatarData(hojeIso())}</p>
+            </div>
+          }
+        />
 
         <p>Condutor responsável: <strong>{atual ? nome(atual.colaborador_id) : 'sem condutor atribuído'}</strong>
           {atual && <span className="text-gray-600"> (desde {formatarData(atual.desde)})</span>}</p>
@@ -128,6 +129,7 @@ export function FichaViaturaPrintPage() {
           <div className="border-t border-gray-900 pt-1 text-xs text-center">Mecânico</div>
           <div className="border-t border-gray-900 pt-1 text-xs text-center">Condutor responsável</div>
         </footer>
+        <RodapeImpresso nota="Ficha da viatura" />
       </div>
     </div>
   )

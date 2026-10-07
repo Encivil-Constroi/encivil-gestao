@@ -3,6 +3,8 @@ import { FileBarChart, Share2, Printer, TrendingDown, TrendingUp, Fuel, Wrench, 
 import { supabase } from '@/integrations/supabase/client'
 import { fmtEuro, fmtNumber } from '../lib/format'
 import { exportarXlsx } from '../lib/exportXlsx'
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '../components/print'
+import { EnviarWhatsAppDialog } from '../components/EnviarWhatsAppDialog'
 
 type Dados = {
   semanaLabel:   string
@@ -51,6 +53,7 @@ export function RelatorioSemanalPage() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState('')
   const [semana,   setSemana]   = useState<SemanaKey>('atual')
+  const [textoWA,  setTextoWA]  = useState<string | null>(null)
 
   const carregar = useCallback(async (key: SemanaKey) => {
     setLoading(true)
@@ -137,7 +140,7 @@ export function RelatorioSemanalPage() {
     }], 'relatorio_semanal', 'Relatório Semanal')
   }
 
-  const partilharWhatsApp = () => {
+  const abrirWhatsApp = () => {
     if (!dados) return
     const txt = [
       `🏗️ *ENCIVIL — Relatório Semanal*`,
@@ -155,13 +158,14 @@ export function RelatorioSemanalPage() {
       `⚠️ *Stock*`,
       `• ${dados.stockCritico} sem stock · ${dados.stockBaixo} stock baixo`,
     ].join('\n')
-    window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank')
+    setTextoWA(txt)
   }
 
   return (
-    <div className="space-y-5">
+    <div id="encivil-print-root-semanal" className="space-y-5" style={{ fontFamily: PRINT.FONTE }}>
+      <style>{estiloPaginaImpressa('encivil-print-root-semanal')}</style>
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="no-print flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Relatório Semanal</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Resumo operacional para partilha com os responsáveis</p>
@@ -185,7 +189,7 @@ export function RelatorioSemanalPage() {
                 <span className="hidden sm:inline">CSV</span>
               </button>
               <button
-                onClick={partilharWhatsApp}
+                onClick={abrirWhatsApp}
                 className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-[#04090F] rounded-xl font-medium hover:bg-[#20BD5C] active:scale-[0.98] transition-all text-sm"
               >
                 <Share2 className="w-4 h-4" />
@@ -233,7 +237,11 @@ export function RelatorioSemanalPage() {
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       ) : dados ? (
-        <>
+        <div id="relatorio-semanal-conteudo" className="space-y-5">
+          {/* Dentro do elemento capturado: oculto no ecrã, visível ao imprimir e no clone do PDF (data-so-pdf) */}
+          <div data-so-pdf className="hidden print:block">
+            <CabecalhoImpresso titulo="Relatório Semanal" subtitulo={`Semana de ${dados.semanaLabel}`} />
+          </div>
           <p className="text-sm text-muted-foreground -mt-1">Semana de {dados.semanaLabel}</p>
 
           {/* KPIs Armazém */}
@@ -310,8 +318,18 @@ export function RelatorioSemanalPage() {
               </div>
             </div>
           </section>
-        </>
+          <div data-so-pdf className="hidden print:block">
+            <RodapeImpresso />
+          </div>
+        </div>
       ) : null}
+      <EnviarWhatsAppDialog
+        open={textoWA !== null}
+        onOpenChange={o => { if (!o) setTextoWA(null) }}
+        texto={textoWA ?? ''}
+        nomePdf="relatorio-semanal"
+        obterElementoPdf={() => document.getElementById('relatorio-semanal-conteudo')}
+      />
     </div>
   )
 }

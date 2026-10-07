@@ -21,6 +21,9 @@ export function criarShellyEmulado({ fetch: fetchFn, log = console.log, aoMudarR
   const config = { initial_state: 'restore_last', auto_off: false, auto_off_delay: 0, in_mode: 'follow' }
   const entrada = { state: false }
   const timers = new Set()
+  const inicio = Date.now()
+  // Falhas injetadas pelos testes: cada contador é consumido por uma chamada
+  const falhas = { switchSetErro: 0, switchSetIgnorar: 0, httpSemResposta: false }
 
   function mudarRele(on, segundos, origem) {
     clearTimeout(rele.timer)
@@ -36,8 +39,9 @@ export function criarShellyEmulado({ fetch: fetchFn, log = console.log, aoMudarR
     aoMudarRele({ on, segundos: delay, origem })
   }
 
-  function responder(cb, resultado, erro = 0, msg = '') {
-    Promise.resolve().then(() => cb?.(resultado, erro, msg))
+  // O firmware passa o 4.º argumento de Shelly.call ao callback (user_data)
+  function responderBase(cb, resultado, erro, msg, ud) {
+    Promise.resolve().then(() => cb?.(resultado, erro, msg, ud))
   }
 
   async function http(metodo, url, headers, timeoutSeg) {
@@ -54,7 +58,8 @@ export function criarShellyEmulado({ fetch: fetchFn, log = console.log, aoMudarR
   }
 
   const Shelly = {
-    call(metodo, params = {}, cb) {
+    call(metodo, params = {}, cb, ud) {
+      const responder = (c, resultado, erro = 0, msg = '') => responderBase(c, resultado, erro, msg, ud)
       const permitidos = PARAMS_PERMITIDOS[metodo]
       if (!permitidos) return responder(cb, undefined, ERR_METODO, `Método desconhecido: ${metodo}`)
       const invalidos = Object.keys(params).filter(k => !permitidos.includes(k))
@@ -69,11 +74,14 @@ export function criarShellyEmulado({ fetch: fetchFn, log = console.log, aoMudarR
       }
       if (metodo === 'Switch.Set') {
         if (params.id !== 0) return responder(cb, undefined, ERR_ARGUMENTO, 'id inválido')
+        if (falhas.switchSetErro > 0) { falhas.switchSetErro--; return responder(cb, undefined, ERR_REDE, 'falha injetada') }
+        if (falhas.switchSetIgnorar > 0) { falhas.switchSetIgnorar--; return responder(cb, { was_on: rele.output }) }
         const estava = rele.output
         mudarRele(params.on === true, params.toggle_after ?? null, 'Switch.Set')
         return responder(cb, { was_on: estava })
       }
 
+      if (falhas.httpSemResposta) return
       const req = metodo === 'HTTP.GET'
         ? http('GET', params.url, undefined, params.timeout)
         : http(params.method ?? 'GET', params.url, params.headers, params.timeout)
@@ -82,6 +90,8 @@ export function criarShellyEmulado({ fetch: fetchFn, log = console.log, aoMudarR
         e => { aoHttp({ erro: String(e?.message ?? e) }); responder(cb, undefined, ERR_REDE, String(e?.message ?? e)) },
       )
     },
+
+    getUptimeMs() { return Date.now() - inicio },
 
     getComponentStatus(tipo, id) {
       const [t, i] = String(tipo).includes(':') ? String(tipo).split(':') : [tipo, id]
@@ -108,6 +118,7 @@ export function criarShellyEmulado({ fetch: fetchFn, log = console.log, aoMudarR
     rele: () => ({ ligado: rele.output, desligaEm: rele.ate }),
     config: () => ({ ...config }),
     definirNivel(alarme) { entrada.state = alarme },
+    injetar(f) { Object.assign(falhas, f) },
     // Simula alguém a ligar o relé pela app Shelly / Web UI (sem toggle_after)
     ligarManualmente() { mudarRele(true, null, 'manual') },
     parar() {

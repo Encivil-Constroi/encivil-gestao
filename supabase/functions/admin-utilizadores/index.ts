@@ -6,6 +6,7 @@
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { emailEfetivo, loginDeEmail, senhaValida, SENHA_MIN, traduzErroAuth } from './regras.ts'
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -66,6 +67,8 @@ Deno.serve(async (req) => {
         nome:       (p as { nome?: string } | undefined)?.nome ?? u.email?.split('@')[0] ?? '—',
         role:       (p as { role?: string } | undefined)?.role ?? 'gestor',
         ativo:      !banDate || new Date(banDate) < new Date(),
+        login:      loginDeEmail(u.email ?? ''),
+        semEmail:   loginDeEmail(u.email ?? '') !== null,
         ultimoLogin: u.last_sign_in_at ?? null,
         criadoEm:   u.created_at,
       }
@@ -106,6 +109,54 @@ Deno.serve(async (req) => {
     }
 
     return ok({ sucesso: true, userId: data?.user?.id })
+  }
+
+  // ── Criar utilizador com senha (email opcional) ───────────────────────
+  if (action === 'criar') {
+    const { email, login, senha, nome, role, colaboradorId, telemovel, fotoPath } = payload ?? {}
+    if (!nome || typeof nome !== 'string' || !nome.trim()) return err('Nome obrigatório')
+    if (!ROLES_VALIDOS.includes(role)) return err('Papel inválido')
+    if (!senhaValida(senha)) return err(`A senha tem de ter pelo menos ${SENHA_MIN} caracteres`)
+    const emailFinal = emailEfetivo(typeof email === 'string' ? email : '', typeof login === 'string' ? login : '')
+    if (!emailFinal) return err('Indique um email válido ou um utilizador (3 a 40 letras, números, ponto, hífen)')
+
+    const { data, error: cErr } = await admin.auth.admin.createUser({
+      email: emailFinal, password: senha, email_confirm: true, user_metadata: { nome: nome.trim() },
+    })
+    if (cErr || !data?.user) {
+      return err(traduzErroAuth(cErr?.message ?? 'Erro ao criar a conta'))
+    }
+    const userId = data.user.id
+    const extra: Record<string, string> = {}
+    if (typeof telemovel === 'string' && telemovel.trim()) extra.telemovel = telemovel.trim()
+    if (typeof fotoPath === 'string' && fotoPath.trim())   extra.foto_path = fotoPath.trim()
+    const { error: pErr } = await admin.from('profiles').update({ nome: nome.trim(), role, ...extra }).eq('id', userId)
+    let falha = pErr?.message ?? null
+    if (!falha && typeof colaboradorId === 'string' && colaboradorId) {
+      const { data: lig, error: lErr } = await admin.from('colaboradores').update({ user_id: userId }).eq('id', colaboradorId).select('id')
+      falha = lErr?.message ?? (lig && lig.length > 0 ? null : 'Ficha de colaborador não encontrada')
+    }
+    if (falha) {
+      // Sem perfil correto a conta ficaria com o papel por defeito do trigger — apaga-se.
+      const { error: dErr } = await admin.auth.admin.deleteUser(userId)
+      if (dErr) {
+        // Não foi possível apagar: bloqueia-se para não ficar uma conta ativa com papel errado.
+        await admin.auth.admin.updateUserById(userId, { ban_duration: '87600h' })
+        return err(`Conta criada com erro e bloqueada por segurança: ${falha}. Elimine-a na gestão de utilizadores.`, 500)
+      }
+      return err(`Conta não criada: ${falha}`, 500)
+    }
+    return ok({ sucesso: true, userId, email: emailFinal })
+  }
+
+  // ── Redefinir senha ───────────────────────────────────────────────────
+  if (action === 'redefinirSenha') {
+    const { userId, senha } = payload ?? {}
+    if (!userId) return err('userId obrigatório')
+    if (!senhaValida(senha)) return err(`A senha tem de ter pelo menos ${SENHA_MIN} caracteres`)
+    const { error: sErr } = await admin.auth.admin.updateUserById(userId, { password: senha })
+    if (sErr) return err(traduzErroAuth(sErr.message), 500)
+    return ok({ sucesso: true })
   }
 
   // ── Alterar papel ─────────────────────────────────────────────────────

@@ -23,6 +23,11 @@ const anon = fn => como(db, { papel: 'anon' }, fn)
 const q = async (uid, sql, p = []) => (await u(uid, tx => tx.query(sql, p))).rows
 const sup = async (sql, p = []) => (await db.query(sql, p)).rows
 async function rpc(uid, nome, args = {}) {
+  if (['auto_registar_evidencia', 'sub_doc_registar', 'auto_registar_fatura'].includes(nome) && args.p_path) {
+    const bucket = nome === 'auto_registar_evidencia' ? 'obras' : 'obras-contratos'
+    await db.query(`INSERT INTO storage.objects (bucket_id, name) SELECT $1, $2
+      WHERE NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = $1 AND name = $2)`, [bucket, args.p_path])
+  }
   const ks = Object.keys(args)
   const sql = `SELECT * FROM public.${nome}(${ks.map((k, i) => `${k} => $${i + 1}`).join(', ')})`
   return q(uid, sql, ks.map(k => args[k]))
@@ -161,7 +166,9 @@ describe('esquema, backfill e invariante', () => {
     await expect(sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, workflow) VALUES ($1, 9002, 10, 'validado')`, [c.sub])).rejects.toThrow(/ck_auto_workflow_estado/)
     await expect(sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, valor_glosado) VALUES ($1, 9003, 10, 10.01)`, [c.sub])).rejects.toThrow(/ck_auto_glosado/)
     await expect(sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, workflow) VALUES ($1, 9004, 10, 'aprovado')`, [c.sub])).rejects.toThrow(/ck_auto_workflow/)
-    await expect(sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, fatura_path) VALUES ($1, 9005, 10, $2)`, [c.sub, fatPath(randomUUID())])).rejects.toThrow(/ck_auto_fatura/)
+    const path = fatPath(randomUUID())
+    await sup(`INSERT INTO storage.objects (bucket_id, name) VALUES ('obras-contratos', $1)`, [path])
+    await expect(sup(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo, fatura_path) VALUES ($1, 9005, 10, $2)`, [c.sub, path])).rejects.toThrow(/ck_auto_fatura/)
   })
 
   it('quem criou o auto (created_by) é legível pela UI', async () => {

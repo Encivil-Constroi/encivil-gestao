@@ -185,7 +185,7 @@ export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<
     p_observacoes_devolucao: input.returnNotes,
     p_assinatura_devolucao: input.signature,
     p_assinatura_responsavel_dev: input.responsibleSignature,
-    p_foto_devolucao_path: input.fotoDevolucaoPath ?? null,
+    p_foto_devolucao_path: input.fotoDevolucaoPath ?? undefined,
   })
   if (error) throw error
 

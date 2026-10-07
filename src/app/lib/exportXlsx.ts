@@ -5,6 +5,7 @@ import type * as XLSXType from 'xlsx'
 // Colunas cujo nome sugere valor monetário → formato "€ 1.234,56"
 function ehColunaMonetaria(chave: string): boolean {
   const k = chave.toLowerCase()
+  if (k.includes('horas')) return false
   return (
     k.includes('€') ||
     k.includes('custo') ||
@@ -18,17 +19,12 @@ function ehColunaMonetaria(chave: string): boolean {
   )
 }
 
-export async function exportarXlsx(
-  rows: Record<string, unknown>[],
-  nomeArquivo: string,
-  nomePagina = 'Dados',
-) {
-  if (rows.length === 0) return
 
-  const XLSX: typeof XLSXType = await import('xlsx')
+type Linhas = Record<string, unknown>[]
+
+// Constrói o worksheet com larguras, cabeçalho congelado e formato monetário.
+function construirFolha(XLSX: typeof XLSXType, rows: Linhas): XLSXType.WorkSheet {
   const headers = Object.keys(rows[0])
-
-  // Gerar worksheet a partir do array de objetos
   const ws = XLSX.utils.json_to_sheet(rows)
 
   // Largura automática de cada coluna (máximo entre cabeçalho e conteúdo, cap 55)
@@ -49,13 +45,41 @@ export async function exportarXlsx(
     for (let row = range.s.r + 1; row <= range.e.r; row++) {
       const addr = XLSX.utils.encode_cell({ r: row, c: colIdx })
       const cell = ws[addr]
-      if (cell?.t === 'n') cell.z = '"€" #,##0.00'
+      if (cell?.t === 'n') cell.z = '"€" #,##0.00'
     }
   })
+  return ws
+}
 
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, nomePagina)
-
+function nomeFicheiro(nomeArquivo: string): string {
   const hoje = new Date().toISOString().split('T')[0]
-  XLSX.writeFile(wb, `${nomeArquivo}_${hoje}.xlsx`)
+  return `${nomeArquivo}_${hoje}.xlsx`
+}
+
+export async function exportarXlsx(
+  rows: Linhas,
+  nomeArquivo: string,
+  nomePagina = 'Dados',
+) {
+  if (rows.length === 0) return
+
+  const XLSX: typeof XLSXType = await import('xlsx')
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, construirFolha(XLSX, rows), nomePagina)
+  XLSX.writeFile(wb, nomeFicheiro(nomeArquivo))
+}
+
+export async function exportarXlsxMultiFolha(
+  folhas: { nome: string; linhas: Linhas }[],
+  nomeArquivo: string,
+) {
+  if (folhas.length === 0) return
+
+  const XLSX: typeof XLSXType = await import('xlsx')
+  const wb = XLSX.utils.book_new()
+  for (const f of folhas) {
+    const linhas = f.linhas.length > 0 ? f.linhas : [{ Aviso: 'Sem dados no período' }]
+    XLSX.utils.book_append_sheet(wb, construirFolha(XLSX, linhas), f.nome.slice(0, 31))
+  }
+  XLSX.writeFile(wb, nomeFicheiro(nomeArquivo))
 }

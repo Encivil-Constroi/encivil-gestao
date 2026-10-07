@@ -676,7 +676,7 @@ export type ObrasDatabase = {
     }
     Functions: {
       obras_painel: { Args: Record<string, never>; Returns: ObraResumoRow[] }
-      obra_visao: { Args: { p_obra_id: string }; Returns: ObraResumoRow[] }
+      obra_visao: { Args: { p_obra_id: string }; Returns: ObraResumoRow }
       obra_guardar: { Args: ObraGuardarArgs; Returns: string }
       obra_alocar_colaborador: {
         Args: { p_obra_id: string; p_colaborador_id: string; p_funcao: string | null; p_desde: string }

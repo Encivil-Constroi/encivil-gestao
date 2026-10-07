@@ -530,6 +530,9 @@ export interface FaturaFornecedor {
   dataFatura?: Date;
   dataRecepcao: Date;
   totalFatura?: number;
+  nifFornecedor?: string;
+  baseTributavel?: number;
+  valorIva?: number;
   estado: EstadoFatura;
   ficheiroPatch?: string;   // path no storage (para URL assinada)
   ficheiroUrl?: string;     // URL assinada temporária (não persistida)

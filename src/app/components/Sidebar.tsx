@@ -53,8 +53,9 @@ type MenuSection = { title?: string; items: MenuItem[] };
 const menuSections: MenuSection[] = [
   {
     items: [
-      { path: '/', label: 'Dashboard', icon: LayoutDashboard,
-        prefetch: () => { void import('@/app/pages/DashboardPage') } },
+      // "Dashboard" só para o CEO (admin); os outros têm o "Início" pessoal (rótulo trocado ao desenhar o item)
+      { path: '/', label: 'Dashboard', icon: LayoutDashboard, mecanico: true, motorista: true,
+        prefetch: () => { void import('@/app/pages/inicio/InicioPage') } },
     ],
   },
   {
@@ -214,7 +215,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                       `}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
-                      <span className="text-sm flex-1">{item.label}</span>
+                      <span className="text-sm flex-1">{item.path === '/' && !isAdmin ? 'Início' : item.label}</span>
                       {item.contaPedidos && podeAprovar && aguardam > 0 && (
                         <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-warning text-warning-foreground text-[11px] font-bold flex items-center justify-center"
                           aria-label={`${aguardam} à espera de decisão`}>

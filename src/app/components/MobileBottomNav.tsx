@@ -12,17 +12,20 @@ const navItems = [
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { podeArmazem, isMecanico, isMotorista } = useRole();
+  const { isAdmin, podeArmazem, isMecanico, isMotorista } = useRole();
 
   // Quem tem escrita no armazém pode registar movimentos (admin, gestor, armazém)
   const canRegisterMovement = podeArmazem;
 
   // O mecânico só usa a Frota; o motorista só o abastecimento
   if (isMecanico || isMotorista) {
+    const inicio = { path: '/', label: 'Início', icon: LayoutDashboard, ativo: (p: string) => p === '/' }
     const itens = isMecanico ? [
+      inicio,
       { path: '/frota', label: 'Frota', icon: Truck, ativo: (p: string) => p.startsWith('/frota') },
       { path: '/ajuda', label: 'Ajuda', icon: CircleHelp, ativo: (p: string) => p.startsWith('/ajuda') },
     ] : [
+      inicio,
       { path: '/abastecimento/pedir', label: 'Pedir', icon: Droplets, ativo: (p: string) => p.startsWith('/abastecimento/pedir') },
       // Inclui o ecrã de cada pedido (/abastecimento/pedido/:id)
       { path: '/abastecimento', label: 'Pedidos', icon: ClipboardList, ativo: (p: string) => p === '/abastecimento' || p.startsWith('/abastecimento/pedido/') },
@@ -88,7 +91,7 @@ export function MobileBottomNav() {
                 isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
               }`}>
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium">{item.path === '/' && !isAdmin ? 'Início' : item.label}</span>
               </div>
             </Link>
           );

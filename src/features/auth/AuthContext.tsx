@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
 import type { Enums } from '@/integrations/supabase/types'
 import { setSentryUser, clearSentryUser } from '@/app/lib/sentry'
+import { clearAsyncCache } from '@/app/lib/useAsync'
 
 // 'mecanico' (Fase 9, migration 20260929020000) e 'motorista' (abastecimento v2,
 // 20260930000000) ainda não estão nos tipos gerados — saem daqui quando os
@@ -49,11 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession]   = useState<Session | null>(null)
   const [profile, setProfile]   = useState<Profile | null>(null)
   const [loading, setLoading]   = useState(true)
+  const cacheUserRef = useRef<string | null>(null)
 
   useEffect(() => {
     // Initial session + profile load — keeps loading=true until both are resolved.
     // .catch() garante que loading=false mesmo em falha de rede no arranque.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cacheUserRef.current !== (session?.user.id ?? null)) clearAsyncCache()
+      cacheUserRef.current = session?.user.id ?? null
       setSession(session)
       if (session?.user) {
         const p = await fetchProfile(session.user.id)
@@ -66,6 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Subsequent auth state changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || cacheUserRef.current !== (session?.user.id ?? null)) clearAsyncCache()
+      cacheUserRef.current = session?.user.id ?? null
       setSession(session)
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const p = await fetchProfile(session.user.id)

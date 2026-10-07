@@ -11,13 +11,26 @@ export interface Utilizador {
   ativo: boolean
   ultimoLogin: string | null
   criadoEm: string
+  login: string | null
+  semEmail: boolean
+}
+
+async function mensagemErro(error: { message: string; context?: unknown }): Promise<string> {
+  const ctx = error.context
+  if (ctx instanceof Response) {
+    try {
+      const corpo = (await ctx.clone().json()) as { erro?: string }
+      if (corpo?.erro) return corpo.erro
+    } catch { /* corpo não-JSON */ }
+  }
+  return error.message.includes('non-2xx') ? 'Erro no servidor de contas. Tente novamente.' : error.message
 }
 
 async function chamarAdmin<T>(action: string, payload?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>('admin-utilizadores', {
     body: { action, payload },
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(await mensagemErro(error))
   const resp = data as unknown as { erro?: string } & T
   if (resp?.erro) throw new Error(resp.erro)
   return data as T
@@ -43,4 +56,24 @@ export async function desativarUtilizador(userId: string): Promise<void> {
 
 export async function reativarUtilizador(userId: string): Promise<void> {
   await chamarAdmin('reativar', { userId })
+}
+
+export type NovoUtilizador = {
+  nome: string
+  role: RoleUtilizador
+  senha: string
+  email?: string
+  login?: string
+  colaboradorId?: string
+  telemovel?: string
+  fotoPath?: string
+}
+
+export async function criarUtilizador(d: NovoUtilizador): Promise<{ userId: string; email: string }> {
+  const r = await chamarAdmin<{ sucesso: boolean; userId: string; email: string }>('criar', { ...d })
+  return { userId: r.userId, email: r.email }
+}
+
+export async function redefinirSenha(userId: string, senha: string): Promise<void> {
+  await chamarAdmin('redefinirSenha', { userId, senha })
 }

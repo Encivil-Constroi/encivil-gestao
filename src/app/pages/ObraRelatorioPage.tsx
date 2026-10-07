@@ -8,6 +8,7 @@ import { useCustoObra } from '@/features/custos/useCustoObra';
 import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
 import { useAbastecimentos } from '@/features/combustivel/hooks/useCombustivel';
 import { getUnitLabel } from '@/app/data/mockData';
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '@/app/components/print';
 
 const PT = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmt = (d?: Date | null) => (d ? PT.format(d) : '—');
@@ -86,10 +87,10 @@ export function ObraRelatorioPage() {
   const totalExecutado  = subs.reduce((s, x) => s + x.executed,    0)
 
   return (
-    <>
+    <div id="encivil-print-root-obra" style={{ fontFamily: PRINT.FONTE }}>
       <style>{`
+        ${estiloPaginaImpressa('encivil-print-root-obra')}
         @media print {
-          @page { size: A4 portrait; margin: 14mm 18mm; }
           html, body { margin: 0; background: white !important; }
           .no-print  { display: none !important; }
           .pdf-page  { box-shadow: none !important; border: none !important; padding: 0 !important; }
@@ -133,7 +134,7 @@ export function ObraRelatorioPage() {
           totalContratado={totalContratado} totalExecutado={totalExecutado}
         />
       </div>
-    </>
+    </div>
   )
 }
 
@@ -154,29 +155,24 @@ type DocProps = {
 // ── Documento ─────────────────────────────────────────────────────────────────
 function DocContent({ obra, custo, subs, topMateriais, topViaturas, consumoPct, margemPct, gc, totalContratado, totalExecutado }: DocProps) {
   return (
-    <div className="pdf-page bg-white text-[#04090F] mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
+    <div className="pdf-page bg-white text-[#04090F] mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0">
 
       {/* ━━━ Cabeçalho ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="flex items-start justify-between mb-6 pb-5 border-b-2 border-gray-900">
-        <div className="flex items-center gap-4">
-          <img src="/icone_oficial.png" alt="ENCIVIL" className="w-16 h-16 object-contain" />
-          <div>
-            <p className="text-xl font-black tracking-wide text-gray-900 leading-none">ENCIVIL</p>
-            <p className="text-xs text-gray-500 mt-0.5">Empresa de Construção Civil</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Relatório Financeiro</p>
-          <p className="text-[22px] font-black text-gray-900 leading-tight max-w-[280px] text-right">{obra.name}</p>
-          <div className="flex items-center justify-end gap-2 mt-1">
-            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-              obra.status === 'concluida' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'
-            }`}>
-              {obra.status === 'concluida' ? 'Concluída' : 'Ativa'}
-            </span>
-          </div>
-          <p className="text-[10px] text-gray-400 mt-1">Gerado em {fmt(new Date())}</p>
-        </div>
+      <div className="mb-6">
+        <CabecalhoImpresso
+          titulo="Relatório Financeiro"
+          subtitulo={obra.name}
+          direita={
+            <>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                obra.status === 'concluida' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'
+              }`}>
+                {obra.status === 'concluida' ? 'Concluída' : 'Ativa'}
+              </span>
+              <div style={{ marginTop: 4 }}>Gerado em {fmt(new Date())}</div>
+            </>
+          }
+        />
       </div>
 
       {/* ━━━ Info da obra ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -383,10 +379,7 @@ function DocContent({ obra, custo, subs, topMateriais, topViaturas, consumoPct, 
       )}
 
       {/* ━━━ Rodapé ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
-        <p className="text-[10px] text-gray-400">ENCIVIL Gestão — Documento gerado em {fmt(new Date())}</p>
-        <p className="text-[10px] text-gray-400">Relatório Financeiro · {obra.name}</p>
-      </div>
+      <RodapeImpresso nota={`Relatório Financeiro · ${obra.name}`} />
     </div>
   )
 }

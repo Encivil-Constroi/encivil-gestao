@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer } from 'lucide-react'
 import type { GuiaTransporte } from '../services/guiasTransporteService'
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '@/app/components/print'
 
 // Vista de impressão para uma guia de transporte.
 // Dispara window.print() automaticamente quando autoprint=true.
@@ -47,23 +48,22 @@ export function GuiaPrintView({ guia, obraNome, autoprint = false, onClose }: Pr
       </div>
 
       {/* Folha A4 */}
-      <div className="bg-white text-gray-900 w-full max-w-2xl mx-auto space-y-6 print:space-y-4">
+      <div id="guia-print-root" className="bg-white w-full max-w-2xl mx-auto space-y-6 print:space-y-4" style={{ fontFamily: PRINT.FONTE, color: PRINT.TINTA }}>
         {/* Cabeçalho */}
-        <div className="flex items-start justify-between border-b-2 border-gray-900 pb-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">ENCIVIL · Construção Civil</p>
-            <h1 className="text-2xl font-black text-gray-900 mt-0.5">Guia de Transporte</h1>
-            <p className="text-3xl font-black text-blue-600 mt-1">{guia.numero}</p>
-          </div>
-          <div className="p-3 bg-white border-2 border-gray-900 rounded-xl">
-            <QRCodeSVG
-              value={guiaUrl}
-              size={90}
-              level="M"
-              marginSize={1}
-            />
-          </div>
-        </div>
+        <CabecalhoImpresso
+          titulo={`Guia de Transporte ${guia.numero}`}
+          subtitulo="Construção Civil"
+          direita={
+            <div className="p-2 bg-white border-2 rounded-xl inline-block" style={{ borderColor: PRINT.TINTA }}>
+              <QRCodeSVG
+                value={guiaUrl}
+                size={90}
+                level="M"
+                marginSize={1}
+              />
+            </div>
+          }
+        />
 
         {/* Dados gerais */}
         <div className="grid grid-cols-2 gap-4">
@@ -110,16 +110,12 @@ export function GuiaPrintView({ guia, obraNome, autoprint = false, onClose }: Pr
         </div>
 
         {/* Rodapé */}
-        <p className="text-[9px] text-gray-300 text-center">
-          Documento gerado em {new Date().toLocaleString('pt-PT')} · {guiaUrl}
-        </p>
+        <RodapeImpresso nota={guiaUrl} />
       </div>
 
       <style>{`
-        @media print {
-          body { margin: 0; background: white; }
-          @page { size: A4; margin: 15mm; }
-        }
+        @media print { body { margin: 0; background: white; } }
+        ${estiloPaginaImpressa('guia-print-root')}
       `}</style>
     </div>
   )

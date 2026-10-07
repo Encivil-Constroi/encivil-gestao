@@ -141,8 +141,9 @@ export async function listarPainel(): Promise<ObraResumoRow[]> {
 export async function buscarVisao(id: string): Promise<ObraResumoRow> {
   const { data, error } = await obrasDb.rpc('obra_visao', { p_obra_id: id })
   if (error) throw error
-  const linha = data?.[0]
-  if (!linha) throw new Error('Obra não encontrada')
+  // PostgREST devolve o composto não-SETOF como objeto; versões antigas podem devolver uma lista.
+  const linha: ObraResumoRow | undefined | null = Array.isArray(data) ? data[0] : data
+  if (!linha?.obra_id) throw new Error('Obra não encontrada')
   return linha
 }
 

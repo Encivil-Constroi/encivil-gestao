@@ -18,14 +18,15 @@ export function Fotos({ obraId }: SecaoProps) {
   const [origem, setOrigem] = useState<OrigemFoto | ''>('')
   const [novas, setNovas] = useState<FotoObra[]>([])
   const [aberto, setAberto] = useState(false)
+  const [aEnviar, setAEnviar] = useState(false)
   const filtradas = origem ? fotos.filter(f => f.origem === origem) : fotos
   const guardar = async () => {
-    if (!novas.length) return
+    if (!novas.length || aEnviar || aGuardar) return
     const resultado = await adicionar(obraId, novas)
     if (resultado !== null) { setNovas([]); setAberto(false); reload() }
   }
-  return <Seccao titulo="Fotografias da obra" acao={podeAdicionar && <button type="button" className={botaoPrimario} onClick={() => setAberto(v => !v)}>Adicionar fotos</button>}>
-    {aberto && podeAdicionar && <div className="rounded-xl border border-border p-4 space-y-3"><FotoCapture obraId={obraId} pasta="galeria" valor={novas} onChange={setNovas} /><button type="button" className={botaoPrimario} disabled={!novas.length || aGuardar} onClick={() => void guardar()}>Guardar fotos</button>{erroGuardar && <p role="alert" className="text-destructive text-sm">{erroGuardar}</p>}</div>}
+  return <Seccao titulo="Fotografias da obra" acao={podeAdicionar && <button type="button" className={botaoPrimario} disabled={aEnviar || aGuardar} onClick={() => setAberto(v => !v)}>Adicionar fotos</button>}>
+    {aberto && podeAdicionar && <div className="rounded-xl border border-border p-4 space-y-3"><FotoCapture obraId={obraId} pasta="galeria" valor={novas} onChange={setNovas} onUploadingChange={setAEnviar} desativado={aGuardar} /><button type="button" className={botaoPrimario} disabled={!novas.length || aGuardar || aEnviar} onClick={() => void guardar()}>Guardar fotos</button>{erroGuardar && <p role="alert" className="text-destructive text-sm">{erroGuardar}</p>}</div>}
     <label className="block text-sm">Origem das fotos<select className="ml-2 px-3 py-2 rounded-xl border border-input bg-input-background" value={origem} onChange={e => setOrigem(e.target.value as OrigemFoto | '')}><option value="">Todas</option>{ORIGENS.map(o => <option key={o.valor} value={o.valor}>{o.texto}</option>)}</select></label>
     {loading && !fotos.length && <p role="status">A carregar fotografias…</p>}
     {error && <p role="alert">{error} <button type="button" className={botaoSecundario} onClick={reload}>Tentar de novo</button></p>}

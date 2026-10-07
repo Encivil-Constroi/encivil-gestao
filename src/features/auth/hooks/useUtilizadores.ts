@@ -6,6 +6,9 @@ import {
   alterarPapel,
   desativarUtilizador,
   reativarUtilizador,
+  criarUtilizador,
+  redefinirSenha,
+  type NovoUtilizador,
   type RoleUtilizador,
 } from '../services/utilizadoresService'
 
@@ -56,4 +59,23 @@ export function useReativarUtilizador() {
   )
   const reativar = async (userId: string) => (await mutate(userId)) === true
   return { reativar, loading }
+}
+
+export function useCriarUtilizador() {
+  const { mutate, loading, error } = useMutation(
+    (d: NovoUtilizador) => criarUtilizador(d),
+    'Erro ao criar utilizador',
+    { invalidates: INV_UTILIZADORES }
+  )
+  return { criar: mutate, loading, error }
+}
+
+export function useRedefinirSenha() {
+  const { mutate, loading, error } = useMutation(
+    async (userId: string, senha: string): Promise<true> => { await redefinirSenha(userId, senha); return true },
+    'Erro ao redefinir a senha',
+    { invalidates: INV_UTILIZADORES }
+  )
+  const redefinir = async (userId: string, senha: string) => (await mutate(userId, senha)) === true
+  return { redefinir, loading, error }
 }

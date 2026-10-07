@@ -1,5 +1,7 @@
 import { X, User } from 'lucide-react'
 import { ColaboradorForm } from './ColaboradorForm'
+import { DadosLaboraisSecao } from './DadosLaboraisSecao'
+import { useRole } from '@/features/auth/useRole'
 import type { Colaborador } from '@/app/types'
 
 interface ColaboradorDrawerProps {
@@ -10,6 +12,7 @@ interface ColaboradorDrawerProps {
 
 export function ColaboradorDrawer({ colaborador, onClose, onSaved }: ColaboradorDrawerProps) {
   const isEdit = !!colaborador
+  const { isAdmin, isGestor } = useRole()
 
   return (
     <>
@@ -37,6 +40,8 @@ export function ColaboradorDrawer({ colaborador, onClose, onSaved }: Colaborador
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {isEdit && (isAdmin || isGestor) && <DadosLaboraisSecao colaboradorId={colaborador!.id} />}
 
         <ColaboradorForm colaborador={colaborador} onSaved={onSaved} onCancel={onClose} />
       </div>

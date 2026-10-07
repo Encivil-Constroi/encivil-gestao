@@ -6,6 +6,15 @@ import { parseSupabaseError } from './parseSupabaseError'
 // Sobrevive à navegação entre rotas (o módulo fica carregado), mas é limpo no
 // reload completo da página. Invalidado por mutações via invalidateCache().
 const _cache = new Map<string, { data: unknown; ts: number }>()
+let _sessaoCache = 0
+const _trocasSessao = new Set<() => void>()
+
+/** Descarta dados de outra identidade e invalida respostas ainda em voo. */
+export function clearAsyncCache(): void {
+  _sessaoCache++
+  _cache.clear()
+  for (const limpar of [..._trocasSessao]) limpar()
+}
 
 // Hooks montados com cacheKey — sem isto, invalidar só apagava o cache e uma
 // lista já no ecrã continuava a mostrar dados antigos até recarregar a página
@@ -60,6 +69,7 @@ export function useAsync<T>(
     return !(hit && Date.now() - hit.ts < cacheTtl)
   })
   const [error, setError] = useState<string | null>(null)
+  const [sessaoAtual, setSessaoAtual] = useState(_sessaoCache)
 
   // Proteção contra atualizações de estado após desmontagem ou mudança de deps:
   // cada execução de run() captura o valor corrente de genRef; o cleanup do
@@ -73,6 +83,18 @@ export function useAsync<T>(
   asyncFnRef.current = asyncFn
 
   const temDadosRef = useRef(data !== null)
+  useEffect(() => {
+    const limpar = () => {
+      genRef.current++
+      temDadosRef.current = false
+      setData(null)
+      setError(null)
+      setLoading(enabled)
+      setSessaoAtual(_sessaoCache)
+    }
+    _trocasSessao.add(limpar)
+    return () => { _trocasSessao.delete(limpar) }
+  }, [enabled])
 
   // silencioso: refresh em segundo plano (invalidação) — mantém os dados atuais
   // no ecrã em vez de os trocar por um skeleton
@@ -80,6 +102,7 @@ export function useAsync<T>(
   const run = useCallback(async (silencioso = false) => {
     if (!enabled) { setLoading(false); return }
     const gen = ++genRef.current
+    const sessaoCache = _sessaoCache
 
     // Cache hit: dados frescos — sem fetch, sem spinner
     if (cacheKey) {
@@ -94,19 +117,19 @@ export function useAsync<T>(
     setError(null)
     try {
       const result = await asyncFnRef.current()
-      if (genRef.current !== gen) return
+      if (genRef.current !== gen || sessaoCache !== _sessaoCache) return
       if (cacheKey) _cache.set(cacheKey, { data: result, ts: Date.now() })
       setData(result)
       temDadosRef.current = true
     } catch (e) {
-      if (genRef.current !== gen) return
+      if (genRef.current !== gen || sessaoCache !== _sessaoCache) return
       setError(parseSupabaseError(e, errorMsg))
       captureError(e)
     } finally {
       if (genRef.current === gen) setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, cacheKey, cacheTtl, ...deps])
+  }, [enabled, cacheKey, cacheTtl, sessaoAtual, ...deps])
 
   useEffect(() => {
     void run()

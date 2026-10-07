@@ -58,12 +58,12 @@ export function argsMovimentoArmazem(i: RegistarMovimentoArmazemInput) {
     p_subtipo: i.subtipo,
     p_quantidade: i.quantidade,
     p_responsavel: i.responsavel,
-    p_obra_id: i.obraId ?? null,
-    p_fornecedor: i.fornecedor ?? null,
-    p_numero_fatura: i.numeroFatura ?? null,
-    p_cliente: i.cliente ?? null,
-    p_preco_unitario: i.precoUnitario ?? null,
-    p_observacoes: i.observacoes ?? null,
+    p_obra_id: i.obraId ?? undefined,
+    p_fornecedor: i.fornecedor ?? undefined,
+    p_numero_fatura: i.numeroFatura ?? undefined,
+    p_cliente: i.cliente ?? undefined,
+    p_preco_unitario: i.precoUnitario ?? undefined,
+    p_observacoes: i.observacoes ?? undefined,
   }
 }
 
@@ -200,7 +200,7 @@ export type MaterialObra = {
 }
 
 export async function listarMateriaisPorObra(): Promise<MaterialObra[]> {
-  const { data, error } = await armazemDb.rpc('armazem_materiais_por_obra', { p_obra_id: null })
+  const { data, error } = await armazemDb.rpc('armazem_materiais_por_obra', { p_obra_id: undefined })
   if (error) throw error
   return ((data ?? []) as MaterialObraRow[]).map(r => ({
     obraId: r.obra_id, obraNome: r.obra_nome, obraEstado: r.obra_estado,

@@ -4,6 +4,7 @@ import { X, Printer, FileText } from 'lucide-react';
 import { getToolCategoryLabel, getReturnConditionLabel } from '../data/mockData';
 import type { Tool, ToolLoan } from '../types';
 import type { Configuracoes } from '@/features/configuracoes/services/configuracoesService';
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '@/app/components/print';
 
 interface Props {
   loan: ToolLoan;
@@ -25,23 +26,17 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
       @media print {
         body > *:not(#encivil-termo-print-root) { display: none !important; }
         #encivil-termo-print-root { display: block !important; position: static !important; overflow: visible !important; }
-        #encivil-termo-print-root * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-        }
-        .no-print { display: none !important; }
-        @page { margin: 14mm 16mm; size: A4 portrait; }
       }
+      ${estiloPaginaImpressa('encivil-termo-print-root')}
     `;
     document.head.appendChild(s);
     return () => { document.getElementById('encivil-termo-print-css')?.remove(); };
   }, []);
 
-  const NAVY   = '#1e3a8a';
-  const SLATE  = '#64748b';
-  const BORDER = '#cbd5e1';
-  const LIGHT  = '#f8fafc';
+  const NAVY   = PRINT.MARCA;
+  const SLATE  = PRINT.SUAVE;
+  const BORDER = PRINT.LINHA;
+  const LIGHT  = PRINT.FUNDO;
 
   const sectionTitle = (text: string) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0 12px' }}>
@@ -55,7 +50,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
   const field = (label: string, value: string) => (
     <div>
       <div style={{ fontSize: 10, color: SLATE, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13, color: '#1e293b', fontWeight: 600 }}>{value}</div>
+      <div style={{ fontSize: 13, color: PRINT.TINTA, fontWeight: 600 }}>{value}</div>
     </div>
   );
 
@@ -90,7 +85,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FileText style={{ width: 16, height: 16, color: NAVY }} />
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: PRINT.TINTA }}>
             Termo de Responsabilidade · {tool?.name ?? loan.toolName}
           </span>
         </div>
@@ -100,7 +95,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
           </span>
           <button
             onClick={onClose}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, background: 'white', cursor: 'pointer', color: '#374151' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, background: 'white', cursor: 'pointer', color: PRINT.TINTA }}
           >
             <X style={{ width: 14, height: 14 }} /> Fechar
           </button>
@@ -114,31 +109,18 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
       </div>
 
       {/* Documento A4 */}
-      <div style={{ maxWidth: 740, margin: '0 auto', background: 'white', padding: '36px 8px 60px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ maxWidth: 740, margin: '0 auto', background: 'white', padding: '36px 8px 60px', fontFamily: PRINT.FONTE }}>
 
-        {/* Cabeçalho da empresa */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderBottom: `3px solid ${NAVY}`, paddingBottom: 16, marginBottom: 16 }}>
-          <div style={{ background: NAVY, borderRadius: 10, padding: 6, width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <img src="/icone_oficial.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1e293b' }}>{config?.nomeEmpresa ?? 'ENCIVIL'}</div>
-            <div style={{ fontSize: 11, color: SLATE, marginTop: 2 }}>
-              {config?.nifEmpresa ? `NIF ${config.nifEmpresa}` : ''}
-              {config?.nifEmpresa && config?.sedeEmpresa ? ' · ' : ''}
-              {config?.sedeEmpresa ?? ''}
-            </div>
-          </div>
-        </div>
+        <CabecalhoImpresso
+          titulo="Termo de Responsabilidade"
+          subtitulo={[config?.nomeEmpresa ?? 'ENCIVIL', config?.nifEmpresa ? `NIF ${config.nifEmpresa}` : '', config?.sedeEmpresa ?? ''].filter(Boolean).join(' · ')}
+        />
 
-        <h1 style={{ fontSize: 16, fontWeight: 800, color: NAVY, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.03em', margin: '8px 0 4px' }}>
-          Termo de Responsabilidade
-        </h1>
-        <p style={{ fontSize: 12, color: SLATE, textAlign: 'center', margin: 0 }}>
+        <p style={{ fontSize: 12, color: SLATE, textAlign: 'center', margin: '12px 0 0' }}>
           Empréstimo e guarda de ferramenta / equipamento
         </p>
 
-        <p style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.6, marginTop: 18 }}>
+        <p style={{ fontSize: 12.5, color: PRINT.TINTA, lineHeight: 1.6, marginTop: 18 }}>
           Pelo presente termo, <strong>{config?.nomeEmpresa ?? 'ENCIVIL'}</strong>
           {config?.nifEmpresa ? <>, NIF {config.nifEmpresa}</> : null}
           {config?.sedeEmpresa ? <>, com sede em {config.sedeEmpresa}</> : null}, doravante designada por
@@ -170,7 +152,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
         </div>
 
         {sectionTitle('Declaração de Responsabilidade')}
-        <ol style={{ fontSize: 11.5, color: '#374151', lineHeight: 1.7, paddingLeft: 18, margin: 0 }}>
+        <ol style={{ fontSize: 11.5, color: PRINT.TINTA, lineHeight: 1.7, paddingLeft: 18, margin: 0 }}>
           <li style={{ marginBottom: 8 }}>
             O Utilizador declara ter recebido a ferramenta/equipamento acima identificado(a) no estado
             descrito, assumindo a partir desta data a sua guarda, conservação e utilização adequada.
@@ -218,7 +200,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
               {field('Recebido por', loan.receivedBy || '—')}
             </div>
             {loan.returnNotes && (
-              <p style={{ fontSize: 11.5, color: '#374151', marginTop: 10 }}>
+              <p style={{ fontSize: 11.5, color: PRINT.TINTA, marginTop: 10 }}>
                 <strong>Observações da devolução:</strong> {loan.returnNotes}
               </p>
             )}
@@ -230,9 +212,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
           </>
         )}
 
-        <p style={{ fontSize: 10, color: SLATE, textAlign: 'center', marginTop: 40 }}>
-          Documento gerado pelo ENCIVIL Gestão em {fmtDate(new Date())}
-        </p>
+        <RodapeImpresso nota="Termo de responsabilidade" />
       </div>
     </div>,
     document.body

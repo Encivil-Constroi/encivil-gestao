@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { UserPlus, MoreVertical, ShieldCheck, ShieldOff, RefreshCw, Mail, Users } from 'lucide-react'
+import { UserPlus, MoreVertical, ShieldCheck, ShieldOff, RefreshCw, Mail, Users, KeyRound } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import {
   useUtilizadores,
-  useConvidarUtilizador,
+  useCriarUtilizador,
+  useRedefinirSenha,
   useAlterarPapel,
   useDesativarUtilizador,
   useReativarUtilizador,
 } from '@/features/auth/hooks/useUtilizadores'
+import { emailEfetivo, gerarSenha, loginDeEmail, normalizarLogin, senhaValida, SENHA_MIN } from '@/features/auth/lib/contaInterna'
 import type { RoleUtilizador, Utilizador } from '@/features/auth/services/utilizadoresService'
 
 const ROLES: { value: RoleUtilizador; label: string; desc: string }[] = [
@@ -31,24 +33,176 @@ const ROLE_BADGE: Record<RoleUtilizador, string> = {
   leitura:  'bg-muted text-muted-foreground',
 }
 
+const inputCls = 'w-full px-3 py-2.5 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary'
+
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-// ── Formulário de convite ──────────────────────────────────────────────────────
-function ConvidarModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const { convidar, loading } = useConvidarUtilizador()
+// ── Campo de senha com Mostrar/Gerar ───────────────────────────────────────────
+function CampoSenha({ id, valor, onChange, rotulo = 'Senha' }: {
+  id: string; valor: string; onChange: (v: string) => void; rotulo?: string
+}) {
+  const [visivel, setVisivel] = useState(false)
+  const btnCls = 'px-3 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors shrink-0'
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium mb-1.5">{rotulo} <span className="text-destructive">*</span></label>
+      <div className="flex gap-2">
+        <input
+          id={id}
+          type={visivel ? 'text' : 'password'}
+          value={valor}
+          onChange={e => onChange(e.target.value)}
+          autoComplete="new-password"
+          className={`${inputCls} min-w-0`}
+        />
+        <button type="button" onClick={() => setVisivel(v => !v)} className={btnCls}>
+          {visivel ? 'Ocultar' : 'Mostrar'}
+        </button>
+        <button type="button" onClick={() => { onChange(gerarSenha()); setVisivel(true) }} className={btnCls}>
+          Gerar
+        </button>
+      </div>
+      {valor.length > 0 && !senhaValida(valor) && (
+        <p className="text-xs text-destructive mt-1">A senha tem de ter pelo menos {SENHA_MIN} caracteres.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Formulário de novo utilizador ──────────────────────────────────────────────
+export function NovoUtilizadorModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { criar, loading, error: erro } = useCriarUtilizador()
+  const [nome, setNome]   = useState('')
   const [email, setEmail] = useState('')
-  const [nome,  setNome]  = useState('')
-  const [role,  setRole]  = useState<RoleUtilizador>('gestor')
+  const [login, setLogin] = useState('')
+  const [loginEditado, setLoginEditado] = useState(false)
+  const [senha, setSenha] = useState('')
+  const [role, setRole]   = useState<RoleUtilizador>('leitura')
+  const [criada, setCriada] = useState<{ login: string; senha: string } | null>(null)
+
+  const emailLimpo = email.trim()
+  const loginNorm = normalizarLogin(login)
+  const entraCom = emailEfetivo(emailLimpo, login) ? (emailLimpo || loginNorm) : ''
+  const podeCriar = nome.trim().length > 0 && entraCom !== '' && senhaValida(senha) && !loading
+
+  const aoMudarNome = (v: string) => {
+    setNome(v)
+    if (!loginEditado) setLogin(normalizarLogin(v))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const result = await convidar(email.trim(), nome.trim(), role)
-    if (result !== undefined) {
-      toast.success(`Convite enviado para ${email}`)
+    if (!podeCriar) return
+    const r = await criar({
+      nome: nome.trim(),
+      ...(emailLimpo ? { email: emailLimpo } : { login: loginNorm }),
+      senha,
+      role,
+    })
+    if (r) {
+      const quem = loginDeEmail(r.email) ?? r.email
+      toast.success(`Conta criada. Entra com ${quem}`)
+      setCriada({ login: quem, senha })
       onSuccess()
+    }
+  }
+
+  const copiar = async () => {
+    if (!criada) return
+    try {
+      await navigator.clipboard.writeText(`Utilizador: ${criada.login}\nSenha: ${criada.senha}`)
+      toast.success('Credenciais copiadas.')
+    } catch {
+      toast.error('Não foi possível copiar. Selecione o texto e copie manualmente.')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-1">Novo utilizador</h2>
+        {criada ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Conta criada. Guarde estas credenciais: a senha não volta a ser mostrada.</p>
+            <div className="bg-muted/40 border border-border rounded-lg p-3 text-sm font-mono space-y-1">
+              <p>Utilizador: {criada.login}</p>
+              <p>Senha: {criada.senha}</p>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={copiar}
+                className="flex-1 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors">
+                Copiar
+              </button>
+              <button type="button" onClick={onClose}
+                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground mb-5">
+              Crie a conta já com senha. O email é opcional.
+            </p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="nu-nome" className="block text-sm font-medium mb-1.5">Nome <span className="text-destructive">*</span></label>
+                <input id="nu-nome" type="text" value={nome} onChange={e => aoMudarNome(e.target.value)}
+                  className={inputCls} placeholder="Nome completo" autoFocus />
+              </div>
+              <div>
+                <label htmlFor="nu-email" className="block text-sm font-medium mb-1.5">Email <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+                <input id="nu-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  className={inputCls} placeholder="utilizador@encivil.pt" />
+              </div>
+              <div>
+                <label htmlFor="nu-login" className="block text-sm font-medium mb-1.5">Utilizador{!emailLimpo && <span className="text-destructive"> *</span>}</label>
+                <input id="nu-login" type="text" value={login}
+                  onChange={e => { setLogin(e.target.value); setLoginEditado(true) }}
+                  className={inputCls} placeholder="ana.costa" autoComplete="off" />
+              </div>
+              <CampoSenha id="nu-senha" valor={senha} onChange={setSenha} />
+              <div>
+                <label htmlFor="nu-papel" className="block text-sm font-medium mb-1.5">Papel</label>
+                <select id="nu-papel" value={role} onChange={e => setRole(e.target.value as RoleUtilizador)} className={inputCls}>
+                  {ROLES.map(r => (
+                    <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
+                  ))}
+                </select>
+              </div>
+              {entraCom && <p className="text-xs text-muted-foreground">Entra com: {entraCom}</p>}
+              {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={onClose}
+                  className="flex-1 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={!podeCriar}
+                  className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {loading ? 'A criar…' : 'Criar conta'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Redefinir senha ────────────────────────────────────────────────────────────
+function RedefinirSenhaModal({ utilizador, onClose }: { utilizador: Utilizador; onClose: () => void }) {
+  const { redefinir, loading, error: erro } = useRedefinirSenha()
+  const [senha, setSenha] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!senhaValida(senha)) return
+    if (await redefinir(utilizador.id, senha)) {
+      toast.success('Senha atualizada')
       onClose()
     }
   }
@@ -56,60 +210,19 @@ function ConvidarModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold mb-1">Convidar utilizador</h2>
-        <p className="text-sm text-muted-foreground mb-5">
-          O utilizador receberá um email com um link de acesso.
-        </p>
+        <h2 className="text-lg font-semibold mb-1">Redefinir senha</h2>
+        <p className="text-sm text-muted-foreground mb-5">{utilizador.nome}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Nome</label>
-            <input
-              type="text"
-              value={nome}
-              onChange={e => setNome(e.target.value)}
-              required
-              className="w-full px-3 py-2.5 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Nome completo"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2.5 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="utilizador@encivil.pt"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Papel</label>
-            <select
-              value={role}
-              onChange={e => setRole(e.target.value as RoleUtilizador)}
-              className="w-full px-3 py-2.5 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {ROLES.map(r => (
-                <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
-              ))}
-            </select>
-          </div>
+          <CampoSenha id="rs-senha" valor={senha} onChange={setSenha} rotulo="Nova senha" />
+          {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors"
-            >
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors">
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {loading ? 'A enviar…' : 'Enviar convite'}
+            <button type="submit" disabled={!senhaValida(senha) || loading}
+              className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {loading ? 'A guardar…' : 'Redefinir'}
             </button>
           </div>
         </form>
@@ -124,11 +237,13 @@ function MenuAcoes({
   currentUserId,
   onRoleChange,
   onToggleAtivo,
+  onRedefinirSenha,
 }: {
   utilizador: Utilizador
   currentUserId: string
   onRoleChange: (userId: string, role: RoleUtilizador) => void
   onToggleAtivo: (utilizador: Utilizador) => void
+  onRedefinirSenha: (utilizador: Utilizador) => void
 }) {
   const [open, setOpen] = useState(false)
   const isSelf = utilizador.id === currentUserId
@@ -158,6 +273,14 @@ function MenuAcoes({
                 {r.label}
               </button>
             ))}
+            <div className="border-t border-border my-1" />
+            <button
+              onClick={() => { onRedefinirSenha(utilizador); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-muted-foreground" />
+              Redefinir senha
+            </button>
             {!isSelf && (
               <>
                 <div className="border-t border-border my-1" />
@@ -188,12 +311,14 @@ export function GestaoUtilizadoresPage() {
   const { alterar, loading: alterandoPapel } = useAlterarPapel()
   const { desativar, loading: desativando }   = useDesativarUtilizador()
   const { reativar, loading: reativando }     = useReativarUtilizador()
-  const [modalConvite, setModalConvite]        = useState(false)
+  const [modalNovo, setModalNovo]              = useState(false)
+  const [paraRedefinir, setParaRedefinir]      = useState<Utilizador | null>(null)
   const [busca, setBusca]                      = useState('')
 
   const filtrados = utilizadores.filter(u =>
     u.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    u.email.toLowerCase().includes(busca.toLowerCase()),
+    u.email.toLowerCase().includes(busca.toLowerCase()) ||
+    (u.login ?? '').toLowerCase().includes(busca.toLowerCase()),
   )
 
   const handleRoleChange = async (userId: string, role: RoleUtilizador) => {
@@ -239,11 +364,11 @@ export function GestaoUtilizadoresPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button
-            onClick={() => setModalConvite(true)}
+            onClick={() => setModalNovo(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             <UserPlus className="w-4 h-4" />
-            Convidar
+            Novo utilizador
           </button>
         </div>
       </div>
@@ -253,7 +378,7 @@ export function GestaoUtilizadoresPage() {
         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="search"
-          placeholder="Pesquisar por nome ou email…"
+          placeholder="Pesquisar por nome, utilizador ou email…"
           value={busca}
           onChange={e => setBusca(e.target.value)}
           className="w-full pl-9 pr-4 py-2.5 bg-input-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -284,7 +409,7 @@ export function GestaoUtilizadoresPage() {
           {/* Header da tabela — desktop */}
           <div className="hidden md:grid grid-cols-[1fr_1fr_140px_140px_48px] gap-4 px-5 py-3 border-b border-border bg-muted/30">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Utilizador</span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email / Utilizador</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Papel</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Último acesso</span>
             <span />
@@ -316,7 +441,10 @@ export function GestaoUtilizadoresPage() {
                   </div>
 
                   {/* Email — oculto no mobile */}
-                  <p className="hidden md:block text-sm text-muted-foreground truncate">{u.email}</p>
+                  <p className="hidden md:flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                    <span className="truncate">{u.semEmail ? (u.login ?? u.email) : u.email}</span>
+                    {u.semEmail && <span className="shrink-0 px-1.5 py-0.5 rounded bg-muted text-[11px] font-medium">sem email</span>}
+                  </p>
 
                   {/* Papel */}
                   <div>
@@ -337,6 +465,7 @@ export function GestaoUtilizadoresPage() {
                       currentUserId={user?.id ?? ''}
                       onRoleChange={handleRoleChange}
                       onToggleAtivo={handleToggleAtivo}
+                      onRedefinirSenha={setParaRedefinir}
                     />
                   </div>
                 </li>
@@ -363,12 +492,14 @@ export function GestaoUtilizadoresPage() {
         </div>
       </details>
 
-      {/* ── Modal de convite ── */}
-      {modalConvite && (
-        <ConvidarModal
-          onClose={() => setModalConvite(false)}
+      {modalNovo && (
+        <NovoUtilizadorModal
+          onClose={() => setModalNovo(false)}
           onSuccess={reload}
         />
+      )}
+      {paraRedefinir && (
+        <RedefinirSenhaModal utilizador={paraRedefinir} onClose={() => setParaRedefinir(null)} />
       )}
     </div>
   )

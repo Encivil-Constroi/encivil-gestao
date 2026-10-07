@@ -4,6 +4,7 @@ import { Lock, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/features/auth/AuthContext';
+import { paraEmailLogin, loginDeEmail } from '@/features/auth/lib/contaInterna';
 
 type Mode = 'login' | 'request-reset' | 'reset-sent';
 
@@ -26,7 +27,7 @@ export function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(paraEmailLogin(email), password);
     if (error) {
       toast.error('Credenciais inválidas. Verifique o e-mail e a palavra-passe.');
       setIsLoading(false);
@@ -37,6 +38,10 @@ export function LoginPage() {
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!resetEmail.includes('@') || loginDeEmail(resetEmail.trim()) !== null) {
+      toast.info('Contas sem email: peça ao administrador para redefinir a senha.');
+      return;
+    }
     setIsLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -68,18 +73,19 @@ export function LoginPage() {
               {logo}
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label htmlFor="login-email" className="block text-sm font-medium text-foreground mb-2">Email</label>
+                  <label htmlFor="login-email" className="block text-sm font-medium text-foreground mb-2">Email ou utilizador</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       id="login-email"
-                      type="email"
+                      type="text"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       className={inputCls}
-                      placeholder="seu.email@encivil.pt"
+                      placeholder="seu.email@encivil.pt ou utilizador"
                       required
-                      autoComplete="email"
+                      autoComplete="username"
+                      autoCapitalize="none"
                     />
                   </div>
                 </div>
@@ -133,7 +139,7 @@ export function LoginPage() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       id="reset-email"
-                      type="email"
+                      type="text"
                       value={resetEmail}
                       onChange={e => setResetEmail(e.target.value)}
                       className={inputCls}

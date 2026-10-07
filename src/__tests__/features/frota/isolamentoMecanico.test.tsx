@@ -45,7 +45,7 @@ function abrir(caminho: string) {
 afterEach(cleanup)
 
 describe('isolamento do mecânico', () => {
-  it.each(['/', '/produtos', '/abastecimento'])('mecânico em %s vai para a Frota', async caminho => {
+  it.each(['/produtos', '/abastecimento'])('mecânico em %s vai para a Frota', async caminho => {
     papel.atual = 'mecanico'
     abrir(caminho)
     expect(await screen.findByText('FROTA')).toBeInTheDocument()
@@ -65,10 +65,19 @@ describe('isolamento do mecânico', () => {
       expect(await screen.findByText(texto)).toBeInTheDocument()
     })
 
-  it('navegação móvel do mecânico só tem Frota e Ajuda', async () => {
+  it('navegação móvel do mecânico: Início, Frota e Ajuda', async () => {
     papel.atual = 'mecanico'
     abrir('/frota')
     const links = (await screen.findAllByRole('link')).map(l => l.getAttribute('href'))
-    expect(links).toEqual(['/frota', '/ajuda'])
+    expect(links).toEqual(['/', '/frota', '/ajuda'])
+  })
+})
+
+describe('Início do mecânico', () => {
+  it('mecânico abre o seu Início em / sem ser redirecionado', async () => {
+    papel.atual = 'mecanico'
+    abrir('/')
+    expect(await screen.findByText('DASHBOARD')).toBeInTheDocument()
+    expect(screen.getByTestId('onde')).toHaveTextContent(/^\/$/)
   })
 })

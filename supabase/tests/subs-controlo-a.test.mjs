@@ -19,6 +19,11 @@ const q = async (uid, sql, p = []) => (await u(uid, tx => tx.query(sql, p))).row
 const sup = async (sql, p = []) => (await db.query(sql, p)).rows
 
 async function rpc(uid, nome, args = {}) {
+  if (['auto_registar_evidencia', 'sub_doc_registar'].includes(nome) && args.p_path) {
+    const bucket = nome === 'auto_registar_evidencia' ? 'obras' : 'obras-contratos'
+    await db.query(`INSERT INTO storage.objects (bucket_id, name) SELECT $1, $2
+      WHERE NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = $1 AND name = $2)`, [bucket, args.p_path])
+  }
   const ks = Object.keys(args)
   const sql = `SELECT * FROM public.${nome}(${ks.map((k, i) => `${k} => $${i + 1}`).join(', ')})`
   return q(uid, sql, ks.map(k => args[k]))
@@ -491,8 +496,10 @@ describe('documentos do subempreiteiro', () => {
   })
 
   it('a base de dados recusa caminho de outra contratação e datas invertidas', async () => {
-    await expect(sup(`INSERT INTO public.sub_documentos (subempreiteiro_id, tipo, path) VALUES ($1, 'CERT_SS', $2)`, [sub, docPath(randomUUID())])).rejects.toThrow(/ck_sub_doc_path/)
-    await expect(sup(`INSERT INTO public.sub_documentos (subempreiteiro_id, tipo, path, emitido_em, validade) VALUES ($1, 'CERT_SS', $2, '2026-02-01', '2026-01-01')`, [sub, docPath(sub)])).rejects.toThrow(/ck_sub_doc_datas/)
+    const outroPath = docPath(randomUUID()), path = docPath(sub)
+    for (const p of [outroPath, path]) await sup(`INSERT INTO storage.objects (bucket_id, name) VALUES ('obras-contratos', $1)`, [p])
+    await expect(sup(`INSERT INTO public.sub_documentos (subempreiteiro_id, tipo, path) VALUES ($1, 'CERT_SS', $2)`, [sub, outroPath])).rejects.toThrow(/ck_sub_doc_path/)
+    await expect(sup(`INSERT INTO public.sub_documentos (subempreiteiro_id, tipo, path, emitido_em, validade) VALUES ($1, 'CERT_SS', $2, '2026-02-01', '2026-01-01')`, [sub, path])).rejects.toThrow(/ck_sub_doc_datas/)
   })
 })
 
@@ -636,8 +643,10 @@ describe('evidências dos autos', () => {
   })
 
   it('a base de dados recusa estado incoerente (válida com motivo)', async () => {
+    const path = caminhoFoto(OBRA_EV)
+    await sup(`INSERT INTO storage.objects (bucket_id, name) VALUES ('obras', $1)`, [path])
     await expect(sup(`INSERT INTO public.auto_evidencias (auto_id, path, tirada_em, hash_sha256, valida, motivo_invalida) VALUES ($1, $2, now(), $3, true, 'sem_gps')`,
-      [auto, caminhoFoto(OBRA_EV), hash()])).rejects.toThrow(/ck_auto_evid_valida/)
+      [auto, path, hash()])).rejects.toThrow(/ck_auto_evid_valida/)
   })
 
   describe('apagar', () => {
@@ -673,7 +682,11 @@ describe('evidências dos autos', () => {
         await tx.query(`SELECT set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claim.role', 'authenticated', true)`, [medicoes])
         await tx.exec('SET LOCAL ROLE authenticated')
       }
-      const reg = (a) => tenta(`SELECT public.auto_registar_evidencia($1, $2, NULL, $3, $4, 5, $5, $6) AS r`, [a, caminhoFoto(OBRA_EV), norte(10), LON, minutos(-1), hash()])
+      const reg = async (a) => {
+        const path = caminhoFoto(OBRA_EV)
+        await tenta(`INSERT INTO storage.objects (bucket_id, name) VALUES ('obras', $1)`, [path])
+        return tenta(`SELECT public.auto_registar_evidencia($1, $2, NULL, $3, $4, 5, $5, $6) AS r`, [a, path, norte(10), LON, minutos(-1), hash()])
+      }
       const a = (await tx.query(`INSERT INTO public.autos_medicao (subempreiteiro_id, numero, valor_periodo) VALUES ($1, 999999, 0) RETURNING id`, [sub])).rows[0].id
 
       await comoMedicoes()

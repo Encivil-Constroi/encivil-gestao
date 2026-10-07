@@ -7,6 +7,7 @@ import { useSubempreiteiro } from '../../legacy/useSubempreiteiros';
 import { useGlosasAuto, useEvidenciasAutoLista } from '../../hooks/useSubsControlo';
 import type { AutoGlosaRow, WorkflowAuto } from '../../db';
 import { AutoEvidenciasView } from './AutoEvidenciasView';
+import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '@/app/components/print';
 
 const PT = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmt = (d?: Date | null) => d ? PT.format(d) : '—';
@@ -80,11 +81,8 @@ export function AutoPdfPage() {
     <>
       {/* ── CSS de impressão — injetado inline para não depender de ficheiros externos ── */}
       <style>{`
+        ${estiloPaginaImpressa('auto-pdf-root')}
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 14mm 18mm;
-          }
           html, body { margin: 0; background: white !important; }
           .no-print  { display: none !important; }
           .pdf-page  { box-shadow: none !important; border: none !important; padding: 0 !important; }
@@ -126,7 +124,7 @@ export function AutoPdfPage() {
       </div>
 
       {/* ── Documento imprimível (só impressão — versão sem wrapper de fundo) ── */}
-      <div className="hidden print:block">
+      <div id="auto-pdf-root" className="hidden print:block">
         <Document auto={auto} sub={sub} baseLines={baseLines} extraLines={extraLines} temRetencao={temRetencao} fmt={fmt}
           glosas={glosasAplicadas} aprovadores={aprovadores} evidenciasValidas={evidenciasValidas} evidenciasTotal={evidencias.length} />
       </div>
@@ -150,44 +148,36 @@ type DocProps = {
 
 function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt, glosas, aprovadores, evidenciasValidas, evidenciasTotal }: DocProps) {
   return (
-    <div className="pdf-page bg-white text-[#04090F] mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0 font-sans">
+    <div className="pdf-page bg-white mx-auto max-w-[794px] min-h-[1123px] p-[28px] print:p-0" style={{ fontFamily: PRINT.FONTE, color: PRINT.TINTA }}>
 
       {/* ━━━ Cabeçalho ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="flex items-start justify-between mb-6 pb-5 border-b-2 border-gray-900">
-        {/* Logo + identidade */}
-        <div className="flex items-center gap-4">
-          <img src="/icone_oficial.png" alt="ENCIVIL" className="w-16 h-16 object-contain" />
-          <div>
-            <p className="text-xl font-black tracking-wide text-gray-900 leading-none">ENCIVIL</p>
-            <p className="text-xs text-gray-500 mt-0.5">Empresa de Construção Civil</p>
-          </div>
-        </div>
-
-        {/* Título do documento */}
-        <div className="text-right">
-          <p className="text-[22px] font-black uppercase tracking-wide text-gray-900">Auto de Medição</p>
-          <p className="text-3xl font-black text-[#001C7D] leading-none">Nº {auto.number}</p>
-          <div className="flex items-center justify-end gap-1.5 mt-1">
-            <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-              auto.workflow === 'validado'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-amber-100 text-amber-700'
-            }`}>
-              {ROTULO_WORKFLOW[auto.workflow]}
-            </span>
-            {auto.estadoPagamento && (
+      <div className="mb-6">
+        <CabecalhoImpresso
+          titulo={`Auto de Medição Nº ${auto.number}`}
+          subtitulo={`${sub.name} · Empresa de Construção Civil`}
+          direita={
+            <div className="flex items-center justify-end gap-1.5">
               <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                auto.estadoPagamento === 'pago'
+                auto.workflow === 'validado'
                   ? 'bg-green-100 text-green-700'
-                  : auto.estadoPagamento === 'em_atraso'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-600'
+                  : 'bg-amber-100 text-amber-700'
               }`}>
-                {ESTADO_PAGAMENTO[auto.estadoPagamento] ?? auto.estadoPagamento}
+                {ROTULO_WORKFLOW[auto.workflow]}
               </span>
-            )}
-          </div>
-        </div>
+              {auto.estadoPagamento && (
+                <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                  auto.estadoPagamento === 'pago'
+                    ? 'bg-green-100 text-green-700'
+                    : auto.estadoPagamento === 'em_atraso'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {ESTADO_PAGAMENTO[auto.estadoPagamento] ?? auto.estadoPagamento}
+                </span>
+              )}
+            </div>
+          }
+        />
       </div>
 
       {/* ━━━ Informações principais ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -433,10 +423,7 @@ function Document({ auto, sub, baseLines, extraLines, temRetencao, fmt, glosas, 
       </div>
 
       {/* ━━━ Rodapé ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="mt-10 pt-4 border-t border-gray-200 flex items-center justify-between">
-        <p className="text-[10px] text-gray-400">ENCIVIL Gestão — Documento gerado em {fmt(new Date())}</p>
-        <p className="text-[10px] text-gray-400">Auto Nº {auto.number} · {sub.name}</p>
-      </div>
+      <RodapeImpresso nota={`Auto Nº ${auto.number} · ${sub.name}`} />
 
     </div>
   );

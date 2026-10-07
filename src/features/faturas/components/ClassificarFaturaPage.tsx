@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { useAsync }   from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import type { LinhaFatura, DestinoLinha } from '@/app/types'
+import { DadosFiscaisForm } from './DadosFiscaisForm'
 import {
   buscarFatura,
   lancarFatura,
@@ -447,6 +448,8 @@ export function ClassificarFaturaPage() {
           </button>
         </div>
       </div>
+
+      <DadosFiscaisForm fatura={fatura} onSaved={reloadFatura} />
 
       {/* Corpo: split-view */}
       <div className="flex flex-1 min-h-0">

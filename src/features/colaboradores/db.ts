@@ -24,6 +24,19 @@ export type ColaboradorDbRow = {
 export type ColaboradorDbInsert = Pick<ColaboradorDbRow, 'nome' | 'numero_mecan' | 'cargo'>
   & Partial<Omit<ColaboradorDbRow, 'id' | 'created_at' | 'ativo'>>
 
+export type TipoContrato = 'SEM_TERMO' | 'TERMO_CERTO' | 'TERMO_INCERTO' | 'TEMPORARIO' | 'ESTAGIO' | 'OUTRO'
+
+// colaboradores_dados_laborais (migration 20261007100000) — RGPD: só admin/gestor.
+export type DadosLaborais = {
+  colaborador_id: string
+  niss: string | null
+  iban: string | null
+  data_admissao: string | null
+  tipo_contrato: TipoContrato | null
+  data_fim_contrato: string | null
+  categoria_profissional: string | null
+}
+
 export type ColaboradoresDatabase = {
   __InternalSupabase: { PostgrestVersion: '14.5' }
   public: {
@@ -36,6 +49,12 @@ export type ColaboradoresDatabase = {
           foreignKeyName: 'colaboradores_obra_id_fkey'; columns: ['obra_id']; isOneToOne: false
           referencedRelation: 'obras'; referencedColumns: ['id']
         }]
+      }
+      colaboradores_dados_laborais: {
+        Row: DadosLaborais & { updated_at: string }
+        Insert: DadosLaborais & { updated_at?: string }
+        Update: Partial<DadosLaborais>
+        Relationships: []
       }
       obras: { Row: { id: string; nome: string }; Insert: never; Update: never; Relationships: [] }
     }

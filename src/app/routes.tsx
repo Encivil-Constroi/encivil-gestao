@@ -98,7 +98,8 @@ import { Redirecionar } from './components/Redirecionar';
 const ImprimirQrPage          = lazy(() => import('./pages/pub/ImprimirQrPage').then(m => ({ default: m.ImprimirQrPage })));
 
 // ── Imports lazy (carregados só quando a rota é visitada) ────────────────────
-const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+// Início: Dashboard executivo para o CEO, painel pessoal por cargo para os outros
+const InicioPage       = lazy(() => import('./pages/inicio/InicioPage').then(m => ({ default: m.InicioPage })));
 
 
 const ObrasLayout          = lazy(() => import('@/features/obras').then(m => ({ default: m.ObrasLayout })));
@@ -231,7 +232,7 @@ export const router = createBrowserRouter([
         Component: MainLayout,
         errorElement: <RouteErrorPage />,
         children: [
-          { index: true,           element: <L><DashboardPage /></L> },
+          { index: true,           element: <L><InicioPage /></L> },
           // ── Armazém ── (quem pode escrever decide-se em cada página e na RLS)
           {
             path: 'armazem',

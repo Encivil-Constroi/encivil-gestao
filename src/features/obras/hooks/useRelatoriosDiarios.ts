@@ -8,14 +8,14 @@ import {
   submeterRelatorioDiario, type FiltrosRelatorios,
 } from '../services/relatoriosDiariosService'
 
-const INVALIDAR = ['obra-relatorios-*', 'obra-relatorio-*', 'obras-painel', 'obra-visao-*']
+const INVALIDAR = ['obra-relatorios-*', 'obra-relatorio-*', 'obras-painel', 'obra-visao-*', 'obra-fotos-*', 'obra-eventos-*', 'obra-ultimos-relatorios-*']
 
 export function usePodeRelatarObra(obraId?: string) {
   const { user } = useAuth()
   const { role } = useRole()
   const direto = role === 'admin' || role === 'gestor' || role === 'medicoes'
   const { data } = useAsync(() => autorDesignadoParaRelatorio(obraId!, user!.id), [obraId, user?.id],
-    { enabled: !!obraId && !!user && !direto && role !== 'mecanico' && role !== 'motorista' && role !== 'leitura', errorMsg: 'Erro ao verificar autorização do relatório' })
+    { enabled: !!obraId && !!user && !direto && role !== 'mecanico' && role !== 'motorista', errorMsg: 'Erro ao verificar autorização do relatório' })
   return direto || data === true
 }
 

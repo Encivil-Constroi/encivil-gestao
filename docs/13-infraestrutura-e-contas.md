@@ -130,8 +130,7 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 
 - Não é uma conta na nuvem — comunica em rede local, autenticado por um
   segredo partilhado (`PUMP_POLO2_SECRET`, guardado nos segredos do
-  Supabase). Ver `supabase/scripts/shelly-polo2.js` para o procedimento de
-  configuração do aparelho.
+  Supabase). Instalação e operação: `docs/21-shelly-pro3-bomba.md` (script em `supabase/scripts/shelly-polo2.js`).
 
 ---
 

@@ -220,3 +220,24 @@ ORDER BY total_consumido DESC;
 ```
 
 **Critério de aceitação:** Apenas movimentos de saída contam para consumo por obra; ajustes e entradas excluídos.
+
+---
+
+## Relatório executivo (`/relatorios`) — visão do CEO
+
+Spec: `docs/superpowers/specs/2026-10-06-relatorios-ceo-design.md` · Plano: `docs/plans/2026-10-06-relatorios-ceo.md`.
+
+| Separador | Fonte de verdade | Quem vê |
+|---|---|---|
+| Visão geral | `obras_painel`, `subs_painel_ceo`, `frota_resumo_viaturas`, `produtos_em_alerta`, empréstimos | admin, gestor |
+| Obras | `obras_painel()` (custo consolidado — o mesmo da ficha da obra) | admin, gestor |
+| Subempreitadas | `subs_painel_ceo`, `subs_fluxo_caixa` | admin, gestor |
+| Stock / Ferramentas / Combustível | movimentos, empréstimos, abastecimentos | todos os papéis com acesso ao ecrã |
+| Frota | `frota_resumo_viaturas()` | admin, gestor |
+| Pessoas | colaboradores, `resumo_assiduidade_dia`, `faltas`, alertas de EPI/formação/documentos | admin, gestor |
+
+Regras:
+- Os relatórios **não recalculam** custos: leem o que o módulo já calcula, para que o CEO veja os mesmos números em todo o lado.
+- A Visão geral carrega cada módulo à parte; um módulo em erro aparece assinalado e não derruba os outros.
+- Datas por dia civil de Lisboa (`src/app/lib/relatorios/periodo.ts`), não UTC.
+- A restrição por papel na UI é conforto; a segurança real é a RLS/RPC.

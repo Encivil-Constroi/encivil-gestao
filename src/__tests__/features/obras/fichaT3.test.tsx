@@ -5,6 +5,7 @@ import { obraFixture } from './obrasFixtures'
 
 const state = vi.hoisted(() => ({
   role: 'gestor',
+  uploading: false,
   autorDesignado: false,
   visao: null as unknown,
   fases: [] as unknown[], afericoes: [] as unknown[], fotos: [] as unknown[], eventos: [] as unknown[], relatorios: [] as unknown[],
@@ -25,7 +26,7 @@ vi.mock('@/features/obras/hooks/useFichaObra', () => ({
   useAdicionarFotos: () => ({ adicionar: state.adicionarFotos, loading: false, error: null }),
   usePermissaoFotosObra: () => ({ podeAdicionar: ['admin', 'gestor', 'medicoes'].includes(state.role) || state.autorDesignado }),
 }))
-vi.mock('@/features/obras/components/FotoCapture', () => ({ FotoCapture: () => <span>Escolher fotografias</span> }))
+vi.mock('@/features/obras/components/FotoCapture', () => ({ FotoCapture: ({ onUploadingChange }: { onUploadingChange?: (v: boolean) => void }) => <button type="button" onClick={() => onUploadingChange?.(true)}>Escolher fotografias</button> }))
 vi.mock('@/features/obras/components/FotosGaleria', () => ({ FotosGaleria: ({ fotos }: { fotos: { path: string }[] }) => <span>{fotos.map(f => f.path).join(', ')}</span> }))
 vi.mock('@/features/obras/components/MapaObra', () => ({ MapaObra: () => <a href="/maps/dir">Navegar</a> }))
 
@@ -38,6 +39,15 @@ const mostrar = (elemento: React.ReactNode) => render(<MemoryRouter>{elemento}</
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('Ficha de obra T3', () => {
+  it('aguarda o upload antes de registar uma aferição', () => {
+    state.role = 'medicoes'
+    mostrar(<Progresso obraId="obra-1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Nova aferição' }))
+    fireEvent.change(screen.getByLabelText('Resumo dos trabalhos'), { target: { value: 'Trabalhos verificados' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher fotografias' }))
+    expect(screen.getByRole('button', { name: 'Registar aferição' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled()
+  })
   it('resume saúde, progresso, orçamento e acesso às secções e ações', () => {
     state.visao = obraFixture({ saude: 'critico', motivos: ['Prazo ultrapassado'], progresso_pct: 35, progresso_esperado_pct: 70, orcamento: 100000, custo_total: 95000, cliente: 'Cliente A', responsavel_nome: 'Responsável A', engenheiro_nome: 'Engenheira A' })
     mostrar(<Resumo obraId="obra-1" />)

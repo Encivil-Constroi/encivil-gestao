@@ -6,6 +6,7 @@ import { sincronizarConta } from '../services/contaFicha'
 import { PermissoesSwitches } from './PermissoesSwitches'
 import { useRole } from '@/features/auth/useRole'
 import { useUtilizadores } from '@/features/auth/hooks/useUtilizadores'
+import { gerarSenha, normalizarLogin, senhaValida, SENHA_MIN } from '@/features/auth/lib/contaInterna'
 import {
   PERMISSOES_INICIAIS, papelDasPermissoes, permissoesDoPapel, type PermissoesFicha,
 } from '@/features/auth/lib/permissoes'
@@ -39,13 +40,15 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
   const [form, setForm] = useState({
     nome: '', numeroMecan: '', cargo: '', setor: '', telemovel: '', email: '',
     nif: '', obraId: '', notas: '', userId: '', fotoPath: null as string | null,
+    login: '', senha: '',
   })
+  const [senhaVisivel, setSenhaVisivel] = useState(false)
   const [permissoes, setPermissoes] = useState<PermissoesFicha>(PERMISSOES_INICIAIS)
   const [permissoesMexidas, setPermissoesMexidas] = useState(false)
 
   useEffect(() => {
     if (!colaborador) return
-    setForm({
+    setForm(f => ({ ...f,
       nome:        colaborador.nome,
       numeroMecan: colaborador.numeroMecan,
       cargo:       colaborador.cargo,
@@ -57,7 +60,7 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
       notas:       colaborador.notas ?? '',
       userId:      colaborador.userId ?? '',
       fotoPath:    colaborador.fotoPath ?? null,
-    })
+    }))
   }, [colaborador])
 
   // Conta ligada: as permissões mostradas são as que a conta tem de facto
@@ -111,6 +114,8 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
         colaboradorId: result.id,
         nome: form.nome.trim(),
         email: form.email,
+        login: form.login.trim() || result.numeroMecan || form.numeroMecan.trim(),
+        senha: form.senha,
         telemovel: form.telemovel,
         fotoPath: form.fotoPath,
         role: papelDasPermissoes(permissoes, utilizador?.role),
@@ -206,9 +211,37 @@ export function ColaboradorForm({ colaborador, onSaved, onCancel, ampla = false 
 
             <PermissoesSwitches valor={permissoes} colunas={ampla} onChange={p => { setPermissoes(p); setPermissoesMexidas(true) }} />
             {!form.userId && permissoes.contaAtiva && (
-              <p className="text-xs text-muted-foreground">
-                Com email e conta ativa, a pessoa recebe um convite para definir a senha e só vê o que estas permissões permitem.
-              </p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                  <div>
+                    <label htmlFor="colab-login" className={labelCls}>Utilizador</label>
+                    <input id="colab-login" type="text" value={form.login} onChange={e => set({ login: e.target.value })}
+                      className={inputCls} placeholder={form.numeroMecan.trim() ? normalizarLogin(form.numeroMecan) : 'N.º mecanográfico'}
+                      autoComplete="off" autoCapitalize="none" />
+                  </div>
+                  <div>
+                    <label htmlFor="colab-senha" className={labelCls}>Senha</label>
+                    <div className="flex gap-2">
+                      <input id="colab-senha" type={senhaVisivel ? 'text' : 'password'} value={form.senha}
+                        onChange={e => set({ senha: e.target.value })} className={`${inputCls} min-w-0`} autoComplete="new-password" />
+                      <button type="button" onClick={() => setSenhaVisivel(v => !v)}
+                        className="px-3 border border-border rounded-xl text-sm hover:bg-accent transition-colors shrink-0">
+                        {senhaVisivel ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                      <button type="button" onClick={() => { set({ senha: gerarSenha() }); setSenhaVisivel(true) }}
+                        className="px-3 border border-border rounded-xl text-sm hover:bg-accent transition-colors shrink-0">
+                        Gerar
+                      </button>
+                    </div>
+                    {form.senha.length > 0 && !senhaValida(form.senha) && (
+                      <p className="text-xs text-destructive mt-1">A senha tem de ter pelo menos {SENHA_MIN} caracteres.</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A conta é criada com este utilizador (ou o email) e a senha, e só vê o que estas permissões permitem.
+                </p>
+              </div>
             )}
           </section>
         )}

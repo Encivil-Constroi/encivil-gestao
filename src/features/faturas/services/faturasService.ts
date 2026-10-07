@@ -29,6 +29,9 @@ type FaturaRow = {
   data_fatura: string | null
   data_recepcao: string
   total_fatura: number | null
+  nif_fornecedor: string | null
+  base_tributavel: number | null
+  valor_iva: number | null
   estado: EstadoFatura
   ficheiro_path: string | null
   obra_id: string | null
@@ -72,6 +75,9 @@ function toFatura(row: FaturaRow): FaturaFornecedor {
     dataFatura:     row.data_fatura     ? new Date(row.data_fatura)    : undefined,
     dataRecepcao:   new Date(row.data_recepcao),
     totalFatura:    row.total_fatura    != null ? Number(row.total_fatura) : undefined,
+    nifFornecedor:  row.nif_fornecedor  ?? undefined,
+    baseTributavel: row.base_tributavel != null ? Number(row.base_tributavel) : undefined,
+    valorIva:       row.valor_iva       != null ? Number(row.valor_iva) : undefined,
     estado:         row.estado,
     ficheiroPatch:  row.ficheiro_path   ?? undefined,
     obraId:         row.obra_id         ?? undefined,
@@ -226,6 +232,27 @@ export async function classificarFatura(
     p_linhas:    linhas,
   })
   if (error) throw error
+}
+
+export type DadosFiscaisFatura = {
+  nifFornecedor?:  string
+  baseTributavel?: number
+  valorIva?:       number
+}
+
+export async function atualizarDadosFiscaisFatura(id: string, d: DadosFiscaisFatura): Promise<FaturaFornecedor> {
+  const { data, error } = await db
+    .from('faturas_fornecedor')
+    .update({
+      nif_fornecedor:  d.nifFornecedor  ?? null,
+      base_tributavel: d.baseTributavel ?? null,
+      valor_iva:       d.valorIva       ?? null,
+    })
+    .eq('id', id)
+    .select(SELECT_LIST)
+    .single()
+  if (error) throw error
+  return toFatura(data as FaturaRow)
 }
 
 export async function lancarFatura(id: string, responsavel: string): Promise<void> {

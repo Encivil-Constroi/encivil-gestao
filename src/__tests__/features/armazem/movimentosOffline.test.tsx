@@ -55,7 +55,7 @@ describe('contrato das RPCs do armazém', () => {
     expect(Object.keys(m.rpc[0].args).sort()).toEqual(parametros('registar_movimento_armazem').sort())
     expect(m.rpc[0].args).toMatchObject({
       p_produto_id: 'p1', p_subtipo: 'COMPRA', p_quantidade: 5, p_responsavel: 'Rui', p_fornecedor: 'ENCIVIL',
-      p_preco_unitario: 3, p_obra_id: null, p_cliente: null, p_numero_fatura: null, p_observacoes: null,
+      p_preco_unitario: 3, p_obra_id: undefined, p_cliente: undefined, p_numero_fatura: undefined, p_observacoes: undefined,
     })
   })
 
