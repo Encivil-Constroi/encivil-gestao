@@ -5,7 +5,7 @@ import type { Colaborador } from '@/app/types'
 // Colunas explícitas: authenticated não tem SELECT em nif (20261008030000);
 // o NIF lê-se só com obterNif(). Inclui o nome da obra via join (sem N+1).
 export const SELECT_COLABORADOR =
-  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at, obras(id, nome)'
+  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at, obras!colaboradores_obra_id_fkey(id, nome)'
 
 type ColaboradorRow = {
   id: string

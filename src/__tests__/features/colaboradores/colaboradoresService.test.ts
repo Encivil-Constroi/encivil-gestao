@@ -190,3 +190,13 @@ describe('restaurarColaborador', () => {
     expect(b.eq).toHaveBeenCalledWith('id', 'uuid-colab-1')
   })
 })
+
+// obras.responsavel_id/engenheiro_id (20261003000000) também apontam para colaboradores:
+// sem o nome da FK o PostgREST recusa o embed (PGRST201, HTTP 300) e a lista do RH vem vazia.
+describe('SELECT_COLABORADOR', () => {
+  it('embebe a obra pela FK colaboradores.obra_id', async () => {
+    const { SELECT_COLABORADOR } = await import('@/features/colaboradores/services/colaboradoresService')
+    expect(SELECT_COLABORADOR).toMatch(/obras!colaboradores_obra_id_fkey\(id, nome\)/)
+    expect(SELECT_COLABORADOR).not.toMatch(/(^|[ ,])obras\(/)
+  })
+})
