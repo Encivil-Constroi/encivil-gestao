@@ -121,3 +121,19 @@ describe('definir_mfa_obrigatorio', () => {
       tx.query(`SELECT public.definir_mfa_obrigatorio(true)`))).rejects.toThrow(/permission denied/)
   })
 })
+
+// A listagem da Admin API do GoTrue (GET /admin/users) não traz `factors`:
+// a Edge Function admin-utilizadores lê quem tem MFA por esta RPC.
+describe('utilizadores_com_mfa', () => {
+  const listar = papel => como(db, { papel, uid: papel === 'authenticated' ? admin : null, aal: 'aal2' }, tx =>
+    tx.query(`SELECT public.utilizadores_com_mfa() AS id`)).then(r => r.rows.map(x => x.id))
+  beforeAll(async () => {
+    await db.query(`INSERT INTO auth.mfa_factors (user_id, status) VALUES ($1, 'verified'), ($2, 'unverified')`, [admin, gestor])
+  })
+  it('o papel de serviço vê só quem tem um fator verificado', async () => {
+    expect(await listar('service_role')).toEqual([admin])
+  })
+  it.each([['authenticated'], ['anon']])('%s não executa a RPC', async (p) => {
+    await expect(listar(p)).rejects.toThrow(/permission denied/)
+  })
+})

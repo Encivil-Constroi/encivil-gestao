@@ -27,6 +27,12 @@ export function temMfaVerificado(u: { factors?: { status: string }[] | null }): 
   return (u.factors ?? []).some(f => f.status === 'verified')
 }
 
+// A listagem da Admin API (GET /admin/users) não traz `factors`: a fonte é a RPC
+// utilizadores_com_mfa. Sem a RPC (migration por aplicar) usa os `factors`, se vierem.
+export function mfaAtivo(u: { id: string; factors?: { status: string }[] | null }, comMfa: Set<string> | null): boolean {
+  return comMfa ? comMfa.has(u.id) : temMfaVerificado(u)
+}
+
 const ESQUEMA_ACAO: Esquema = { action: { tipo: 'enum', valores: ACOES, obrigatorio: true } }
 const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
   convidar: {
@@ -95,6 +101,10 @@ Deno.serve(async (req) => {
     const { data: profiles, error: pErr } = await admin.from('profiles').select('id, nome, role')
     if (pErr) return err(pErr.message, 500)
 
+    const { data: idsMfa, error: mfaErr } = await admin.rpc('utilizadores_com_mfa')
+    if (mfaErr) console.warn('[admin-utilizadores] utilizadores_com_mfa indisponível:', mfaErr.message)
+    const comMfa = mfaErr ? null : new Set((idsMfa ?? []) as string[])
+
     const profileMap = new Map((profiles ?? []).map((p: { id: string; nome: string; role: string }) => [p.id, p]))
 
     const utilizadores = authData.users.map(u => {
@@ -108,7 +118,7 @@ Deno.serve(async (req) => {
         ativo:      !banDate || new Date(banDate) < new Date(),
         ultimoLogin: u.last_sign_in_at ?? null,
         criadoEm:   u.created_at,
-        mfa:        temMfaVerificado(u),
+        mfa:        mfaAtivo(u, comMfa),
       }
     })
 
