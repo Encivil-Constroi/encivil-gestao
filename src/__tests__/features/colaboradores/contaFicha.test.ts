@@ -12,7 +12,7 @@ const base: PedidoConta = {
   colaboradorId: 'c1', nome: 'Rui', email: 'Rui@Teste.pt', telemovel: '912 345 678', fotoPath: null,
   role: 'armazem', contaAtiva: true,
 }
-const util = { id: 'u1', email: 'rui@teste.pt', nome: 'Rui', role: 'leitura' as const, ativo: true, ultimoLogin: null, criadoEm: '' }
+const util = { id: 'u1', email: 'rui@teste.pt', nome: 'Rui', role: 'leitura' as const, ativo: true, ultimoLogin: null, criadoEm: '', mfa: false }
 
 beforeEach(() => { Object.values(m).forEach(f => f.mockClear()) })
 

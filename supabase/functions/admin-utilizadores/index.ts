@@ -20,6 +20,10 @@ const ROLES_VALIDOS: Role[] = ['admin', 'gestor', 'armazem', 'medicoes', 'mecani
 
 const ACOES = ['listar', 'convidar', 'alterarPapel', 'desativar', 'reativar', 'removerMfa'] as const
 
+export function temMfaVerificado(u: { factors?: { status: string }[] | null }): boolean {
+  return (u.factors ?? []).some(f => f.status === 'verified')
+}
+
 const ESQUEMA_ACAO: Esquema = { action: { tipo: 'enum', valores: ACOES, obrigatorio: true } }
 const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
   convidar: {
@@ -101,6 +105,7 @@ Deno.serve(async (req) => {
         ativo:      !banDate || new Date(banDate) < new Date(),
         ultimoLogin: u.last_sign_in_at ?? null,
         criadoEm:   u.created_at,
+        mfa:        temMfaVerificado(u),
       }
     })
 
@@ -174,6 +179,23 @@ Deno.serve(async (req) => {
     })
     if (rErr) return err(rErr.message, 500)
     return ok({ sucesso: true })
+  }
+
+  // ── Remover MFA (perda do telemóvel) ──────────────────────────────────
+  if (action === 'removerMfa') {
+    const { userId } = payload as { userId: string }
+    const { data: fatores, error: lErr } = await admin.auth.admin.mfa.listFactors({ userId })
+    if (lErr) return err(lErr.message, 500)
+    const removidos = fatores?.factors?.length ?? 0
+    for (const f of fatores?.factors ?? []) {
+      const { error: dErr } = await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId })
+      if (dErr) return err(dErr.message, 500)
+    }
+    // Evento de segurança: se a migration ainda não existir, não bloqueia a remoção
+    await admin.rpc('_registar_evento', {
+      p_tipo: 'mfa_removido_admin', p_utilizador: userId, p_detalhe: { removidos },
+    }).then(() => {}, () => {})
+    return ok({ removidos })
   }
 
   return err('Ação desconhecida')

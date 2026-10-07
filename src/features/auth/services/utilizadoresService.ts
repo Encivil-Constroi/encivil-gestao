@@ -12,6 +12,7 @@ export interface Utilizador {
   ativo: boolean
   ultimoLogin: string | null
   criadoEm: string
+  mfa: boolean
 }
 
 async function chamarAdmin<T>(action: string, payload?: Record<string, unknown>): Promise<T> {
@@ -44,4 +45,9 @@ export async function desativarUtilizador(userId: string): Promise<void> {
 
 export async function reativarUtilizador(userId: string): Promise<void> {
   await chamarAdmin('reativar', { userId })
+}
+
+export async function removerMfaUtilizador(userId: string): Promise<true> {
+  await chamarAdmin('removerMfa', { userId })
+  return true
 }

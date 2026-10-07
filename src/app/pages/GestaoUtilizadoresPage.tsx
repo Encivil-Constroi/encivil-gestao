@@ -8,7 +8,10 @@ import {
   useAlterarPapel,
   useDesativarUtilizador,
   useReativarUtilizador,
+  useRemoverMfa,
 } from '@/features/auth/hooks/useUtilizadores'
+import { useAsync } from '@/app/lib/useAsync'
+import { nivelMfa, mfaObrigatorio, definirMfaObrigatorio } from '@/features/auth/services/mfaService'
 import type { RoleUtilizador, Utilizador } from '@/features/auth/services/utilizadoresService'
 
 const ROLES: { value: RoleUtilizador; label: string; desc: string }[] = [
@@ -124,11 +127,13 @@ function MenuAcoes({
   currentUserId,
   onRoleChange,
   onToggleAtivo,
+  onRemoverMfa,
 }: {
   utilizador: Utilizador
   currentUserId: string
   onRoleChange: (userId: string, role: RoleUtilizador) => void
   onToggleAtivo: (utilizador: Utilizador) => void
+  onRemoverMfa: (utilizador: Utilizador) => void
 }) {
   const [open, setOpen] = useState(false)
   const isSelf = utilizador.id === currentUserId
@@ -158,6 +163,18 @@ function MenuAcoes({
                 {r.label}
               </button>
             ))}
+            {!isSelf && utilizador.mfa && (
+              <>
+                <div className="border-t border-border my-1" />
+                <button
+                  onClick={() => { onRemoverMfa(utilizador); setOpen(false) }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
+                >
+                  <ShieldOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  Remover MFA
+                </button>
+              </>
+            )}
             {!isSelf && (
               <>
                 <div className="border-t border-border my-1" />
@@ -188,6 +205,10 @@ export function GestaoUtilizadoresPage() {
   const { alterar, loading: alterandoPapel } = useAlterarPapel()
   const { desativar, loading: desativando }   = useDesativarUtilizador()
   const { reativar, loading: reativando }     = useReativarUtilizador()
+  const { remover: removerMfa, loading: removendoMfa } = useRemoverMfa()
+  const { data: nivel } = useAsync(nivelMfa, [], { errorMsg: 'Não foi possível ler o nível de verificação' })
+  const { data: obrigatorio, reload: recarregarObrigatorio } = useAsync(mfaObrigatorio, [], { errorMsg: 'Não foi possível ler a configuração de MFA' })
+  const [aGuardarMfa, setAGuardarMfa] = useState(false)
   const [modalConvite, setModalConvite]        = useState(false)
   const [busca, setBusca]                      = useState('')
 
@@ -212,7 +233,32 @@ export function GestaoUtilizadoresPage() {
     }
   }
 
-  const isBusy = alterandoPapel || desativando || reativando
+  const isBusy = alterandoPapel || desativando || reativando || removendoMfa
+
+  const semMfa = utilizadores.filter(u => u.ativo && (u.role === 'admin' || u.role === 'gestor') && !u.mfa).length
+  const sessaoAal1 = nivel?.atual === 'aal1'
+
+  const handleRemoverMfa = async (u: Utilizador) => {
+    if (!window.confirm(`Remover a verificação em dois passos de ${u.nome}? Terá de a configurar de novo.`)) return
+    if (await removerMfa(u.id)) { toast.success(`MFA de ${u.nome} removido.`); reload() }
+  }
+
+  const handleInterruptor = async () => {
+    const ligar = !obrigatorio
+    if (ligar && semMfa > 0 && !window.confirm(
+      `${semMfa} utilizador(es) admin/gestor ainda não configuraram e vão ter de o fazer no próximo acesso. Continuar?`,
+    )) return
+    setAGuardarMfa(true)
+    try {
+      await definirMfaObrigatorio(ligar)
+      toast.success(ligar ? 'Verificação em dois passos obrigatória.' : 'Verificação em dois passos deixou de ser obrigatória.')
+      recarregarObrigatorio()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível alterar a configuração.')
+    } finally {
+      setAGuardarMfa(false)
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
@@ -246,6 +292,25 @@ export function GestaoUtilizadoresPage() {
             Convidar
           </button>
         </div>
+      </div>
+
+      {/* ── Interruptor de MFA ── */}
+      <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Exigir verificação em dois passos para admin e gestor</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {sessaoAal1 ? 'Entra com verificação em dois passos para alterar.' : 'Quem ainda não a configurou é levado ao registo no próximo acesso.'}
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          role="switch"
+          aria-label="Exigir verificação em dois passos para admin e gestor"
+          checked={obrigatorio ?? false}
+          disabled={sessaoAal1 || aGuardarMfa || obrigatorio === null}
+          onChange={handleInterruptor}
+          className="w-5 h-5 shrink-0"
+        />
       </div>
 
       {/* ── Barra de pesquisa ── */}
@@ -312,6 +377,10 @@ export function GestaoUtilizadoresPage() {
                       {!u.ativo && (
                         <span className="text-[11px] text-destructive font-medium">Desativado</span>
                       )}
+                      {u.mfa && <span className="text-[11px] text-success font-medium">MFA</span>}
+                      {!u.mfa && (u.role === 'admin' || u.role === 'gestor') && (
+                        <span className="text-[11px] text-warning font-medium">Sem MFA</span>
+                      )}
                     </div>
                   </div>
 
@@ -337,6 +406,7 @@ export function GestaoUtilizadoresPage() {
                       currentUserId={user?.id ?? ''}
                       onRoleChange={handleRoleChange}
                       onToggleAtivo={handleToggleAtivo}
+                      onRemoverMfa={handleRemoverMfa}
                     />
                   </div>
                 </li>
