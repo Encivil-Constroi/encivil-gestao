@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { parseSupabaseError } from '@/app/lib/parseSupabaseError';
+import { DICA_SENHA, SENHA_MIN, mensagemSenha, validarSenha } from '@/features/auth/lib/politicaSenha';
 
 type State = 'waiting' | 'ready' | 'saving' | 'done' | 'invalid';
 
@@ -39,8 +41,9 @@ export function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error('A palavra-passe deve ter pelo menos 8 caracteres.');
+    const erroPolitica = mensagemSenha(validarSenha(password));
+    if (erroPolitica) {
+      toast.error(erroPolitica);
       return;
     }
     if (password !== confirm) {
@@ -50,7 +53,9 @@ export function ResetPasswordPage() {
     setState('saving');
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast.error('Não foi possível atualizar a palavra-passe. O link pode ter expirado.');
+      toast.error(error.code === 'weak_password'
+        ? parseSupabaseError(error)
+        : 'Não foi possível atualizar a palavra-passe. O link pode ter expirado.');
       setState('ready');
       return;
     }
@@ -117,9 +122,9 @@ export function ResetPasswordPage() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       className={inputCls}
-                      placeholder="Mínimo 8 caracteres"
+                      placeholder={`Mínimo ${SENHA_MIN} caracteres`}
                       required
-                      minLength={8}
+                      minLength={SENHA_MIN}
                       autoFocus
                       autoComplete="new-password"
                     />
@@ -132,6 +137,7 @@ export function ResetPasswordPage() {
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">{DICA_SENHA}</p>
                 </div>
                 <div>
                   <label htmlFor="confirm-password" className="block text-sm font-medium text-foreground mb-2">Confirmar palavra-passe</label>
@@ -162,7 +168,7 @@ export function ResetPasswordPage() {
                 </div>
                 <button
                   type="submit"
-                  disabled={state === 'saving' || password !== confirm || password.length < 8}
+                  disabled={state === 'saving' || password !== confirm || validarSenha(password).length > 0}
                   className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 font-medium mt-2"
                 >
                   {state === 'saving' ? 'A guardar…' : 'Guardar nova palavra-passe'}

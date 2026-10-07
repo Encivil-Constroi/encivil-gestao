@@ -19,6 +19,8 @@ const CODE_MAP: Record<string, string> = {
   '23514': 'Valor fora dos limites permitidos.',
   // PostgreSQL — permissões
   '42501': 'Sem permissão para esta operação.',
+  // Supabase Auth
+  'weak_password': 'A palavra-passe não cumpre os requisitos de segurança.',
   // PostgREST
   'PGRST116': 'Registo não encontrado.',
   'PGRST301': 'Sessão expirada — faça login novamente.',

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
+import { mensagemSenha, validarSenha } from '../lib/politicaSenha'
 
 // profiles com telemovel e foto_path (migration 20261007000000), ainda sem
 // tipos gerados. Quando forem regenerados, apagar este remendo.
@@ -19,7 +20,6 @@ type PerfilDatabase = {
 const perfilDb = supabase as unknown as SupabaseClient<PerfilDatabase>
 
 const SELECT = 'nome, email, telemovel, foto_path, role'
-export const SENHA_MIN = 6
 
 export async function buscarMeuPerfil(userId: string): Promise<PerfilRow> {
   const { data, error } = await perfilDb.from('profiles').select(SELECT).eq('id', userId).single()
@@ -41,7 +41,8 @@ export async function pedirNovoEmail(email: string): Promise<true> {
 
 // Confirma a senha atual antes de aceitar a nova (sessão roubada não chega para a trocar)
 export async function alterarSenha(email: string, atual: string, nova: string): Promise<true> {
-  if (nova.length < SENHA_MIN) throw new Error(`A senha/PIN deve ter pelo menos ${SENHA_MIN} caracteres.`)
+  const erroPolitica = mensagemSenha(validarSenha(nova))
+  if (erroPolitica) throw new Error(erroPolitica)
   const { error: errAtual } = await supabase.auth.signInWithPassword({ email, password: atual })
   if (errAtual) throw new Error('A senha atual está incorreta.')
   const { error } = await supabase.auth.updateUser({ password: nova })

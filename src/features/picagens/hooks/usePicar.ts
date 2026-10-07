@@ -1,3 +1,4 @@
+import { useAuth } from '@/features/auth/AuthContext'
 import { useMutation } from '@/app/lib/useMutation'
 import { invalidateCache } from '@/app/lib/useAsync'
 import {
@@ -44,10 +45,13 @@ async function getGPS(): Promise<{ lat: number; lon: number; precisaoM: number }
 }
 
 export function usePicar() {
+  const { user } = useAuth()
+  const userId = user?.id ?? null
   const { mutate, loading, error } = useMutation(
     async (input: PicarInput): Promise<PicarResult> => {
+      if (!userId) throw new Error('Sessão terminada. Entre de novo para registar.')
       if (!navigator.onLine) {
-        enqueuePendingPicagem({ ...input, origem: 'OFFLINE' })
+        enqueuePendingPicagem({ ...input, origem: 'OFFLINE' }, userId)
         return { picagem: null, queued: true }
       }
 
@@ -76,7 +80,7 @@ export function usePicar() {
         return { picagem, queued: false, resultado: picagem.resultado }
       } catch (e) {
         if (isNetworkError(e)) {
-          enqueuePendingPicagem({ ...input, origem: 'OFFLINE' })
+          enqueuePendingPicagem({ ...input, origem: 'OFFLINE' }, userId)
           return { picagem: null, queued: true }
         }
         throw e

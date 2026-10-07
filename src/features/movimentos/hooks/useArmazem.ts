@@ -6,6 +6,7 @@ import {
   type FiltrosMovArmazem, type RegistarMovimentoArmazemInput,
 } from '../services/armazemService'
 import { enqueuePendingMovimento, isNetworkError } from '../offlineQueue'
+import { useAuth } from '@/features/auth/AuthContext'
 
 export function useArtigosArmazem() {
   const { data, loading, error, reload } = useAsync(listarArtigosArmazem, [],
@@ -49,9 +50,10 @@ export type ResultadoRegisto = 'ok' | 'guardado-offline'
 
 // Sem rede (ou se a ligação cair a meio), o movimento fica na fila offline e é
 // enviado pelo useOfflineQueue; erros de negócio (stock, obra concluída…) sobem.
-async function registarOuGuardar(input: RegistarMovimentoArmazemInput): Promise<ResultadoRegisto> {
+async function registarOuGuardar(input: RegistarMovimentoArmazemInput, userId: string | null): Promise<ResultadoRegisto> {
+  if (!userId) throw new Error('Sessão terminada. Entre de novo para registar.')
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    enqueuePendingMovimento(input)
+    enqueuePendingMovimento(input, userId)
     return 'guardado-offline'
   }
   try {
@@ -59,14 +61,17 @@ async function registarOuGuardar(input: RegistarMovimentoArmazemInput): Promise<
     return 'ok'
   } catch (e) {
     if (!isNetworkError(e)) throw e
-    enqueuePendingMovimento(input)
+    enqueuePendingMovimento(input, userId)
     return 'guardado-offline'
   }
 }
 
 export function useRegistarMovimentoArmazem() {
-  const { mutate: registar, loading, error } = useMutation(registarOuGuardar, 'Erro ao registar o movimento', {
+  const { user } = useAuth()
+  const userId = user?.id ?? null
+  const { mutate: registarComUtilizador, loading, error } = useMutation(registarOuGuardar, 'Erro ao registar o movimento', {
     invalidates: ['armazem-*', 'produtos-*', 'produtos-ativos', 'movimentos-*', 'dashboard', 'alertas-ativos'],
   })
+  const registar = (input: RegistarMovimentoArmazemInput) => registarComUtilizador(input, userId)
   return { registar, loading, error }
 }

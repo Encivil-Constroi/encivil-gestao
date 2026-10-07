@@ -110,6 +110,11 @@ const guides: Guide[] = [
   },
 ];
 
+// Os guias marcam negrito com dois espaços de cada lado: "Clica em  Guardar  no fim"
+export function textoComNegrito(texto: string): Array<{ texto: string; negrito: boolean }> {
+  return texto.split(/ {2}(.+?) {2}/g).map((parte, i) => ({ texto: parte, negrito: i % 2 === 1 }))
+}
+
 /* ─── Componente de card de guia ─────────────────────── */
 function GuideCard({ guide }: { guide: Guide }) {
   const [open, setOpen] = useState(guide.id === 'saida');
@@ -140,9 +145,10 @@ function GuideCard({ guide }: { guide: Guide }) {
                   {i + 1}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-foreground leading-snug"
-                     dangerouslySetInnerHTML={{ __html: step.text.replace(/ {2}(.+?) {2}/g, ' <strong class="text-foreground">$1</strong> ') }}
-                  />
+                  <p className="text-sm text-foreground leading-snug">
+                    {textoComNegrito(step.text).map((p, j) =>
+                      p.negrito ? <strong key={j} className="text-foreground"> {p.texto} </strong> : <span key={j}>{p.texto}</span>)}
+                  </p>
                   {step.note && (
                     <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{step.note}</p>
                   )}

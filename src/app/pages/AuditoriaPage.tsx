@@ -4,6 +4,7 @@ import { useAsync } from '../lib/useAsync'
 import { exportarXlsx } from '../lib/exportXlsx'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { EventosSegurancaPainel } from './auditoria/EventosSegurancaPainel'
 
 const PAGE_SIZE = 50
 
@@ -104,7 +105,23 @@ function periodStart(period: PeriodFilter): string | null {
   return null
 }
 
+type Separador = 'registos' | 'seguranca'
+
 export function AuditoriaPage() {
+  const [separador, setSeparador] = useState<Separador>('registos')
+  const tabCls = (ativo: boolean) => `px-4 py-2 text-sm font-medium rounded-xl transition-colors ${ativo ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`
+  return (
+    <div className="space-y-4">
+      <div role="tablist" aria-label="Auditoria" className="flex gap-2 no-print">
+        <button type="button" role="tab" aria-selected={separador === 'registos'} className={tabCls(separador === 'registos')} onClick={() => setSeparador('registos')}>Registos</button>
+        <button type="button" role="tab" aria-selected={separador === 'seguranca'} className={tabCls(separador === 'seguranca')} onClick={() => setSeparador('seguranca')}>Eventos de segurança</button>
+      </div>
+      {separador === 'registos' ? <RegistosAuditoria /> : <EventosSegurancaPainel />}
+    </div>
+  )
+}
+
+function RegistosAuditoria() {
   const [page,         setPage]         = useState(0)
   const [period,       setPeriod]       = useState<PeriodFilter>('todos')
   const [actionFilter, setActionFilter] = useState('')

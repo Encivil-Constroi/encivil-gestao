@@ -44,3 +44,4 @@ _referencia/
 
 # clone aninhado do superpowers (não é submódulo)
 .claude/skills/superpowers/
+.wrangler/

@@ -7,6 +7,7 @@ const MAX_QUEUE_SIZE = 200
 export type PendingPicagem = NovaPicagem & {
   queueId: string
   queuedAt: string
+  userId?: string
 }
 
 function uuid(): string {
@@ -47,14 +48,24 @@ export function getQueue(): PendingPicagem[] {
   return readQueue()
 }
 
-export function enqueuePendingPicagem(input: NovaPicagem): PendingPicagem {
+export function enqueuePendingPicagem(input: NovaPicagem, userId: string): PendingPicagem {
   const current = readQueue()
   if (current.length >= MAX_QUEUE_SIZE) {
     throw new Error(`Fila offline cheia (máx. ${MAX_QUEUE_SIZE} registos). Sincronize antes de continuar.`)
   }
-  const item: PendingPicagem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString() }
+  const item: PendingPicagem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString(), userId }
   writeQueue([...current, item])
   return item
+}
+
+// Só quem criou a picagem a envia: noutra sessão seria registada em nome de outra pessoa
+export function pendentesDoUtilizador(userId: string | null): PendingPicagem[] {
+  if (!userId) return []
+  return readQueue().filter(i => !i.userId || i.userId === userId)
+}
+
+export function pendentesDeOutros(userId: string | null): number {
+  return readQueue().filter(i => i.userId && i.userId !== userId).length
 }
 
 export function removeFromQueue(queueId: string) {
