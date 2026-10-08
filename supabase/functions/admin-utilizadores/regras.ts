@@ -28,3 +28,9 @@ export function traduzErroAuth(msg: string): string {
   if (/password/i.test(msg) && /(weak|short|least|characters|pwned|easy)/i.test(msg)) return 'Senha demasiado fraca. Escolha outra mais forte.'
   return msg
 }
+
+// Link para a nossa página e não para o /verify do GoTrue: um GET (pré-visualização do WhatsApp,
+// scanners de e-mail) não gasta o token; só o clique em "Continuar" chama verifyOtp.
+export function linkRecuperacaoApp(appUrl: string, hashedToken: string): string {
+  return `${appUrl}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
+}

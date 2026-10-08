@@ -136,6 +136,9 @@ export function LoginPage() {
                   <p className="text-sm text-muted-foreground mb-4 text-center">
                     Indique o seu email e enviaremos um link para redefinir a palavra-passe.
                   </p>
+                  <p className="text-xs text-muted-foreground mb-4 text-center">
+                    Tem email na conta? Receba o link aqui. Entra com utilizador (sem email)? Peça ao administrador um link de recuperação.
+                  </p>
                   <label htmlFor="reset-email" className="block text-sm font-medium text-foreground mb-2">Email da conta</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

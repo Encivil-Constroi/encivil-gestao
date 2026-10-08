@@ -70,6 +70,12 @@ export async function criarUtilizador(d: NovoUtilizador): Promise<{ userId: stri
   return { userId: r.userId, email: r.email }
 }
 
+export type LinkRecuperacao = { link: string; nome: string; telemovel: string | null; login: string | null; email: string }
+
+export async function gerarLinkRecuperacao(userId: string): Promise<LinkRecuperacao> {
+  return chamarAdmin<LinkRecuperacao>('linkRecuperacao', { userId })
+}
+
 export async function redefinirSenha(userId: string, senha: string): Promise<void> {
   await chamarAdmin('redefinirSenha', { userId, senha })
 }

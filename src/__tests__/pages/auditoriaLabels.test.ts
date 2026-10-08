@@ -13,6 +13,9 @@ describe('rótulos da auditoria', () => {
     ['mfa_obrigatorio', 'Verificação em dois passos obrigatória'],
     ['role_change', 'Alteração de papel'],
     ['delete_autos', 'Eliminação (autos)'],
+    ['delete_autos_medicao', 'Eliminação (autos de medição)'],
+    ['auto_devolver', 'Devolução de auto'],
+    ['marcar_auto_pago', 'Auto marcado como pago'],
   ])('%s → %s', (a, l) => { expect(labelAction(a)).toBe(l) })
   it('severidade', () => {
     expect(severidadeAction('profiles.update')).toBe('high')

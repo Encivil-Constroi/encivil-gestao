@@ -9,7 +9,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
 import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
 import { validar, type Esquema } from '../_shared/validar.ts'
-import { emailEfetivo, loginDeEmail, senhaValida, SENHA_MIN, traduzErroAuth } from './regras.ts'
+import { emailEfetivo, linkRecuperacaoApp, loginDeEmail, senhaValida, SENHA_MIN, traduzErroAuth } from './regras.ts'
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -22,7 +22,7 @@ const ROLES_VALIDOS: Role[] = ['admin', 'gestor', 'armazem', 'medicoes', 'mecani
 // Dígitos, espaços, + e separadores usuais (912-345-678, (+351) 912 345 678)
 export const PADRAO_TELEMOVEL = /^[+0-9 ()-]+$/
 
-const ACOES = ['listar', 'convidar', 'criar', 'redefinirSenha', 'alterarPapel', 'desativar', 'reativar', 'removerMfa'] as const
+const ACOES = ['listar', 'convidar', 'criar', 'redefinirSenha', 'alterarPapel', 'desativar', 'reativar', 'removerMfa', 'linkRecuperacao'] as const
 
 export function temMfaVerificado(u: { factors?: { status: string }[] | null }): boolean {
   return (u.factors ?? []).some(f => f.status === 'verified')
@@ -35,7 +35,7 @@ export function mfaAtivo(u: { id: string; factors?: { status: string }[] | null 
 }
 
 const ESQUEMA_ACAO: Esquema = { action: { tipo: 'enum', valores: ACOES, obrigatorio: true } }
-const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
+export const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
   convidar: {
     email:         { tipo: 'email', obrigatorio: true },
     nome:          { tipo: 'texto', max: 120 },
@@ -65,6 +65,7 @@ const ESQUEMAS_PAYLOAD: Record<string, Esquema> = {
   desativar:  { userId: { tipo: 'uuid', obrigatorio: true } },
   reativar:   { userId: { tipo: 'uuid', obrigatorio: true } },
   removerMfa: { userId: { tipo: 'uuid', obrigatorio: true } },
+  linkRecuperacao: { userId: { tipo: 'uuid', obrigatorio: true } },
 }
 
 Deno.serve(async (req) => {
@@ -220,9 +221,34 @@ Deno.serve(async (req) => {
   if (action === 'redefinirSenha') {
     const { userId, senha } = payload as { userId: string; senha: string }
     if (!senhaValida(senha)) return err(`A palavra-passe tem de ter pelo menos ${SENHA_MIN} caracteres, uma maiúscula, uma minúscula e um algarismo.`)
-    const { error: sErr } = await admin.auth.admin.updateUserById(userId, { password: senha })
+    const { data: alvo, error: sErr } = await admin.auth.admin.updateUserById(userId, { password: senha })
     if (sErr) return err(traduzErroAuth(sErr.message), 500)
+    await admin.rpc('_registar_evento', {
+      p_tipo: 'senha_redefinida_admin', p_utilizador: userId, p_email: alvo?.user?.email ?? null,
+      p_detalhe: { por: dadosUser.user.id, por_email: dadosUser.user.email ?? null },
+    }).then(() => {}, () => {})
     return ok({ sucesso: true })
+  }
+
+  // ── Link de recuperação (o admin entrega o link ao utilizador) ────────
+  if (action === 'linkRecuperacao') {
+    const { userId } = payload as { userId: string }
+    const { data: u, error: gErr } = await admin.auth.admin.getUserById(userId)
+    if (gErr || !u?.user?.email) return err('Utilizador não encontrado', 404)
+    const email = u.user.email
+    const { data: l, error: lErr } = await admin.auth.admin.generateLink({
+      type: 'recovery', email, options: { redirectTo: `${APP_URL}/reset-password` },
+    })
+    if (lErr) return err(traduzErroAuth(lErr.message), 500)
+    const hash = l?.properties?.hashed_token
+    if (!hash) return err('Não foi possível gerar o link de recuperação.', 500)
+    const link = linkRecuperacaoApp(APP_URL, hash)
+    const { data: p } = await admin.from('profiles').select('nome, telemovel').eq('id', userId).maybeSingle()
+    await admin.rpc('_registar_evento', {
+      p_tipo: 'link_recuperacao_admin', p_utilizador: userId, p_email: email,
+      p_detalhe: { por: dadosUser.user.id, por_email: dadosUser.user.email ?? null },
+    }).then(() => {}, () => {})
+    return ok({ link, nome: p?.nome ?? email.split('@')[0], telemovel: p?.telemovel ?? null, login: loginDeEmail(email), email })
   }
 
   // ── Alterar papel ─────────────────────────────────────────────────────

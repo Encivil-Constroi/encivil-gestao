@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import { normalizarLogin, emailEfetivo, loginDeEmail, senhaValida, DOMINIO_CONTA_INTERNA, traduzErroAuth } from './regras.ts'
+import { normalizarLogin, emailEfetivo, loginDeEmail, senhaValida, DOMINIO_CONTA_INTERNA, traduzErroAuth, linkRecuperacaoApp } from './regras.ts'
 
 Deno.test('normalizarLogin tira acentos, espaços e maiúsculas', () => {
   assertEquals(normalizarLogin('  João Silva '), 'joao.silva')
@@ -30,4 +30,9 @@ Deno.test('traduzErroAuth mapeia duplicado e senha fraca', () => {
   assertEquals(traduzErroAuth('Password should be at least 6 characters'), 'Senha demasiado fraca. Escolha outra mais forte.')
   assertEquals(traduzErroAuth('Password is known to be weak and easy to guess'), 'Senha demasiado fraca. Escolha outra mais forte.')
   assertEquals(traduzErroAuth('outro'), 'outro')
+})
+
+Deno.test('linkRecuperacaoApp aponta para a nossa página com token_hash codificado', () => {
+  assertEquals(linkRecuperacaoApp('https://app.x', 'ab+c/d='),
+    'https://app.x/reset-password?token_hash=ab%2Bc%2Fd%3D&type=recovery')
 })

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { UserPlus, MoreVertical, ShieldCheck, ShieldOff, RefreshCw, Mail, Users, KeyRound } from 'lucide-react'
+import { UserPlus, MoreVertical, ShieldCheck, ShieldOff, RefreshCw, Mail, Users, KeyRound, Link2, MessageCircle } from 'lucide-react'
+import { EnviarWhatsAppDialog } from '@/app/components/EnviarWhatsAppDialog'
+import { mensagemRecuperacao } from '@/features/auth/lib/recuperacao'
 import { useAuth } from '@/features/auth/AuthContext'
 import {
   useUtilizadores,
@@ -10,12 +12,13 @@ import {
   useDesativarUtilizador,
   useReativarUtilizador,
   useRemoverMfa,
+  useLinkRecuperacao,
 } from '@/features/auth/hooks/useUtilizadores'
 import { emailEfetivo, gerarSenha, loginDeEmail, normalizarLogin, senhaValida } from '@/features/auth/lib/contaInterna'
 import { mensagemSenha, validarSenha } from '@/features/auth/lib/politicaSenha'
 import { useAsync } from '@/app/lib/useAsync'
 import { nivelMfa, mfaObrigatorio, definirMfaObrigatorio } from '@/features/auth/services/mfaService'
-import type { RoleUtilizador, Utilizador } from '@/features/auth/services/utilizadoresService'
+import type { LinkRecuperacao, RoleUtilizador, Utilizador } from '@/features/auth/services/utilizadoresService'
 
 const ROLES: { value: RoleUtilizador; label: string; desc: string }[] = [
   { value: 'admin',    label: 'Administrador', desc: 'Acesso total + gestão de utilizadores' },
@@ -235,6 +238,56 @@ function RedefinirSenhaModal({ utilizador, onClose }: { utilizador: Utilizador; 
   )
 }
 
+// ── Link de recuperação ────────────────────────────────────────────────────────
+function LinkRecuperacaoDialog({ dados, onClose }: { dados: LinkRecuperacao; onClose: () => void }) {
+  const [whatsapp, setWhatsapp] = useState(false)
+
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(dados.link)
+      toast.success('Link copiado')
+    } catch {
+      toast.error('Não foi possível copiar. Selecione o link e copie manualmente.')
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div role="dialog" aria-label="Link de recuperação" className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Link de recuperação</h2>
+            <p className="text-sm text-muted-foreground">{dados.nome}{dados.login ? ` · ${dados.login}` : ''}</p>
+          </div>
+          <p className="text-sm text-muted-foreground">Link pessoal, válido cerca de 1 hora. Quem o abrir define a nova palavra-passe.</p>
+          <p role="note" className="text-sm font-medium text-warning-foreground bg-warning rounded-lg px-3 py-2">Não abra este link neste aparelho — entraria com a conta desta pessoa.</p>
+          <input readOnly aria-label="Link" value={dados.link} onFocus={e => e.currentTarget.select()} className={`${inputCls} font-mono text-xs`} />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button type="button" onClick={copiar}
+              className="flex-1 py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors">
+              Copiar link
+            </button>
+            <button type="button" onClick={() => setWhatsapp(true)}
+              className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+              <MessageCircle className="w-4 h-4" /> Enviar por WhatsApp
+            </button>
+          </div>
+          <button type="button" onClick={onClose}
+            className="w-full py-2.5 border border-border rounded-lg text-sm hover:bg-muted transition-colors">
+            Fechar
+          </button>
+        </div>
+      </div>
+      <EnviarWhatsAppDialog
+        open={whatsapp}
+        onOpenChange={setWhatsapp}
+        texto={mensagemRecuperacao(dados.nome, dados.link)}
+        numeroInicial={dados.telemovel ?? undefined}
+      />
+    </>
+  )
+}
+
 // ── Menu de ações por utilizador ───────────────────────────────────────────────
 function MenuAcoes({
   utilizador,
@@ -243,6 +296,7 @@ function MenuAcoes({
   onToggleAtivo,
   onRedefinirSenha,
   onRemoverMfa,
+  onLinkRecuperacao,
 }: {
   utilizador: Utilizador
   currentUserId: string
@@ -250,6 +304,7 @@ function MenuAcoes({
   onToggleAtivo: (utilizador: Utilizador) => void
   onRedefinirSenha: (utilizador: Utilizador) => void
   onRemoverMfa: (utilizador: Utilizador) => void
+  onLinkRecuperacao: (utilizador: Utilizador) => void
 }) {
   const [open, setOpen] = useState(false)
   const isSelf = utilizador.id === currentUserId
@@ -287,6 +342,15 @@ function MenuAcoes({
               <KeyRound className="w-3.5 h-3.5 text-muted-foreground" />
               Redefinir senha
             </button>
+            {!isSelf && (
+              <button
+                onClick={() => { onLinkRecuperacao(utilizador); setOpen(false) }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
+              >
+                <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                Link de recuperação
+              </button>
+            )}
             {!isSelf && utilizador.mfa && (
               <>
                 <div className="border-t border-border my-1" />
@@ -334,6 +398,9 @@ export function GestaoUtilizadoresPage() {
   const { remover: removerMfa, loading: removendoMfa } = useRemoverMfa()
   const { data: nivel } = useAsync(nivelMfa, [], { errorMsg: 'Não foi possível ler o nível de verificação' })
   const { data: obrigatorio, reload: recarregarObrigatorio } = useAsync(mfaObrigatorio, [], { errorMsg: 'Não foi possível ler a configuração de MFA' })
+  const { gerar: gerarLink, loading: aGerarLink, error: erroLink } = useLinkRecuperacao()
+  useEffect(() => { if (erroLink) toast.error(erroLink) }, [erroLink])
+  const [linkGerado, setLinkGerado] = useState<LinkRecuperacao | null>(null)
   const [aGuardarMfa, setAGuardarMfa] = useState(false)
   const [busca, setBusca]                      = useState('')
 
@@ -359,7 +426,12 @@ export function GestaoUtilizadoresPage() {
     }
   }
 
-  const isBusy = alterandoPapel || desativando || reativando || removendoMfa
+  const isBusy = alterandoPapel || desativando || reativando || removendoMfa || aGerarLink
+
+  const handleLinkRecuperacao = async (u: Utilizador) => {
+    const r = await gerarLink(u.id)
+    if (r) setLinkGerado(r)
+  }
 
   const semMfa = utilizadores.filter(u => u.ativo && (u.role === 'admin' || u.role === 'gestor') && !u.mfa).length
   const sessaoAal1 = nivel?.atual === 'aal1'
@@ -537,6 +609,7 @@ export function GestaoUtilizadoresPage() {
                       onToggleAtivo={handleToggleAtivo}
                       onRedefinirSenha={setParaRedefinir}
                       onRemoverMfa={handleRemoverMfa}
+                      onLinkRecuperacao={handleLinkRecuperacao}
                     />
                   </div>
                 </li>
@@ -571,6 +644,9 @@ export function GestaoUtilizadoresPage() {
       )}
       {paraRedefinir && (
         <RedefinirSenhaModal utilizador={paraRedefinir} onClose={() => setParaRedefinir(null)} />
+      )}
+      {linkGerado && (
+        <LinkRecuperacaoDialog dados={linkGerado} onClose={() => setLinkGerado(null)} />
       )}
     </div>
   )

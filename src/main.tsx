@@ -5,10 +5,12 @@ import { ErrorBoundary } from "./app/components/ErrorBoundary.tsx";
 import { PWAInstallHint } from "./app/components/PWAInstallHint.tsx";
 import { UpdatePrompt } from "./app/components/UpdatePrompt.tsx";
 import { initSentry } from "./app/lib/sentry.ts";
+import { iniciarCapturaInstalacao } from "./app/lib/pwaInstalacao.ts";
 import { ThemeProvider } from "./features/theme/ThemeProvider.tsx";
 import "./styles/index.css";
 
 initSentry();
+iniciarCapturaInstalacao();
 
 // O registo do Service Worker e a verificação periódica de novas versões são
 // tratados pelo <UpdatePrompt /> (virtual:pwa-register/react), que mostra o

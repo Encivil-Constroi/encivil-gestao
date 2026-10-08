@@ -11,6 +11,8 @@ const ROTULOS: Record<string, string> = {
   mfa_removido_admin: 'MFA removido por administrador',
   mfa_falhado:        'Código MFA errado',
   rate_limit:         'Limite de pedidos atingido',
+  link_recuperacao_admin: 'Link de recuperação gerado pelo administrador',
+  senha_redefinida_admin: 'Senha redefinida pelo administrador',
 }
 
 const LIMIAR_ALERTA = 10

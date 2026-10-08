@@ -9,6 +9,7 @@ vi.mock('@/features/auth/AuthContext', () => ({ useAuth: () => ({ user: { id: 'e
 vi.mock('@/features/auth/services/utilizadoresService', () => ({
   listarUtilizadores: m.listar, removerMfaUtilizador: m.remover,
   convidarUtilizador: vi.fn(), alterarPapel: vi.fn(), desativarUtilizador: vi.fn(), reativarUtilizador: vi.fn(),
+  gerarLinkRecuperacao: vi.fn(),
 }))
 vi.mock('@/features/auth/services/mfaService', () => ({
   nivelMfa: m.nivel, mfaObrigatorio: m.obrig, definirMfaObrigatorio: m.definir,

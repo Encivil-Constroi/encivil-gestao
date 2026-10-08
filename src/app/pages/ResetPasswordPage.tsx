@@ -1,43 +1,108 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseSupabaseError } from '@/app/lib/parseSupabaseError';
+import { loginDeEmail } from '@/features/auth/lib/contaInterna';
 import { DICA_SENHA, SENHA_MIN, mensagemSenha, validarSenha } from '@/features/auth/lib/politicaSenha';
+import { MfaDesafio } from '@/features/auth/components/MfaDesafio';
 
-type State = 'waiting' | 'ready' | 'saving' | 'done' | 'invalid';
+type State = 'confirmar' | 'waiting' | 'ready' | 'saving' | 'mfa' | 'invalid';
+
+// Link gerado pelo administrador: /reset-password?token_hash=…&type=recovery.
+function tokenDoUrl(): string | null {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('type') === 'recovery' ? p.get('token_hash') : null;
+}
+
+function limparTokenDoUrl() {
+  window.history.replaceState(window.history.state, '', window.location.pathname);
+}
+
+function exigeMfa(error: { code?: string; message?: string }): boolean {
+  return error.code === 'insufficient_aal' || (error.message ?? '').includes('AAL2');
+}
+
+// Chrome/Edge: oferece guardar no gestor de palavras-passe; outros navegadores usam o autocomplete do formulário
+async function guardarCredencial(id: string, password: string): Promise<void> {
+  const PC = (window as unknown as { PasswordCredential?: new (d: { id: string; password: string }) => Credential }).PasswordCredential
+  if (!PC || !navigator.credentials?.store) return
+  try { await navigator.credentials.store(new PC({ id, password })) } catch { /* utilizador recusou ou sem suporte */ }
+}
 
 const inputCls = 'w-full pl-10 pr-10 py-3 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
-  const [state, setState]           = useState<State>('waiting');
+  const [tokenHash]                 = useState(tokenDoUrl);
+  const [state, setState]           = useState<State>(tokenHash ? 'confirmar' : 'waiting');
   const [password, setPassword]     = useState('');
   const [confirm, setConfirm]       = useState('');
   const [showPass, setShowPass]     = useState(false);
   const [showConf, setShowConf]     = useState(false);
+  const [email, setEmail]           = useState('');
 
-  // Supabase processa automaticamente o token do hash da URL e dispara
+  // Links de e-mail: o Supabase processa o token do hash da URL e dispara
   // PASSWORD_RECOVERY quando a sessão de recuperação fica pronta.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        setEmail(session?.user.email ?? '');
         setState('ready');
       }
     });
 
-    // Se o utilizador navegou diretamente para esta página sem token válido,
-    // após 4 s sem evento consideramos inválido.
-    const timeout = setTimeout(() => {
+    // Sem token_hash e sem evento em 4 s: o utilizador chegou sem token válido.
+    const timeout = tokenHash ? undefined : setTimeout(() => {
       setState(s => s === 'waiting' ? 'invalid' : s);
     }, 4000);
 
     return () => {
       subscription.unsubscribe();
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
     };
-  }, []);
+  }, [tokenHash]);
+
+  // Só depois do clique: a pré-visualização do WhatsApp/scanners abre o URL sem
+  // clicar e não pode gastar o token de uso único.
+  const continuar = async () => {
+    if (!tokenHash) return;
+    setState('waiting');
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    limparTokenDoUrl();
+    if (error || !data.session) {
+      setState('invalid');
+      return;
+    }
+    setEmail(data.session.user.email ?? '');
+    setState('ready');
+  };
+
+  const concluir = async () => {
+    await guardarCredencial(email, password);
+    toast.success('Palavra-passe guardada. Bem-vindo de volta!');
+    navigate('/', { replace: true });
+  };
+
+  const falhaAtualizar = (error: { code?: string }) => {
+    toast.error(error.code === 'weak_password'
+      ? parseSupabaseError(error)
+      : 'Não foi possível atualizar a palavra-passe. O link pode ter expirado.');
+    setState('ready');
+  };
+
+  // Contas com verificação em dois passos: a sessão de recuperação é aal1 e o
+  // GoTrue só aceita mudar a senha em aal2. Repete-se uma vez após o código.
+  const aposMfa = async () => {
+    setState('saving');
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      falhaAtualizar(error);
+      return;
+    }
+    await concluir();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,15 +118,17 @@ export function ResetPasswordPage() {
     setState('saving');
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast.error(error.code === 'weak_password'
-        ? parseSupabaseError(error)
-        : 'Não foi possível atualizar a palavra-passe. O link pode ter expirado.');
-      setState('ready');
+      if (exigeMfa(error)) {
+        setState('mfa');
+        return;
+      }
+      falhaAtualizar(error);
       return;
     }
-    setState('done');
-    await supabase.auth.signOut();
+    await concluir();
   };
+
+  if (state === 'mfa') return <MfaDesafio onConcluido={() => { void aposMfa(); }} />;
 
   const logo = (
     <div className="flex flex-col items-center mb-8">
@@ -74,6 +141,24 @@ export function ResetPasswordPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
+
+          {/* Link do administrador: confirma antes de usar o token */}
+          {state === 'confirmar' && (
+            <div className="text-center py-4">
+              {logo}
+              <h2 className="text-lg font-semibold mb-2">Criar nova palavra-passe</h2>
+              <p className="text-sm text-muted-foreground mb-6 max-w-[32ch] mx-auto">
+                Toque em Continuar para escolher a nova palavra-passe da sua conta.
+              </p>
+              <button
+                type="button"
+                onClick={() => { void continuar(); }}
+                className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              >
+                Continuar
+              </button>
+            </div>
+          )}
 
           {/* A aguardar token */}
           {state === 'waiting' && (
@@ -91,15 +176,15 @@ export function ResetPasswordPage() {
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mx-auto mb-5">
                 <AlertTriangle className="w-8 h-8 text-destructive" />
               </div>
-              <h2 className="text-lg font-semibold mb-2">Link inválido ou expirado</h2>
+              <h2 className="text-lg font-semibold mb-2">Link inválido</h2>
               <p className="text-sm text-muted-foreground mb-6 max-w-[32ch] mx-auto">
-                O link de redefinição expirou ou já foi utilizado. Peça um novo link na página de login.
+                O link expirou ou já foi usado. Peça um novo ao administrador ou use "Esqueceu a palavra-passe?" se tiver email.
               </p>
               <button
                 onClick={() => navigate('/login')}
                 className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
               >
-                Ir para o Login
+                Voltar ao login
               </button>
             </div>
           )}
@@ -108,16 +193,21 @@ export function ResetPasswordPage() {
           {(state === 'ready' || state === 'saving') && (
             <>
               {logo}
+              {email && (
+                <p className="text-sm font-medium text-foreground text-center mb-2">Conta: {loginDeEmail(email) ?? email}</p>
+              )}
               <p className="text-sm text-muted-foreground text-center mb-6">
                 Escolha uma nova palavra-passe para a sua conta.
               </p>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <input type="text" name="username" autoComplete="username" value={email} readOnly className="sr-only" tabIndex={-1} aria-hidden="true" />
                 <div>
                   <label htmlFor="new-password" className="block text-sm font-medium text-foreground mb-2">Nova palavra-passe</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       id="new-password"
+                      name="new-password"
                       type={showPass ? 'text' : 'password'}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
@@ -145,6 +235,7 @@ export function ResetPasswordPage() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       id="confirm-password"
+                      name="confirm-password"
                       type={showConf ? 'text' : 'password'}
                       value={confirm}
                       onChange={e => setConfirm(e.target.value)}
@@ -175,26 +266,6 @@ export function ResetPasswordPage() {
                 </button>
               </form>
             </>
-          )}
-
-          {/* Sucesso */}
-          {state === 'done' && (
-            <div className="text-center py-4">
-              {logo}
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mx-auto mb-5">
-                <CheckCircle2 className="w-8 h-8 text-success" />
-              </div>
-              <h2 className="text-lg font-semibold mb-2">Palavra-passe atualizada</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                A sua palavra-passe foi alterada com sucesso. Faça login com as novas credenciais.
-              </p>
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
-              >
-                Ir para o Login
-              </button>
-            </div>
           )}
 
         </div>

@@ -8,6 +8,7 @@ import {
   reativarUtilizador,
   criarUtilizador,
   redefinirSenha,
+  gerarLinkRecuperacao,
   type NovoUtilizador,
   removerMfaUtilizador,
   type RoleUtilizador,
@@ -79,6 +80,14 @@ export function useCriarUtilizador() {
     { invalidates: INV_UTILIZADORES }
   )
   return { criar: mutate, loading, error }
+}
+
+export function useLinkRecuperacao() {
+  const { mutate, loading, error } = useMutation(
+    gerarLinkRecuperacao,
+    'Erro ao gerar o link de recuperação',
+  )
+  return { gerar: mutate, loading, error }
 }
 
 export function useRedefinirSenha() {

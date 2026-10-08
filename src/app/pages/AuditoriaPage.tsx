@@ -1,90 +1,34 @@
-import { useState, useMemo } from 'react'
-import { Shield, ChevronLeft, ChevronRight, Download, ChevronDown, ChevronRight as Expand } from 'lucide-react'
+import { useState, useMemo, Fragment } from 'react'
+import { Shield, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { useAsync } from '../lib/useAsync'
 import { exportarXlsx } from '../lib/exportXlsx'
-import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { EventosSegurancaPainel } from './auditoria/EventosSegurancaPainel'
+import {
+  PAGE_SIZE, listarAuditoria, exportarAuditoria, listarPerfisNomes, limitesPeriodo,
+  type FiltrosAuditoria,
+} from './auditoria/dados'
+import {
+  TABELAS_FILTRO, OPERACAO_LABEL, labelAction, labelTabela, severidadeAction, camposAlterados,
+  descreverRegisto, nomeDoAlvo, dataLisboa, somarDias, separarAction, type LogRow,
+} from '../lib/auditoria/descrever'
 
-const PAGE_SIZE = 50
+export { labelAction, severidadeAction }
 
-type LogRow = {
-  id: string
-  action: string
-  actor_id: string | null
-  created_at: string
-  details: Record<string, unknown> | null
-  target_id: string | null
+function moduloDe(action: string): string {
+  const tabela = separarAction(action)?.tabela ?? (action.startsWith('delete_') ? action.slice(7) : null)
+  return tabela ? labelTabela(tabela) : '—'
 }
 
-type Profile = { id: string; nome: string; email: string }
-
-type PeriodFilter = 'todos' | 'hoje' | 'semana' | 'mes'
+type PeriodFilter = 'todos' | 'hoje' | 'semana' | 'mes' | 'datas'
 
 const PERIOD_OPTS: { value: PeriodFilter; label: string }[] = [
   { value: 'todos',  label: 'Todos' },
   { value: 'hoje',   label: 'Hoje' },
-  { value: 'semana', label: 'Esta semana' },
-  { value: 'mes',    label: 'Este mês' },
+  { value: 'semana', label: 'Últimos 7 dias' },
+  { value: 'mes',    label: 'Últimos 30 dias' },
+  { value: 'datas',  label: 'Entre datas' },
 ]
-
-// Tabelas com o trigger auditar_alteracao (20261008060000_seguranca_auditoria.sql)
-const TABELAS_AUDITADAS = [
-  'profiles', 'colaboradores', 'faturas_fornecedor', 'comb_aprovadores',
-  'configuracoes_empresa', 'seguranca_config', 'obras',
-] as const
-
-const TABELA_LABEL: Record<string, string> = {
-  profiles:              'utilizadores',
-  colaboradores:         'colaboradores',
-  faturas_fornecedor:    'faturas de fornecedor',
-  comb_aprovadores:      'aprovadores de combustível',
-  configuracoes_empresa: 'configurações da empresa',
-  seguranca_config:      'configuração de segurança',
-  obras:                 'obras',
-}
-
-function labelTabela(tabela: string): string {
-  return TABELA_LABEL[tabela] ?? tabela
-}
-
-// Mudanças nestas tabelas mexem em acessos/segurança, seja qual for a operação
-const TABELAS_SENSIVEIS = new Set(['profiles', 'seguranca_config', 'comb_aprovadores'])
-
-const OPERACAO_LABEL: Record<string, string> = {
-  insert: 'Criação',
-  update: 'Alteração',
-  delete: 'Eliminação',
-}
-
-function separarAction(action: string): { tabela: string; operacao: string } | null {
-  const m = /^([a-z0-9_]+)\.(insert|update|delete)$/.exec(action)
-  return m ? { tabela: m[1], operacao: m[2] } : null
-}
-
-export function labelAction(action: string): string {
-  const generica = separarAction(action)
-  if (generica) return `${OPERACAO_LABEL[generica.operacao]} em ${labelTabela(generica.tabela)}`
-  if (action.startsWith('delete_'))  return `Eliminação (${action.slice(7)})`
-  switch (action) {
-    case 'role_change':              return 'Alteração de papel'
-    case 'mfa_obrigatorio':          return 'Verificação em dois passos obrigatória'
-    case 'validar_subempreiteiro':   return 'Validação subempreiteiro'
-    case 'validar_auto':             return 'Validação auto'
-    default: return action
-  }
-}
-
-export function severidadeAction(action: string): 'high' | 'medium' | 'low' {
-  const generica = separarAction(action)
-  if (generica) {
-    if (generica.operacao === 'delete' || TABELAS_SENSIVEIS.has(generica.tabela)) return 'high'
-    return 'medium'
-  }
-  if (action === 'role_change' || action === 'mfa_obrigatorio' || action.startsWith('delete_')) return 'high'
-  if (action.startsWith('validar_')) return 'medium'
-  return 'low'
-}
 
 const SEV_CLS: Record<'high' | 'medium' | 'low', string> = {
   high:   'bg-destructive/10 text-destructive border-destructive/30',
@@ -92,17 +36,22 @@ const SEV_CLS: Record<'high' | 'medium' | 'low', string> = {
   low:    'bg-muted text-muted-foreground border-transparent',
 }
 
-function periodStart(period: PeriodFilter): string | null {
-  if (period === 'hoje') {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString()
-  }
-  if (period === 'semana') {
-    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString()
-  }
-  if (period === 'mes') {
-    const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString()
-  }
-  return null
+const SEV_LABEL: Record<'high' | 'medium' | 'low', string> = { high: 'Sensível', medium: 'Normal', low: 'Informação' }
+
+const FMT_HORA = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit' })
+const FMT_DATA_HORA = new Intl.DateTimeFormat('pt-PT', {
+  timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+})
+const FMT_DIA = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+function tituloDia(chave: string, hoje: string): string {
+  if (chave === hoje) return 'Hoje'
+  if (chave === somarDias(hoje, -1)) return 'Ontem'
+  return FMT_DIA.format(new Date(`${chave}T12:00:00Z`))
+}
+
+function linhaCampos(r: LogRow): string {
+  return camposAlterados(r.action, r.details).map(c => `${c.rotulo}: ${c.antes} → ${c.depois}`).join('; ')
 }
 
 type Separador = 'registos' | 'seguranca'
@@ -122,59 +71,62 @@ export function AuditoriaPage() {
 }
 
 function RegistosAuditoria() {
-  const [page,         setPage]         = useState(0)
-  const [period,       setPeriod]       = useState<PeriodFilter>('todos')
-  const [actionFilter, setActionFilter] = useState('')
-  const [tabela,       setTabela]       = useState('')
-  const [expanded,     setExpanded]     = useState<Set<string>>(new Set())
-  const [exporting,    setExporting]    = useState(false)
+  const [page,      setPage]      = useState(0)
+  const [period,    setPeriod]    = useState<PeriodFilter>('todos')
+  const [dataDesde, setDataDesde] = useState('')
+  const [dataAte,   setDataAte]   = useState('')
+  const [atorId,    setAtorId]    = useState('')
+  const [tabela,    setTabela]    = useState('')
+  const [operacao,  setOperacao]  = useState('')
+  const [expanded,  setExpanded]  = useState<Set<string>>(new Set())
+  const [exporting, setExporting] = useState(false)
 
-  const { data: profiles } = useAsync(
-    async () => {
-      const { data } = await supabase.from('profiles').select('id, nome, email')
-      return (data ?? []) as Profile[]
-    },
-    [],
-  )
+  const { data: profiles } = useAsync(() => listarPerfisNomes(), [])
 
-  const profileMap = useMemo(() => {
-    const m = new Map<string, Profile>()
-    profiles?.forEach(p => m.set(p.id, p))
+  const nomes = useMemo(() => {
+    const m = new Map<string, string>()
+    profiles?.forEach(p => m.set(p.id, p.nome))
     return m
   }, [profiles])
 
-  const deps = [page, period, actionFilter, tabela] as const
+  const filtros: FiltrosAuditoria = useMemo(() => {
+    const f: FiltrosAuditoria = {}
+    if (atorId) f.atorId = atorId
+    if (tabela) f.tabela = tabela
+    if (operacao === 'insert' || operacao === 'update' || operacao === 'delete') f.operacao = operacao
+    if (period === 'datas') {
+      if (dataDesde) f.desde = dataDesde
+      if (dataAte) f.ate = dataAte
+    } else if (period !== 'todos') {
+      const l = limitesPeriodo(period)
+      if (l.desde) f.desde = l.desde
+    }
+    return f
+  }, [atorId, tabela, operacao, period, dataDesde, dataAte])
 
   const { data: result, loading } = useAsync(
-    async () => {
-      const from = page * PAGE_SIZE
-      const to   = from + PAGE_SIZE - 1
-
-      let query = supabase
-        .from('audit_log')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to)
-
-      const start = periodStart(period)
-      if (start) query = query.gte('created_at', start)
-      if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
-      // Prefixo da action e não a coluna tabela: funciona também com a BD sem a migration 20261008060000
-      if (tabela) query = query.like('action', `${tabela}.%`)
-
-      const { data, count, error } = await query
-      if (error) throw error
-      return { rows: (data ?? []) as LogRow[], count: count ?? 0 }
-    },
-    deps,
+    () => listarAuditoria(filtros, page),
+    [filtros, page],
     { errorMsg: 'Erro ao carregar auditoria' },
   )
 
-  const rows      = result?.rows ?? []
-  const totalCount = result?.count ?? 0
+  const rows       = useMemo(() => result?.rows ?? [], [result?.rows])
+  const totalCount = result?.total ?? 0
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const hasFilter  = period !== 'todos' || atorId !== '' || tabela !== '' || operacao !== ''
 
-  const hasFilter = period !== 'todos' || actionFilter.trim() !== '' || tabela !== ''
+  const nomeAtor = (r: LogRow) => r.actor_id ? (nomes.get(r.actor_id) ?? `${r.actor_id.slice(0, 8)}…`) : 'Sistema'
+
+  const grupos = useMemo(() => {
+    const m = new Map<string, LogRow[]>()
+    for (const r of rows) {
+      const k = dataLisboa(new Date(r.created_at))
+      const l = m.get(k)
+      if (l) l.push(r); else m.set(k, [r])
+    }
+    return [...m.entries()]
+  }, [rows])
+  const hoje = dataLisboa(new Date())
 
   function toggleExpand(id: string) {
     setExpanded(prev => {
@@ -184,35 +136,23 @@ function RegistosAuditoria() {
     })
   }
 
+  function limpar() {
+    setPeriod('todos'); setDataDesde(''); setDataAte(''); setAtorId(''); setTabela(''); setOperacao(''); setPage(0)
+  }
+
   async function handleExport() {
     setExporting(true)
     try {
-      let query = supabase
-        .from('audit_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      const start = periodStart(period)
-      if (start) query = query.gte('created_at', start)
-      if (actionFilter.trim()) query = query.ilike('action', `%${actionFilter.trim()}%`)
-      // Prefixo da action e não a coluna tabela: funciona também com a BD sem a migration 20261008060000
-      if (tabela) query = query.like('action', `${tabela}.%`)
-
-      const { data, error } = await query
-      if (error) throw error
-
-      type RawRow = { action: string; actor_id: string | null; created_at: string; details: unknown; id: string; target_id: string | null }
-      const csvRows = (data ?? []).map((r: RawRow) => ({
-        'Data/Hora':  new Date(r.created_at).toLocaleString('pt-PT'),
-        'Acção':      labelAction(r.action),
-        'Código':     r.action,
-        'Utilizador': r.actor_id ? (profileMap.get(r.actor_id)?.nome ?? r.actor_id.slice(0, 8)) : '—',
-        'Email':      r.actor_id ? (profileMap.get(r.actor_id)?.email ?? '') : '',
-        'Alvo (ID)':  r.target_id ?? '',
-        'Detalhes':   r.details ? JSON.stringify(r.details as Record<string, unknown>) : '',
+      const todas = await exportarAuditoria(filtros)
+      const linhas = todas.map(r => ({
+        'Data/Hora':         FMT_DATA_HORA.format(new Date(r.created_at)),
+        'Utilizador':        nomeAtor(r),
+        'Ação':              descreverRegisto(r, nomeAtor(r), nomeDoAlvo(r, nomes)),
+        'Módulo':            moduloDe(r.action),
+        'Campos alterados':  linhaCampos(r),
       }))
-      await exportarXlsx(csvRows, 'auditoria', 'Auditoria')
-      toast.success(`${csvRows.length} entradas exportadas`)
+      await exportarXlsx(linhas, 'auditoria', 'Auditoria')
+      toast.success(`${linhas.length} entradas exportadas`)
     } catch {
       toast.error('Erro ao exportar')
     } finally {
@@ -220,12 +160,11 @@ function RegistosAuditoria() {
     }
   }
 
-  const selectCls = 'px-3 py-2 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm'
-  const inputCls  = 'px-3 py-2 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm w-full'
+  const selectCls = 'px-3 py-2 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-ring text-sm'
+  const labelCls  = 'block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5'
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between gap-3 flex-wrap no-print">
         <div>
           <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
@@ -249,57 +188,62 @@ function RegistosAuditoria() {
         </button>
       </div>
 
-      {/* Filtros */}
       <div className="bg-card rounded-2xl border border-border p-4 no-print">
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Período</label>
-            <select
-              value={period}
-              onChange={e => { setPeriod(e.target.value as PeriodFilter); setPage(0) }}
-              className={selectCls}
-            >
+            <label htmlFor="aud-pessoa" className={labelCls}>Pessoa</label>
+            <select id="aud-pessoa" value={atorId} onChange={e => { setAtorId(e.target.value); setPage(0) }} className={`${selectCls} w-full`}>
+              <option value="">Todas as pessoas</option>
+              {(profiles ?? []).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="aud-modulo" className={labelCls}>Módulo</label>
+            <select id="aud-modulo" value={tabela} onChange={e => { setTabela(e.target.value); setPage(0) }} className={`${selectCls} w-full`}>
+              <option value="">Todas</option>
+              {TABELAS_FILTRO.map(t => <option key={t} value={t}>{labelTabela(t)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="aud-tipo" className={labelCls}>Tipo</label>
+            <select id="aud-tipo" value={operacao} onChange={e => { setOperacao(e.target.value); setPage(0) }} className={`${selectCls} w-full`}>
+              <option value="">Todos</option>
+              {Object.entries(OPERACAO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="aud-periodo" className={labelCls}>Período</label>
+            <select id="aud-periodo" value={period} onChange={e => { setPeriod(e.target.value as PeriodFilter); setPage(0) }} className={`${selectCls} w-full`}>
               {PERIOD_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Tabela</label>
-            <select
-              value={tabela}
-              onChange={e => { setTabela(e.target.value); setPage(0) }}
-              className={selectCls}
-            >
-              <option value="">Todas</option>
-              {TABELAS_AUDITADAS.map(t => <option key={t} value={t}>{labelTabela(t)}</option>)}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Acção</label>
-            <input
-              type="text"
-              placeholder="Filtrar por tipo de acção…"
-              value={actionFilter}
-              onChange={e => { setActionFilter(e.target.value); setPage(0) }}
-              className={inputCls}
-            />
-          </div>
-          {hasFilter && (
-            <div className="flex items-end">
-              <button
-                onClick={() => { setPeriod('todos'); setActionFilter(''); setTabela(''); setPage(0) }}
-                className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-accent transition-colors"
-              >
+        </div>
+        {(period === 'datas' || hasFilter) && (
+          <div className="flex flex-wrap items-end gap-3 mt-3">
+            {period === 'datas' && (
+              <>
+                <div>
+                  <label htmlFor="aud-desde" className={labelCls}>De</label>
+                  <input id="aud-desde" type="date" value={dataDesde} onChange={e => { setDataDesde(e.target.value); setPage(0) }} className={selectCls} />
+                </div>
+                <div>
+                  <label htmlFor="aud-ate" className={labelCls}>Até</label>
+                  <input id="aud-ate" type="date" value={dataAte} onChange={e => { setDataAte(e.target.value); setPage(0) }} className={selectCls} />
+                </div>
+              </>
+            )}
+            {hasFilter && (
+              <button onClick={limpar} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-accent transition-colors">
                 Limpar
               </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Tabela */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         {loading ? (
-          <div className="space-y-0">
+          <div>
             {[...Array(8)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-border last:border-0">
                 <div className="skeleton h-3 w-28" />
@@ -311,74 +255,74 @@ function RegistosAuditoria() {
         ) : rows.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">
             <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            Nenhum registo de auditoria{hasFilter ? ' para os filtros seleccionados' : ''}.
+            Nenhum registo de auditoria{hasFilter ? ' para os filtros selecionados' : ''}.
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {rows.map(row => {
-              const sev    = severidadeAction(row.action)
-              const actor  = row.actor_id ? profileMap.get(row.actor_id) : null
-              const hasDetails = !!row.details && Object.keys(row.details).length > 0
-              const isOpen = expanded.has(row.id)
-
-              return (
-                <div key={row.id}>
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    {/* Severidade + acção */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg border text-xs font-semibold ${SEV_CLS[sev]}`}>
-                          {labelAction(row.action)}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono">{row.action}</span>
-                      </div>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                        <span>
-                          {new Date(row.created_at).toLocaleString('pt-PT', {
-                            day: '2-digit', month: '2-digit', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit',
-                          })}
-                        </span>
-                        {actor ? (
-                          <span className="font-medium text-foreground">{actor.nome}</span>
-                        ) : row.actor_id ? (
-                          <span className="font-mono">{row.actor_id.slice(0, 8)}…</span>
-                        ) : (
-                          <span>Sistema</span>
+          <div>
+            {grupos.map(([dia, lista]) => (
+              <Fragment key={dia}>
+                <h2 className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground bg-muted/50 border-b border-border first-letter:uppercase">
+                  {tituloDia(dia, hoje)}
+                </h2>
+                <div className="divide-y divide-border">
+                  {lista.map(row => {
+                    const sev    = severidadeAction(row.action)
+                    const campos = camposAlterados(row.action, row.details)
+                    const isOpen = expanded.has(row.id)
+                    const frase  = descreverRegisto(row, nomeAtor(row), nomeDoAlvo(row, nomes))
+                    return (
+                      <div key={row.id} className="px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-xs text-muted-foreground tabular-nums pt-0.5 shrink-0">
+                            {FMT_HORA.format(new Date(row.created_at))}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground break-words">{frase}</p>
+                            <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-lg border text-xs font-semibold ${SEV_CLS[sev]}`}>
+                              {SEV_LABEL[sev]}
+                            </span>
+                          </div>
+                          {campos.length > 0 && (
+                            <button
+                              onClick={() => toggleExpand(row.id)}
+                              aria-expanded={isOpen}
+                              className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg border border-border transition-colors shrink-0"
+                            >
+                              {isOpen ? 'Fechar detalhes' : 'Ver detalhes'}
+                            </button>
+                          )}
+                        </div>
+                        {isOpen && campos.length > 0 && (
+                          <div className="mt-3 overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-left text-muted-foreground">
+                                  <th className="py-1 pr-3 font-semibold">Campo</th>
+                                  <th className="py-1 pr-3 font-semibold">Antes</th>
+                                  <th className="py-1 font-semibold">Depois</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {campos.map(c => (
+                                  <tr key={c.campo} className="border-t border-border">
+                                    <td className="py-1 pr-3 font-medium">{c.rotulo}</td>
+                                    <td className="py-1 pr-3 text-muted-foreground break-words">{c.antes}</td>
+                                    <td className="py-1 break-words">{c.depois}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
-                        {row.target_id && (
-                          <span className="font-mono opacity-60">{row.target_id.slice(0, 8)}…</span>
-                        )}
                       </div>
-                    </div>
-
-                    {/* Expandir detalhes */}
-                    {hasDetails && (
-                      <button
-                        onClick={() => toggleExpand(row.id)}
-                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors shrink-0"
-                        title={isOpen ? 'Fechar detalhes' : 'Ver detalhes'}
-                      >
-                        {isOpen ? <ChevronDown className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Detalhes expandidos */}
-                  {isOpen && hasDetails && (
-                    <div className="px-4 pb-3">
-                      <pre className="text-xs bg-muted rounded-xl p-3 overflow-x-auto font-mono text-muted-foreground">
-                        {JSON.stringify(row.details, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+                    )
+                  })}
                 </div>
-              )
-            })}
+              </Fragment>
+            ))}
           </div>
         )}
 
-        {/* Paginação */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-border flex items-center justify-between gap-3 no-print">
             <button

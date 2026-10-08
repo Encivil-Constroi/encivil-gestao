@@ -14,9 +14,10 @@ type Props = {
   texto: string
   obterElementoPdf?: () => HTMLElement | null
   nomePdf?: string
+  numeroInicial?: string
 }
 
-export function EnviarWhatsAppDialog({ open, onOpenChange, texto, obterElementoPdf, nomePdf = 'relatorio' }: Props) {
+export function EnviarWhatsAppDialog({ open, onOpenChange, texto, obterElementoPdf, nomePdf = 'relatorio', numeroInicial }: Props) {
   const [numero, setNumero] = useState('')
   const [msg, setMsg] = useState(texto)
   const [aGerar, setAGerar] = useState(false)
@@ -25,11 +26,11 @@ export function EnviarWhatsAppDialog({ open, onOpenChange, texto, obterElementoP
 
   useEffect(() => {
     if (!open) return
-    setNumero('')
+    setNumero(numeroInicial ?? '')
     setDescarregado(false)
     setMsg(texto)
     setRecentes(numerosRecentes())
-  }, [open, texto])
+  }, [open, texto, numeroInicial])
 
   const normalizado = numero.trim() ? normalizarNumero(numero) : null
   const invalido = numero.trim() !== '' && normalizado === null

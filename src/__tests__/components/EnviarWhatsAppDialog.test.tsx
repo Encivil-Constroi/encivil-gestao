@@ -52,6 +52,12 @@ describe('EnviarWhatsAppDialog', () => {
     expect(screen.getByRole('button', { name: /abrir conversa/i })).toBeEnabled()
   })
 
+  it('numeroInicial preenche o campo', () => {
+    render(<EnviarWhatsAppDialog open onOpenChange={() => {}} texto="x" numeroInicial="912345678" />)
+    expect(screen.getByLabelText(/número/i)).toHaveValue('912345678')
+    expect(screen.getByText('+351 912 345 678')).toBeInTheDocument()
+  })
+
   it('sem obterElementoPdf não há botão PDF', () => {
     render(<EnviarWhatsAppDialog open onOpenChange={() => {}} texto="x" />)
     expect(screen.queryByRole('button', { name: /enviar pdf/i })).toBeNull()

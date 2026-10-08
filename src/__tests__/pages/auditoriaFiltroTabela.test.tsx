@@ -6,7 +6,7 @@ import { AuditoriaPage } from '@/app/pages/AuditoriaPage'
 // Construtor de query encadeável e "await-ável", que regista as chamadas de filtro
 const q = vi.hoisted(() => {
   const b: Record<string, ReturnType<typeof vi.fn>> & { then?: unknown } = {}
-  for (const m of ['select', 'order', 'range', 'gte', 'ilike', 'like', 'eq']) b[m] = vi.fn(() => b)
+  for (const m of ['select', 'order', 'range', 'gte', 'lt', 'ilike', 'like', 'eq']) b[m] = vi.fn(() => b)
   b.then = (ok: (r: unknown) => unknown) => Promise.resolve({ data: [], count: 0, error: null }).then(ok)
   return b
 })
@@ -15,7 +15,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: vi.fn(), rp
 
 beforeEach(() => {
   vi.mocked(supabase.from).mockReturnValue(q as never)
-  for (const m of ['select', 'order', 'range', 'gte', 'ilike', 'like', 'eq']) q[m].mockClear()
+  for (const m of ['select', 'order', 'range', 'gte', 'lt', 'ilike', 'like', 'eq']) q[m].mockClear()
 })
 
 describe('AuditoriaPage — filtro por tabela', () => {
