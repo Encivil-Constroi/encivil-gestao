@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+  <body style="font-family: Arial, Helvetica, sans-serif; color: #04090F; line-height: 1.5;">
+    <h2 style="color: #001C7D;">Recuperação de senha</h2>
+    <p>Recebemos um pedido para definir uma nova senha na sua conta ENCIVIL Gestão.</p>
+    <p>
+      <a href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery"
+         style="display: inline-block; padding: 12px 24px; background: #001C7D; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">
+        Definir nova senha
+      </a>
+    </p>
+    <p>Se o botão não funcionar, copie e cole este endereço no navegador:</p>
+    <p style="word-break: break-all;">{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery</p>
+    <p><strong>Este link é pessoal e de uso único.</strong> Não o partilhe nem o reencaminhe. Depois de aberto uma vez, deixa de funcionar; se precisar, peça um novo link no ecrã de entrada.</p>
+    <p>Se não pediu esta alteração, ignore este email. A sua senha continua igual.</p>
+  </body>
+</html>

@@ -1,3 +1,4 @@
+import "./integrations/supabase/entradaUrl.ts";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
 import App from "./app/App.tsx";

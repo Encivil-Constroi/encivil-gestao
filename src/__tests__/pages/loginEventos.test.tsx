@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 
 const m = vi.hoisted(() => ({ signIn: vi.fn(), navigate: vi.fn(), registarLoginFalhado: vi.fn() }))
 
-vi.mock('react-router', () => ({ useNavigate: () => m.navigate }))
+vi.mock('react-router', () => ({ useNavigate: () => m.navigate, useLocation: () => ({ state: null }) }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: {} } }))
 vi.mock('@/features/auth/AuthContext', () => ({ useAuth: () => ({ signIn: m.signIn, session: null }) }))

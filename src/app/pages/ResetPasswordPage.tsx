@@ -7,13 +7,24 @@ import { parseSupabaseError } from '@/app/lib/parseSupabaseError';
 import { loginDeEmail } from '@/features/auth/lib/contaInterna';
 import { DICA_SENHA, SENHA_MIN, mensagemSenha, validarSenha } from '@/features/auth/lib/politicaSenha';
 import { MfaDesafio } from '@/features/auth/components/MfaDesafio';
+import {
+  analisarEntradaUrl, entradaCapturada, limparMarcadorRecuperacao, temMarcadorRecuperacao,
+  type EntradaRecuperacao,
+} from '@/integrations/supabase/entradaUrl';
 
-type State = 'confirmar' | 'waiting' | 'ready' | 'saving' | 'mfa' | 'invalid';
+type State = 'confirmar' | 'validando' | 'ready' | 'saving' | 'mfa' | 'expirado' | 'erroRede';
 
-// Link gerado pelo administrador: /reset-password?token_hash=…&type=recovery.
-function tokenDoUrl(): string | null {
-  const p = new URLSearchParams(window.location.search);
-  return p.get('type') === 'recovery' ? p.get('token_hash') : null;
+const PRAZO_VALIDACAO_MS = 8000;
+
+// A captura corre antes do cliente (que limpa o hash); o URL atual só serve de reserva
+// (token_hash fica no URL até ser usado).
+function entradaInicial(): EntradaRecuperacao | null {
+  return entradaCapturada() ?? analisarEntradaUrl(window.location.search, window.location.hash);
+}
+
+// Erro de rede/servidor: o token ainda pode servir, por isso não se descarta.
+function erroTransitorio(error: { status?: number; name?: string }): boolean {
+  return error.status === undefined || error.status >= 500 || error.name === 'AuthRetryableFetchError';
 }
 
 function limparTokenDoUrl() {
@@ -35,44 +46,75 @@ const inputCls = 'w-full pl-10 pr-10 py-3 bg-input-background border border-inpu
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
-  const [tokenHash]                 = useState(tokenDoUrl);
-  const [state, setState]           = useState<State>(tokenHash ? 'confirmar' : 'waiting');
+  const [entrada]                   = useState(entradaInicial);
+  const tokenHash = entrada?.tipo === 'token_hash' ? entrada.tokenHash : null;
+  const [state, setState]           = useState<State>(() => {
+    if (entrada?.tipo === 'token_hash') return 'confirmar';
+    return entrada?.tipo === 'erro' ? 'expirado' : 'validando';
+  });
+  const [motivoErro, setMotivoErro] = useState<string | null>(entrada?.tipo === 'erro' ? entrada.codigo : null);
   const [password, setPassword]     = useState('');
   const [confirm, setConfirm]       = useState('');
   const [showPass, setShowPass]     = useState(false);
   const [showConf, setShowConf]     = useState(false);
   const [email, setEmail]           = useState('');
 
-  // Links de e-mail: o Supabase processa o token do hash da URL e dispara
-  // PASSWORD_RECOVERY quando a sessão de recuperação fica pronta.
+  // Três fontes de validação: sessão já criada (getSession), eventos do cliente e um prazo.
+  // O cliente processa o #access_token antes de esta página montar, por isso o evento
+  // PASSWORD_RECOVERY sozinho chega tarde.
   useEffect(() => {
+    let ativo = true;
+    const marcador = temMarcadorRecuperacao();
+    const pronto = (mail: string | undefined) => {
+      setEmail(mail ?? '');
+      setState(s => (s === 'validando' || s === 'confirmar') ? 'ready' : s);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setEmail(session?.user.email ?? '');
-        setState('ready');
-      }
+      if (event === 'PASSWORD_RECOVERY') pronto(session?.user.email);
+      else if (marcador && session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) pronto(session.user.email);
     });
 
-    // Sem token_hash e sem evento em 4 s: o utilizador chegou sem token válido.
-    const timeout = tokenHash ? undefined : setTimeout(() => {
-      setState(s => s === 'waiting' ? 'invalid' : s);
-    }, 4000);
+    if (marcador && state === 'validando') {
+      void supabase.auth.getSession().then(({ data }) => {
+        if (ativo && data.session) pronto(data.session.user.email);
+      }).catch(() => { /* o prazo trata do resto */ });
+    }
+
+    const timeout = state === 'validando' ? setTimeout(() => {
+      setState(s => s === 'validando' ? 'expirado' : s);
+    }, PRAZO_VALIDACAO_MS) : undefined;
 
     return () => {
+      ativo = false;
       subscription.unsubscribe();
       if (timeout) clearTimeout(timeout);
     };
-  }, [tokenHash]);
+    // Corre uma vez: o estado inicial decide que fontes ligar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Só depois do clique: a pré-visualização do WhatsApp/scanners abre o URL sem
   // clicar e não pode gastar o token de uso único.
   const continuar = async () => {
     if (!tokenHash) return;
-    setState('waiting');
-    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    setState('validando');
+    let resultado;
+    try {
+      resultado = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    } catch {
+      setState('erroRede');
+      return;
+    }
+    const { data, error } = resultado;
+    if (error && erroTransitorio(error)) {
+      setState('erroRede');
+      return;
+    }
     limparTokenDoUrl();
     if (error || !data.session) {
-      setState('invalid');
+      setMotivoErro(null);
+      setState('expirado');
       return;
     }
     setEmail(data.session.user.email ?? '');
@@ -81,6 +123,7 @@ export function ResetPasswordPage() {
 
   const concluir = async () => {
     await guardarCredencial(email, password);
+    limparMarcadorRecuperacao();
     toast.success('Palavra-passe guardada. Bem-vindo de volta!');
     navigate('/', { replace: true });
   };
@@ -161,7 +204,7 @@ export function ResetPasswordPage() {
           )}
 
           {/* A aguardar token */}
-          {state === 'waiting' && (
+          {state === 'validando' && (
             <div className="text-center py-4">
               {logo}
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mt-2" />
@@ -169,8 +212,29 @@ export function ResetPasswordPage() {
             </div>
           )}
 
+          {/* Falha de rede ao validar: o token continua no URL */}
+          {state === 'erroRede' && (
+            <div className="text-center py-4">
+              {logo}
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-warning/10 mx-auto mb-5">
+                <AlertTriangle className="w-8 h-8 text-warning" />
+              </div>
+              <h2 className="text-lg font-semibold mb-2">Sem ligação</h2>
+              <p className="text-sm text-muted-foreground mb-6 max-w-[32ch] mx-auto">
+                Não foi possível validar o link por falha de ligação. O link continua válido: tente de novo.
+              </p>
+              <button
+                type="button"
+                onClick={() => { void continuar(); }}
+                className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              >
+                Tentar de novo
+              </button>
+            </div>
+          )}
+
           {/* Link inválido ou expirado */}
-          {state === 'invalid' && (
+          {state === 'expirado' && (
             <div className="text-center py-4">
               {logo}
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mx-auto mb-5">
@@ -178,11 +242,21 @@ export function ResetPasswordPage() {
               </div>
               <h2 className="text-lg font-semibold mb-2">Link inválido</h2>
               <p className="text-sm text-muted-foreground mb-6 max-w-[32ch] mx-auto">
-                O link expirou ou já foi usado. Peça um novo ao administrador ou use "Esqueceu a palavra-passe?" se tiver email.
+                {motivoErro === 'otp_expired' || motivoErro === 'access_denied'
+                  ? 'O link já foi usado ou expirou. Alguns programas de email abrem o link antes de si e gastam-no. Peça um novo link.'
+                  : 'O link expirou ou já foi usado. Peça um novo ao administrador ou use "Esqueceu a palavra-passe?" se tiver email.'}
               </p>
               <button
-                onClick={() => navigate('/login')}
+                type="button"
+                onClick={() => navigate('/login', { state: { modo: 'pedir-reset' } })}
                 className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              >
+                Pedir novo link
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="w-full py-3 mt-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Voltar ao login
               </button>

@@ -4,11 +4,20 @@ import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-libra
 const m = vi.hoisted(() => ({
   cb: null as null | ((e: string, s: unknown) => void),
   updateUser: vi.fn(async (_: unknown): Promise<{ error: null | { code?: string; message?: string } }> => ({ error: null })),
-  verifyOtp: vi.fn(async (_: unknown): Promise<{ data: { session: null | { user: { email: string } } }; error: null | { message: string } }> => ({ data: { session: { user: { email: "900@contas.encivilconstroi.com" } } }, error: null })),
+  verifyOtp: vi.fn(async (_: unknown): Promise<{ data: { session: null | { user: { email: string } } }; error: null | { message: string; status?: number; name?: string } }> => ({ data: { session: { user: { email: "900@contas.encivilconstroi.com" } } }, error: null })),
   signOut: vi.fn(),
   navigate: vi.fn(),
+  entrada: null as null | { tipo: string; codigo?: string; descricao?: string },
+  marcador: false,
+  getSession: vi.fn(async (): Promise<{ data: { session: null | { user: { email: string } } } }> => ({ data: { session: null } })),
 }))
 vi.mock('react-router', () => ({ useNavigate: () => m.navigate }))
+vi.mock('@/integrations/supabase/entradaUrl', async (orig) => ({
+  ...(await orig<typeof import('@/integrations/supabase/entradaUrl')>()),
+  entradaCapturada: () => m.entrada,
+  temMarcadorRecuperacao: () => m.marcador,
+  limparMarcadorRecuperacao: vi.fn(),
+}))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), info: vi.fn(), success: vi.fn() } }))
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -17,7 +26,7 @@ vi.mock('@/integrations/supabase/client', () => ({
         m.cb = cb
         return { data: { subscription: { unsubscribe: vi.fn() } } }
       },
-      getSession: vi.fn(async () => ({ data: { session: null } })),
+      getSession: () => m.getSession(),
       updateUser: m.updateUser,
       verifyOtp: m.verifyOtp,
       signOut: m.signOut,
@@ -32,7 +41,7 @@ import { ResetPasswordPage } from '@/app/pages/ResetPasswordPage'
 const EMAIL = '900@contas.encivilconstroi.com'
 const recovery = () => act(() => { m.cb!('PASSWORD_RECOVERY', { user: { email: EMAIL } }) })
 
-beforeEach(() => { vi.clearAllMocks(); window.history.replaceState(null, "", "/reset-password") })
+beforeEach(() => { vi.clearAllMocks(); m.entrada = null; m.marcador = false; m.getSession.mockImplementation(async () => ({ data: { session: null } })); window.history.replaceState(null, "", "/reset-password") })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('ResetPasswordPage', () => {
@@ -53,10 +62,10 @@ describe('ResetPasswordPage', () => {
     expect(m.signOut).not.toHaveBeenCalled()
   })
 
-  it('sem evento em 4 s mostra link expirado', () => {
+  it('sem evento em 8 s mostra link expirado', () => {
     vi.useFakeTimers()
     render(<ResetPasswordPage />)
-    act(() => { vi.advanceTimersByTime(4100) })
+    act(() => { vi.advanceTimersByTime(8100) })
     expect(screen.getByText(/O link expirou ou já foi usado/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Voltar ao login' }))
     expect(m.navigate).toHaveBeenCalledWith('/login')
@@ -80,7 +89,7 @@ const preencher = () => {
 describe('ResetPasswordPage — link do administrador (token_hash)', () => {
   const abrirLink = () => window.history.replaceState(null, '', '/reset-password?token_hash=abc%2B1&type=recovery')
 
-  it('não usa o token antes do clique (pré-visualização) nem expira aos 4 s', () => {
+  it('não usa o token antes do clique (pré-visualização) nem expira aos 8 s', () => {
     vi.useFakeTimers()
     abrirLink()
     render(<ResetPasswordPage />)
@@ -103,7 +112,7 @@ describe('ResetPasswordPage — link do administrador (token_hash)', () => {
   })
 
   it('token recusado mostra Link inválido', async () => {
-    m.verifyOtp.mockResolvedValueOnce({ data: { session: null }, error: { message: 'Token has expired or is invalid' } })
+    m.verifyOtp.mockResolvedValueOnce({ data: { session: null }, error: { message: 'Token has expired or is invalid', status: 403 } })
     abrirLink()
     render(<ResetPasswordPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
@@ -136,5 +145,70 @@ describe('ResetPasswordPage — conta com verificação em dois passos', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Guardar nova palavra-passe' })).toBeTruthy())
     expect(m.updateUser).toHaveBeenCalledTimes(2)
     expect(m.navigate).not.toHaveBeenCalled()
+  })
+})
+
+describe('ResetPasswordPage — robustez da validação', () => {
+  const EMAIL_SESSAO = { user: { email: EMAIL } }
+
+  it('sessão de recuperação já criada (sem evento) com marcador mostra o formulário', async () => {
+    m.marcador = true
+    m.entrada = { tipo: 'sessao' }
+    m.getSession.mockResolvedValue({ data: { session: EMAIL_SESSAO } })
+    render(<ResetPasswordPage />)
+    await waitFor(() => expect(screen.getByText('Conta: 900')).toBeTruthy())
+  })
+
+  it('sessão existente sem marcador nem token não abre o formulário', async () => {
+    m.getSession.mockResolvedValue({ data: { session: EMAIL_SESSAO } })
+    vi.useFakeTimers()
+    render(<ResetPasswordPage />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(8100) })
+    expect(screen.queryByLabelText('Nova palavra-passe')).toBeNull()
+    expect(screen.getByText('Link inválido')).toBeTruthy()
+  })
+
+  it('INITIAL_SESSION com sessão e marcador mostra o formulário', () => {
+    m.marcador = true
+    render(<ResetPasswordPage />)
+    act(() => { m.cb!('INITIAL_SESSION', EMAIL_SESSAO) })
+    expect(screen.getByText('Conta: 900')).toBeTruthy()
+  })
+
+  it('erro otp_expired no hash mostra mensagem específica e Pedir novo link', () => {
+    m.entrada = { tipo: 'erro', codigo: 'otp_expired', descricao: 'Email link is invalid or has expired' }
+    render(<ResetPasswordPage />)
+    expect(screen.getByText(/abrem o link antes de si/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir novo link' }))
+    expect(m.navigate).toHaveBeenCalledWith('/login', { state: { modo: 'pedir-reset' } })
+  })
+
+  it('erro de rede no verifyOtp mantém o token e permite tentar de novo', async () => {
+    window.history.replaceState(null, '', '/reset-password?token_hash=abc&type=recovery')
+    m.verifyOtp.mockResolvedValueOnce({ data: { session: null }, error: { message: 'Failed to fetch', name: 'AuthRetryableFetchError' } })
+    render(<ResetPasswordPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+    const tentar = await screen.findByRole('button', { name: 'Tentar de novo' })
+    expect(window.location.search).toContain('token_hash=abc')
+    fireEvent.click(tentar)
+    await waitFor(() => expect(screen.getByText('Conta: 900')).toBeTruthy())
+    expect(m.verifyOtp).toHaveBeenCalledTimes(2)
+  })
+
+  it('verifyOtp com 5xx também é erro de rede', async () => {
+    window.history.replaceState(null, '', '/reset-password?token_hash=abc&type=recovery')
+    m.verifyOtp.mockResolvedValueOnce({ data: { session: null }, error: { message: 'boom', status: 502 } })
+    render(<ResetPasswordPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(await screen.findByRole('button', { name: 'Tentar de novo' })).toBeTruthy()
+  })
+
+  it('verifyOtp 4xx é link expirado com Pedir novo link', async () => {
+    window.history.replaceState(null, '', '/reset-password?token_hash=abc&type=recovery')
+    m.verifyOtp.mockResolvedValueOnce({ data: { session: null }, error: { message: 'invalid', status: 403 } })
+    render(<ResetPasswordPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(await screen.findByRole('button', { name: 'Pedir novo link' })).toBeTruthy()
+    expect(window.location.search).toBe('')
   })
 })

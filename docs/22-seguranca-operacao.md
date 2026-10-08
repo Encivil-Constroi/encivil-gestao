@@ -242,6 +242,25 @@ As migrations anteriores a `20261008*` não foram comparadas com a produção: c
 
 ---
 
+## 9b. Recuperação de senha por email
+
+O link do email leva `token_hash` e `type=recovery` para `/reset-password`; o utilizador confirma com um clique (assim um scanner de email que só abre o link não gasta o token). Modelo versionado em `supabase/templates/recovery.html`; local: `supabase/config.toml` (`[auth.email.template.recovery]`, `site_url` e `additional_redirect_urls` para `localhost:5173`).
+
+**Passos manuais de produção (o repositório não os aplica):**
+1. Dashboard Supabase → Authentication → Email Templates → **Reset Password**: colar o conteúdo de `supabase/templates/recovery.html` (assunto: "Recuperação de senha - ENCIVIL Gestão") e guardar.
+2. Authentication → URL Configuration: **Site URL** `https://app.encivilconstroi.com`; **Redirect URLs** `https://app.encivilconstroi.com/**` e `https://encivil-gestao.pages.dev/**`.
+3. Edge Function `admin-utilizadores`: o segredo `APP_URL` (por omissão `https://encivil-gestao.pages.dev`) deve apontar para um URL da lista acima.
+4. Testar: pedir recuperação no login, abrir o email, definir nova senha.
+
+**Diagnóstico:**
+- `otp_expired` no hash do URL: o link já foi gasto, normalmente por um scanner de email. Pedir novo link (com o template novo o scanner deixa de o gastar).
+- Volta ao ecrã de login em vez de `/reset-password`: o URL de destino não está na lista de Redirect URLs.
+- O link gerado pelo administrador vem da Edge Function `admin-utilizadores` e usa o segredo `APP_URL` para o destino.
+
+**Compatibilidade:** o site novo funciona com o template antigo (o fluxo por hash `access_token` continua suportado); o template novo só melhora a robustez. Pode publicar-se o site antes de trocar o template.
+
+---
+
 ## 10. Publicação (checklist por ordem)
 
 1. Fazer commit do WIP em `main` e juntar a branch `seguranca-2026`. Em conflitos em `colaboradoresService`, usar `SELECT_COLABORADOR` (nunca `'*'`, nunca `nif`); depois `grep "from('colaboradores')"`, `npm run typecheck`, `npm test`, `npm run build`.

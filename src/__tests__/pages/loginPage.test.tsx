@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 
-const m = vi.hoisted(() => ({ signIn: vi.fn(async () => ({ error: null })), reset: vi.fn(), info: vi.fn() }))
-vi.mock('react-router', () => ({ useNavigate: () => vi.fn() }))
+const m = vi.hoisted(() => ({ estado: null as null | { modo: string }, signIn: vi.fn(async () => ({ error: null })), reset: vi.fn(), info: vi.fn() }))
+vi.mock('react-router', () => ({ useNavigate: () => vi.fn(), useLocation: () => ({ state: m.estado }) }))
 vi.mock('@/features/auth/AuthContext', () => ({ useAuth: () => ({ signIn: m.signIn, session: null }) }))
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { resetPasswordForEmail: m.reset } } }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), info: m.info, success: vi.fn() } }))
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); m.estado = null })
 import { LoginPage } from '@/app/pages/LoginPage'
 
 describe('LoginPage', () => {
@@ -37,5 +37,13 @@ describe('LoginPage', () => {
     fireEvent.submit(screen.getByLabelText('Email da conta').closest('form')!)
     expect(m.info).toHaveBeenCalledWith('Contas sem email: peça ao administrador para redefinir a senha.')
     expect(m.reset).not.toHaveBeenCalled()
+  })
+})
+
+describe('LoginPage — vindo de um link expirado', () => {
+  it('state.modo=pedir-reset abre o ecrã de pedir email', () => {
+    m.estado = { modo: 'pedir-reset' }
+    render(<LoginPage />)
+    expect(screen.getByLabelText('Email da conta')).toBeTruthy()
   })
 })

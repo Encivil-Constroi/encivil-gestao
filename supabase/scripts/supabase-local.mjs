@@ -40,5 +40,11 @@ if (existsSync(ORIGEM + 'functions')) {
   cpSync(ORIGEM + 'functions', DESTINO + 'functions', { recursive: true })
 }
 
+// Templates de email referenciados por content_path no config.toml
+if (existsSync(ORIGEM + 'templates')) {
+  rmSync(DESTINO + 'templates', { recursive: true, force: true })
+  cpSync(ORIGEM + 'templates', DESTINO + 'templates', { recursive: true })
+}
+
 console.log(`Pasta pronta: ${DESTINO} (${ficheiros.length} migrations)`)
 console.log('Seguinte: npx supabase start --workdir .supabase-local')
