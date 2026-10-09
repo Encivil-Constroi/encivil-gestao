@@ -27,8 +27,8 @@ export function KpiCard({ label, value, icon: Icon, iconBg, valueColor, trend = 
           </span>
         ) : <span className="text-xs text-muted-foreground">—</span>}
       </div>
-      <div>
-        <p className={`text-2xl md:text-3xl font-bold ${valueColor}`}>{loading ? '…' : value}</p>
+      <div className="min-w-0">
+        <p className={`text-2xl xl:text-xl 2xl:text-2xl font-bold tabular-nums truncate ${valueColor}`} title={loading ? undefined : String(value)}>{loading ? '…' : value}</p>
         <p className="text-xs text-muted-foreground mt-1 leading-tight">{label}</p>
       </div>
     </div>
