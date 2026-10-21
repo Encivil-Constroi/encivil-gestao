@@ -17,11 +17,13 @@ export function useEstadoMfa(): { estado: EstadoMfa | null; loading: boolean; re
   const { session, profile } = useAuth()
   const uid = session?.user.id
   const ativo = !!uid && !!profile
+  // Só depende da sessão: corre em paralelo com a leitura do perfil em vez de esperar por ela
   const { data, loading, error, reload } = useAsync(async () => {
     const [nivel, fatores, obrigatorio] = await Promise.all([nivelMfa(), listarFatores(), mfaObrigatorio()])
-    return decidirEstadoMfa({ papel: profile?.role ?? null, obrigatorio, temFator: fatores.length > 0, nivel })
-  }, [uid, profile?.role, session?.access_token], { enabled: ativo, errorMsg: 'Não foi possível verificar a sessão' })
-  // Ao ligar (o perfil acabou de chegar) o useAsync ainda diz loading=false num render:
+    return { nivel, obrigatorio, temFator: fatores.length > 0 }
+  }, [uid, session?.access_token], { enabled: !!uid, errorMsg: 'Não foi possível verificar a sessão' })
+  const estado = ativo && data ? decidirEstadoMfa({ papel: profile?.role ?? null, ...data }) : null
+  // Ao ligar o useAsync ainda diz loading=false num render:
   // sem isto o AuthGuard mostrava a app um frame antes do desafio MFA
-  return { estado: data ?? null, loading: loading || (ativo && data === null && error === null), recarregar: reload }
+  return { estado, loading: ativo && (loading || (data === null && error === null)), recarregar: reload }
 }

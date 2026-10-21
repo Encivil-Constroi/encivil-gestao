@@ -28,8 +28,10 @@ BEGIN
     USING (public.auth_role() IN ('admin', 'gestor', 'armazem', 'medicoes'))
     WITH CHECK (public.auth_role() IN ('admin', 'gestor', 'armazem', 'medicoes'));
 
-  -- A RPC é SECURITY DEFINER (ignora a RLS): tem de aplicar a mesma regra.
-  EXECUTE $fn$
+END $guias$;
+
+-- A RPC é SECURITY DEFINER (ignora a RLS): tem de aplicar a mesma regra. Criá-la sem a tabela é
+-- seguro: o plpgsql só resolve guias_transporte quando a função é chamada.
 CREATE OR REPLACE FUNCTION public.criar_guia_transporte(
   p_obra_id     uuid,
   p_motorista   uuid,
@@ -63,11 +65,9 @@ BEGIN
   RETURN v_id;
 END;
 $$;
-$fn$;
 
-  REVOKE EXECUTE ON FUNCTION public.criar_guia_transporte(uuid, uuid, text, text, date, jsonb) FROM PUBLIC, anon;
-  GRANT  EXECUTE ON FUNCTION public.criar_guia_transporte(uuid, uuid, text, text, date, jsonb) TO authenticated;
-END $guias$;
+REVOKE EXECUTE ON FUNCTION public.criar_guia_transporte(uuid, uuid, text, text, date, jsonb) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.criar_guia_transporte(uuid, uuid, text, text, date, jsonb) TO authenticated;
 
 -- ── 2. Registos do livro de obra: só quem escreve em obras, e em nome próprio ─
 DO $registos$

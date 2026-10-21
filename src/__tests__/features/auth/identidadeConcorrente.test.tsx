@@ -13,7 +13,8 @@ const m = vi.hoisted(() => ({
 }))
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   auth: { getSession: m.getSession, signOut: m.signOut,
-    onAuthStateChange: (fn: typeof m.listener) => { m.listener = fn; return { data: { subscription: { unsubscribe: vi.fn() } } } },
+    // O callback do AuthContext não espera pelo perfil; o ouvinte de teste espera pelas microtarefas
+    onAuthStateChange: (fn: NonNullable<typeof m.listener>) => { m.listener = async (e, s) => { fn(e, s); for (let i = 0; i < 10; i++) await Promise.resolve() }; return { data: { subscription: { unsubscribe: vi.fn() } } } },
   },
   from: () => ({ select: () => ({ eq: (_coluna: string, id: string) => ({ single: () => m.perfil(id) }) }) }),
 } }))

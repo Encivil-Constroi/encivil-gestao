@@ -19,7 +19,8 @@ vi.mock('@/integrations/supabase/client', () => ({
     auth: {
       getSession: () => Promise.resolve({ data: { session: null } }),
       onAuthStateChange: (cb: (evento: string, sessao: unknown) => Promise<void>) => {
-        m.ouvinte = cb
+        // O callback do AuthContext não espera pelo perfil; o ouvinte de teste espera pelas microtarefas
+        m.ouvinte = async (e, s) => { await cb(e, s); for (let i = 0; i < 10; i++) await Promise.resolve() }
         return { data: { subscription: { unsubscribe: vi.fn() } } }
       },
       signOut: m.signOut,

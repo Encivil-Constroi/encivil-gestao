@@ -117,6 +117,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const cacheUserRef = useRef<string | null>(null)
   const loginNesteSeparadorRef = useRef(false)
   const sessaoVersaoRef = useRef(0)
+  // uid cujo perfil já foi pedido (em curso ou carregado): os eventos repetidos não o voltam a pedir
+  const perfilDeRef = useRef<string | null>(null)
 
   useEffect(() => {
     const sessaoVersao = sessaoVersaoRef
@@ -129,8 +131,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cacheUserRef.current = session?.user.id ?? null
       setSession(session)
       if (session?.user) {
-        const { perfil: p } = await fetchProfile(session.user.id)
+        perfilDeRef.current = session.user.id
+        const { perfil: p, falhaRede } = await fetchProfile(session.user.id)
         if (versaoInicial !== sessaoVersaoRef.current) return
+        if (falhaRede) perfilDeRef.current = null
         setProfile(p)
       }
       setLoading(false)
@@ -138,29 +142,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (versaoInicial === sessaoVersaoRef.current) setLoading(false)
     })
 
-    // Subsequent auth state changes (sign-in, sign-out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const versao = ++sessaoVersaoRef.current
-      const mudouIdentidade = cacheUserRef.current !== (session?.user.id ?? null)
+    // Síncrono de propósito: o auth-js espera por este callback durante a inicialização e
+    // uma consulta aqui dentro pede o token, que espera pela inicialização (deadlock).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const uidNovo = session?.user.id ?? null
+      const mudouIdentidade = cacheUserRef.current !== uidNovo
       if (event === 'SIGNED_OUT' || mudouIdentidade) clearAsyncCache()
       if (mudouIdentidade) apagarCacheApiSw()
-      cacheUserRef.current = session?.user.id ?? null
+      cacheUserRef.current = uidNovo
       setSession(session)
-      if (mudouIdentidade) setProfile(null)
-      if (session?.user) {
-        if (mudouIdentidade) setLoading(true)
-        const { perfil, falhaRede } = await fetchProfile(session.user.id)
-        if (versao !== sessaoVersaoRef.current) return
-        // Mesma pessoa (refresh, regresso ao separador) sem rede: não lhe tirar as funções
-        setProfile(anterior => (falhaRede && !mudouIdentidade ? anterior : perfil))
-        setSentryUser(session.user.id)
-      } else {
+
+      if (!uidNovo) {
+        ++sessaoVersaoRef.current
+        perfilDeRef.current = null
         setProfile(null)
         clearSentryUser()
         // Também cobre sessões terminadas fora do nosso signOut (refresh falhado, outro separador)
         if (event === 'SIGNED_OUT') void limparDadosLocais()
+        setLoading(false)
+        return
       }
-      setLoading(false)
+      // INITIAL_SESSION/SIGNED_IN repetem-se no arranque e ao voltar ao separador; o refresh
+      // horário relê para apanhar um perfil alterado ou removido
+      const releitura = event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED'
+      if (!mudouIdentidade && !releitura && perfilDeRef.current === uidNovo) return
+
+      const versao = ++sessaoVersaoRef.current
+      perfilDeRef.current = uidNovo
+      if (mudouIdentidade) { setProfile(null); setLoading(true) }
+      // Sem await: o callback devolve já e a consulta segue quando a inicialização acabar
+      void fetchProfile(uidNovo).then(({ perfil, falhaRede }) => {
+        if (versao !== sessaoVersaoRef.current) return
+        if (falhaRede) perfilDeRef.current = null
+        // Mesma pessoa (refresh, regresso ao separador) sem rede: não lhe tirar as funções
+        setProfile(anterior => (falhaRede && !mudouIdentidade ? anterior : perfil))
+        setSentryUser(uidNovo)
+        setLoading(false)
+      })
     })
 
     return () => { sessaoVersao.current++; subscription.unsubscribe() }
@@ -241,6 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Invalida respostas antes de esperar pela rede, inclusive se não houver SIGNED_OUT.
     sessaoVersaoRef.current++
     cacheUserRef.current = null
+    perfilDeRef.current = null
     setSession(null)
     setProfile(null)
     setLoading(false)
