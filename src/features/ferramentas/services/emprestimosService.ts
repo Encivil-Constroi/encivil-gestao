@@ -161,6 +161,10 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
     p_assinatura_responsavel_ent: input.responsibleSignature,
     p_foto_entrega_path: input.fotoEntregaPath,
   })
+  // Corrida rara entre dois registos: o índice uq_emprestimo_ativo_ferramenta é a última barreira
+  if (error?.code === '23505' && error.message.includes('uq_emprestimo_ativo_ferramenta')) {
+    throw new Error('Esta ferramenta já tem um empréstimo ativo.')
+  }
   if (error) throw error
 
   return buscarEmprestimoComFerramenta(data.id)

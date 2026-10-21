@@ -40,6 +40,18 @@ describe('limparDadosLocais', () => {
     expect(localStorage.getItem('encivil-theme')).toBe('dark')
   })
 
+  it('mantém no sessionStorage as marcas anti-ciclo de recarga e a recuperação de acesso', async () => {
+    sessionStorage.setItem('sw_reload_at', '1')
+    sessionStorage.setItem('chunk_reload_ts', '2')
+    sessionStorage.setItem('encivil-recuperacao', '3')
+    sessionStorage.setItem('dados-do-utilizador', 'x')
+    await limparDadosLocais()
+    expect(sessionStorage.getItem('sw_reload_at')).toBe('1')
+    expect(sessionStorage.getItem('chunk_reload_ts')).toBe('2')
+    expect(sessionStorage.getItem('encivil-recuperacao')).toBe('3')
+    expect(sessionStorage.getItem('dados-do-utilizador')).toBeNull()
+  })
+
   it('não rebenta sem Cache Storage (browser antigo / modo privado)', async () => {
     vi.stubGlobal('caches', undefined)
     await expect(limparDadosLocais()).resolves.toBeUndefined()

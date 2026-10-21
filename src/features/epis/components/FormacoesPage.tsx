@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { GraduationCap, Plus, ChevronDown, CheckCircle2, AlertCircle, Clock, Infinity } from 'lucide-react'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
+import { GraduationCap, Plus, ChevronDown, CheckCircle2, AlertCircle, Clock, Infinity as IconInfinity } from 'lucide-react'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useFormacoesColaborador, useTiposFormacao } from '../hooks/useFormacoesColaborador'
 import { useRegistarFormacao, useUploadCertificado } from '../hooks/useRegistarFormacao'
@@ -14,7 +15,7 @@ function diasParaValidade(dataValidade?: string): number | null {
 function BadgeValidade({ dataValidade }: { dataValidade?: string }) {
   if (!dataValidade) return (
     <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-info/10 text-info">
-      <Infinity className="w-3 h-3" /> Vitalícia
+      <IconInfinity className="w-3 h-3" /> Vitalícia
     </span>
   )
   const dias = diasParaValidade(dataValidade)!
@@ -69,7 +70,7 @@ function NovaFormacaoForm({ colaboradorId, onClose }: { colaboradorId: string; o
   const { registar, loading } = useRegistarFormacao(colaboradorId)
   const { upload, loading: uploading } = useUploadCertificado()
   const [tipoId, setTipoId] = useState('')
-  const [dataConclusao, setDataConclusao] = useState(() => new Date().toISOString().split('T')[0])
+  const [dataConclusao, setDataConclusao] = useState(() => hojeLisboa())
   const [entidade, setEntidade] = useState('')
   const [ficheiro, setFicheiro] = useState<File | null>(null)
 

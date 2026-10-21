@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { limitesDiaLisboa } from '@/app/lib/dataLisboa'
 import type { Picagem, TipoPicagem, ResultadoPicagem, OrigemPicagem } from '@/app/types'
 import type { Database } from '@/integrations/supabase/types'
 
@@ -94,24 +95,26 @@ export async function registarPicagemOffline(input: NovaPicagem, timestampServid
 }
 
 export async function listarPicagensDia(colaboradorId: string, data: string): Promise<Picagem[]> {
+  const limites = limitesDiaLisboa(data)
   const { data: rows, error } = await supabase
     .from('picagens')
     .select(SELECT)
     .eq('colaborador_id', colaboradorId)
-    .gte('timestamp_dispositivo', `${data}T00:00:00`)
-    .lte('timestamp_dispositivo', `${data}T23:59:59`)
+    .gte('timestamp_dispositivo', limites.inicio)
+    .lt('timestamp_dispositivo', limites.fimExclusivo)
     .order('timestamp_dispositivo', { ascending: true })
   if (error) throw error
   return (rows as RowWithJoins[]).map(toPicagem)
 }
 
 export async function listarPicagensObraDia(obraId: string, data: string): Promise<Picagem[]> {
+  const limites = limitesDiaLisboa(data)
   const { data: rows, error } = await supabase
     .from('picagens')
     .select(SELECT)
     .eq('obra_id', obraId)
-    .gte('timestamp_dispositivo', `${data}T00:00:00`)
-    .lte('timestamp_dispositivo', `${data}T23:59:59`)
+    .gte('timestamp_dispositivo', limites.inicio)
+    .lt('timestamp_dispositivo', limites.fimExclusivo)
     .order('timestamp_dispositivo', { ascending: true })
   if (error) throw error
   return (rows as RowWithJoins[]).map(toPicagem)

@@ -32,5 +32,11 @@ Relatório e limites de homologação: `docs/auditorias/2026-10-07-obras.md`. Mi
 
 Autoria de auto novo passa a ser atribuída pelo servidor. Evidências, documentos, faturas e fotos gerais novas precisam de objeto no bucket correto; arquivos vinculados não podem ser alterados/apagados. Registros antigos continuam legíveis e editáveis pelas regras existentes, mas nova submissão/verificação/aprovação/pagamento revalida os arquivos. GPS/hash enviados pelo browser não comprovam captura física; a API real de Storage e os fluxos por papel devem ser homologados antes da liberação operacional.
 
+## Homologação de engenharia — 08/10/2026
+
+Relatório: [2026-10-08-obras-homologacao.md](auditorias/2026-10-08-obras-homologacao.md). Auth, PostgREST, Storage e RLS homologados em Supabase local real por dois utilizadores de medições, autor designado e papel negado; aferições, fotografias e relatórios também percorridos com agent-browser. A abertura da obra original foi confirmada em consulta na Cloudflare.
+
+Nova migration aditiva: `20261008100000_obras_concorrencia_mfa.sql`, depois das anteriores. Serializa alterações de linhas com a submissão do auto e exige MFA antes de autorizar relatos por designação. Não modifica dados existentes nem assinaturas públicas. Frontend protege novamente a saída de relatório reaberto, evita autosave após submissão e descarta respostas de perfil/cache de identidades anteriores. Seguir site → migrations → Edge Functions; homologação local não significa que essa nova migration ou frontend já estejam publicados.
+
 ## Controlo de subempreitadas
 Orçamento (EAP), auto-medição com verificação, evidências com GPS, glosas, alçadas, documentos e painel do CEO: ver `docs/20-subempreitadas-controlo.md`. Migrations A e B depois da `20261003000000`.

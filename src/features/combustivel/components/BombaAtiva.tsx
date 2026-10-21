@@ -8,6 +8,7 @@ const FIM_SESSAO: Record<MotivoFimSessao, string> = {
   TERMINEI:     'desligada por ti',
   EMERGENCIA:   'desligada pelo responsável',
   INTERROMPIDO: 'a bomba parou',
+  NAO_ARRANCOU: 'a bomba não arrancou',
 }
 
 // O Shelly reporta a cada 5s: 20s sem confirmação = algo está errado

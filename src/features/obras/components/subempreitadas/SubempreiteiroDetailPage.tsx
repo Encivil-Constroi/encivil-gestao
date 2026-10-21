@@ -20,6 +20,7 @@ import type { LiberacaoRetencao } from '@/app/types';
 import { SubFichaCEO } from './SubFichaCEO';
 import { SubDocumentos } from './SubDocumentos';
 import { ConfigSubsDialog } from './ConfigSubsDialog';
+import { hojeLisboa } from '@/app/lib/dataLisboa';
 
 const MOTIVO_LABEL: Record<LiberacaoRetencao['motivo'], string> = {
   conclusao_obra:  'Conclusão de obra',
@@ -102,7 +103,7 @@ export function SubempreiteiroDetailPage() {
       subcontractorId: sub.id,
       obraId:          sub.obraId,
       valor,
-      dataLiberacao:   new Date().toISOString().slice(0, 10),
+      dataLiberacao:   hojeLisboa(),
       motivo:          libForm.motivo,
       observacoes:     libForm.observacoes || undefined,
     });

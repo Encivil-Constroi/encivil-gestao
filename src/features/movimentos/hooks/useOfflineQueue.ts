@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import { pendentesDoUtilizador, pendentesDeOutros, removeFromQueue, onQueueChange, isNetworkError, ehPendenteArmazem, type PendingMovimento } from '../offlineQueue'
+import {
+  pendentesDoUtilizador, pendentesDeOutros, removeFromQueue, onQueueChange, isNetworkError, ehPendenteArmazem,
+  clientIdDoPendente, type PendingMovimento,
+} from '../offlineQueue'
 import { registarMovimento } from '../services/movimentosService'
 import { registarMovimentoArmazem } from '../services/armazemService'
 import { invalidateCache } from '@/app/lib/useAsync'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/features/auth/AuthContext'
 
-// Só deve existir UMA instância ativa deste hook na app (montada uma vez no
-// MainLayout) — caso contrário duas instâncias tentariam sincronizar a
-// mesma fila em simultâneo e duplicariam movimentos.
+// Só deve existir UMA instância ativa deste hook por separador (montada uma vez
+// no MainLayout). Entre separadores/janelas, o lock do browser 'encivil-queue'
+// serializa a sincronização; o client_id no servidor é a última defesa.
 export function useOfflineQueue() {
   const { user } = useAuth()
   const userId = user?.id ?? null
@@ -26,32 +29,24 @@ export function useOfflineQueue() {
   useEffect(() => { refresh() }, [refresh])
   useEffect(() => onQueueChange(refresh), [refresh])
 
-  const flush = useCallback(async () => {
-    if (flushingRef.current) return
+  const sincronizar = useCallback(async () => {
+    // Relida aqui dentro: outro separador pode ter acabado de enviar parte da fila
     const queue = pendentesDoUtilizador(userId)
     if (queue.length === 0 || !navigator.onLine) return
 
     // Sessão pode ter expirado por inatividade (30 min) enquanto offline.
     // Não sincronizar sem sessão válida — mantém a fila intacta para quando o utilizador iniciar sessão.
-    // A guarda é ativada antes do await: o arranque e o evento "online" podem chamar
-    // flush quase ao mesmo tempo e duplicariam os movimentos.
-    flushingRef.current = true
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
-      flushingRef.current = false
       toast.warning('Inicie sessão para sincronizar os registos pendentes.')
       return
     }
     // Defesa em profundidade: a sessão real tem de ser a do dono dos movimentos
-    if (session.user.id !== userId) {
-      flushingRef.current = false
-      return
-    }
+    if (session.user.id !== userId) return
 
     setSyncing(true)
     let okCount = 0
     let failCount = 0
-    let stoppedByNetwork = false
 
     try {
       for (const item of queue) {
@@ -59,7 +54,7 @@ export function useOfflineQueue() {
           if (ehPendenteArmazem(item)) {
             const { queueId, queuedAt, ...input } = item
             void queueId; void queuedAt
-            await registarMovimentoArmazem(input)
+            await registarMovimentoArmazem({ ...input, clientId: clientIdDoPendente(item) })
           } else {
             const { queueId, queuedAt, ...input } = item
             void queueId; void queuedAt
@@ -68,10 +63,9 @@ export function useOfflineQueue() {
           removeFromQueue(item.queueId)
           okCount++
         } catch (e) {
-          if (isNetworkError(e)) {
-            stoppedByNetwork = true
-            break // ainda sem ligação fiável — tenta de novo mais tarde, mantém o resto na fila
-          }
+          // Ainda sem ligação fiável — tenta de novo mais tarde, mantém o resto na fila
+          // (não vale a pena notificar, já existe o banner persistente)
+          if (isNetworkError(e)) break
           // Erro de negócio (ex: produto removido, stock alterado) — não tem como
           // resolver-se a sozinho com retentativas. Remove da fila e avisa o utilizador.
           removeFromQueue(item.queueId)
@@ -80,7 +74,6 @@ export function useOfflineQueue() {
       }
     } finally {
       setSyncing(false)
-      flushingRef.current = false
       refresh()
     }
 
@@ -92,10 +85,24 @@ export function useOfflineQueue() {
     if (failCount > 0) {
       toast.error(`${failCount} movimento${failCount !== 1 ? 's' : ''} pendente${failCount !== 1 ? 's' : ''} não pôde${failCount !== 1 ? 'ram' : ''} ser sincronizado${failCount !== 1 ? 's' : ''} e foi${failCount !== 1 ? 'ram' : ''} removido${failCount !== 1 ? 's' : ''} da fila. Verifique os Movimentos do armazém.`)
     }
-    if (stoppedByNetwork && okCount === 0 && failCount === 0) {
-      // ainda offline — não vale a pena notificar, já existe o banner persistente
-    }
   }, [refresh, userId])
+
+  const flush = useCallback(async () => {
+    if (flushingRef.current) return
+    if (pendentesDoUtilizador(userId).length === 0 || !navigator.onLine) return
+    // A guarda é ativada antes do await: o arranque e o evento "online" podem chamar
+    // flush quase ao mesmo tempo e duplicariam os movimentos.
+    flushingRef.current = true
+    try {
+      if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+        await navigator.locks.request('encivil-queue', () => sincronizar())
+      } else {
+        await sincronizar()
+      }
+    } finally {
+      flushingRef.current = false
+    }
+  }, [sincronizar, userId])
 
   useEffect(() => {
     flush()

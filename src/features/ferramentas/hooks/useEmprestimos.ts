@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
 import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
@@ -13,50 +13,33 @@ import {
 } from '../services/emprestimosService'
 
 export function useEmprestimos(filtros: FiltrosEmprestimos = {}) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const key = JSON.stringify(filtros)
   const { data, loading, error, reload } = useAsync(
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     () => listarEmprestimos(filtros), [key],
     { cacheKey: `emprestimos-${key}`, errorMsg: 'Erro ao carregar empréstimos' }
   )
   return { loans: data ?? [], loading, error, reload }
 }
 
-// Pagination is stateful — keep manual implementation
 export function useEmprestimosPaginados(filtros: FiltrosEmprestimos = {}) {
-  const [loans, setLoans] = useState<Emprestimo[]>([])
-  const [count, setCount] = useState(0)
-  const [page, setPage] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filtrosKey = JSON.stringify(filtros)
-  useEffect(() => { setPage(0) }, [filtrosKey])
+  // A página guarda os filtros a que pertence: filtros novos começam na 0 logo no
+  // primeiro render, sem pedir a página antiga com os filtros novos.
+  const [pagina, setPagina] = useState({ filtros: filtrosKey, n: 0 })
+  const page = pagina.filtros === filtrosKey ? pagina.n : 0
+  const setPage = useCallback((n: number) => setPagina({ filtros: filtrosKey, n }), [filtrosKey])
 
-  const load = useCallback(async (targetPage: number) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await listarEmprestimosPaginados(filtros, targetPage)
-      setLoans(result.data)
-      setCount(result.count)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar empréstimos')
-    } finally {
-      setLoading(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtrosKey])
-
-  useEffect(() => { load(page) }, [load, page])
+  const chave = `${filtrosKey}|${page}`
+  const { data, loading, error, reload } = useAsync(
+    () => listarEmprestimosPaginados(filtros, page), [chave],
+    { cacheKey: `emprestimos-pag-${chave}`, errorMsg: 'Erro ao carregar empréstimos' }
+  )
+  const count = data?.count ?? 0
 
   return {
-    loans, count, page,
+    loans: data?.data ?? ([] as Emprestimo[]), count, page,
     totalPages: Math.ceil(count / LOANS_PAGE_SIZE),
-    loading, error, setPage,
-    reload: () => load(page),
+    loading, error, setPage, reload,
   }
 }
 

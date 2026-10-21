@@ -177,6 +177,33 @@ describe('Devolução', () => {
     expect(screen.queryByLabelText('Quem vai conduzir?')).toBeNull()
   })
 
+  it('preserva a edição quando recarrega a mesma entrega', () => {
+    const pagina = () => (
+      <MemoryRouter initialEntries={['/frota/devolver?viatura=v2']}>
+        <EntregaFormPage tipo="DEVOLUCAO" />
+      </MemoryRouter>
+    )
+    const view = render(pagina())
+    escolher('Estado dos pneus', 'OK')
+    mocks.entregas = [{ ...entregaV2 }]
+    view.rerender(pagina())
+    expect(within(grupo('Estado dos pneus')).getByRole('radio', { name: 'OK' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('pré-preenche quando a entrega chega depois da seleção da viatura', () => {
+    mocks.entregas = []
+    const pagina = () => (
+      <MemoryRouter initialEntries={['/frota/devolver?viatura=v2']}>
+        <EntregaFormPage tipo="DEVOLUCAO" />
+      </MemoryRouter>
+    )
+    const view = render(pagina())
+    mocks.entregas = [{ ...entregaV2 }]
+    view.rerender(pagina())
+    expect(within(grupo('Estado dos pneus')).getByRole('radio', { name: 'Gastos' }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('switch', { name: 'Colete refletor presente?' }).getAttribute('aria-checked')).toBe('true')
+  })
+
   it('envia existentes + novos e para_oficina', async () => {
     abrir('/frota/devolver?viatura=v2')
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar devolução' }))

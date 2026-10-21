@@ -74,7 +74,34 @@ export type NovoProduto = {
   localizacao?: string | null
 }
 
+// BD ainda sem a migration 20261020110000 (o site publica-se antes): criar_produto não existe
+const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
+
+// O artigo nasce com 0 e o stock inicial entra como movimento de entrada (auditável),
+// na mesma transação. Sem a RPC, mantém-se o INSERT antigo.
 export async function criarProduto(input: NovoProduto): Promise<ProdutoArmazem> {
+  const { data, error } = await armazemDb.rpc('criar_produto', {
+    p: {
+      ...(input.id ? { id: input.id } : {}),
+      nome: input.name,
+      categoria: input.category,
+      unidade: input.unit,
+      stock_inicial: input.currentStock,
+      stock_minimo: input.minStock,
+      custo_unitario: input.unitCost ?? 0,
+      observacoes: input.notes ?? null,
+      foto_path: input.fotoPath ?? null,
+      localizacao: input.localizacao ?? null,
+    },
+  })
+  if (!error) return toProduct(data)
+  // jsonb → numeric/uuid no servidor: um valor mal escrito chega como 22P02, em inglês
+  if (error.code === '22P02') throw new Error('Dados do artigo inválidos: verifique os números e a foto.')
+  if (!RPC_INEXISTENTE.has(error.code)) throw error
+  return criarProdutoSemRpc(input)
+}
+
+async function criarProdutoSemRpc(input: NovoProduto): Promise<ProdutoArmazem> {
   const { data, error } = await armazemDb
     .from('produtos')
     .insert({

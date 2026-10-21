@@ -108,6 +108,7 @@ export type Pedido = {
   km_suspeito: boolean | null
   motivo_recusa: string | null
   solicitante_id: string | null
+  push_notificado_em?: string | null
 }
 
 export type Mensagem = { title: string; body: string; url: string; tag: string; contagem?: number }
@@ -155,6 +156,21 @@ export function mensagemDecisao(p: Pedido): Mensagem | null {
   return null
 }
 
+// ── Entrega ───────────────────────────────────────────────────────────────────
+export function podeNotificarNovo(p: { estado: string; push_notificado_em?: string | null }): boolean {
+  return p.estado === 'AGUARDA_AUTORIZACAO' && !p.push_notificado_em
+}
+
+// Marca como notificado só se pelo menos uma subscrição aceitou (2xx)
+export async function entregar(
+  { enviar, marcar }: { enviar: () => Promise<number[]>; marcar: () => Promise<void> },
+): Promise<{ enviados: number }> {
+  const estados = await enviar()
+  const enviados = estados.filter(s => s >= 200 && s < 300).length
+  if (enviados > 0) await marcar()
+  return { enviados }
+}
+
 // ── VAPID (RFC 8292) ──────────────────────────────────────────────────────────
 async function vapidJwt(endpoint: string): Promise<string> {
   const header  = bytesParaB64url(texto(JSON.stringify({ typ: 'JWT', alg: 'ES256' })))
@@ -200,7 +216,7 @@ function resposta(dados: Record<string, unknown>, status = 200) {
 }
 
 const SELECT_PEDIDO =
-  'id, estado, funcionario_nome, veiculo_nome, tipo_fonte, tipo_combustivel, contador, km_suspeito, motivo_recusa, solicitante_id'
+  'id, estado, funcionario_nome, veiculo_nome, tipo_fonte, tipo_combustivel, contador, km_suspeito, motivo_recusa, solicitante_id, push_notificado_em'
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return resposta({ erro: 'Método não permitido' }, 405)
@@ -233,14 +249,9 @@ Deno.serve(async (req) => {
   let mensagem: Mensagem | null = null
 
   if (evento === 'NOVO') {
-    // Só uma vez por pedido, e só enquanto ainda aguarda decisão
-    const { data: marcado, error: mErr } = await admin
-      .from('comb_abastecimentos_pendentes')
-      .update({ push_notificado_em: new Date().toISOString() })
-      .eq('id', p.id).eq('estado', 'AGUARDA_AUTORIZACAO').is('push_notificado_em', null)
-      .select('id')
-    if (mErr) return resposta({ erro: 'Falha ao marcar o pedido', detalhe: mErr.message }, 500)
-    if (!marcado?.length) return resposta({ enviados: 0, motivo: 'já notificado ou já decidido' })
+    // Só uma vez por pedido, e só enquanto ainda aguarda decisão. A marca fica
+    // depois do envio (entregar): uma falha de entrega não cala um novo envio.
+    if (!podeNotificarNovo(p)) return resposta({ enviados: 0, motivo: 'já notificado ou já decidido' })
 
     const { data: designados, error: dErr } = await admin.from('comb_aprovadores').select('user_id')
     if (dErr) return resposta({ erro: 'Falha ao ler aprovadores', detalhe: dErr.message }, 500)
@@ -271,12 +282,21 @@ Deno.serve(async (req) => {
   if (!subs?.length) return resposta({ enviados: 0, motivo: 'destinatários sem notificações ativas' })
 
   const conteudo = texto(JSON.stringify(mensagem))
-  const estados = await Promise.all(subs.map(s => enviar(s as Subscricao, conteudo)))
+  let estados: number[] = []
+  const { enviados } = await entregar({
+    enviar: async () => (estados = await Promise.all(subs.map(s => enviar(s as Subscricao, conteudo)))),
+    marcar: async () => {
+      if (evento !== 'NOVO') return
+      const { error } = await admin.from('comb_abastecimentos_pendentes')
+        .update({ push_notificado_em: new Date().toISOString() })
+        .eq('id', p.id).is('push_notificado_em', null)
+      if (error) console.error(`[notificar-abastecimento] marcar ${p.id}: ${error.message}`)
+    },
+  })
 
   const expiradas = subs.filter((_, i) => estados[i] === 404 || estados[i] === 410).map(s => s.endpoint)
   if (expiradas.length) await admin.from('push_subscriptions').delete().in('endpoint', expiradas)
 
-  const enviados = estados.filter(s => s >= 200 && s < 300).length
   console.log(`[notificar-abastecimento] evento=${evento} pedido=${p.id} subscrições=${subs.length} enviados=${enviados} expiradas=${expiradas.length}`)
   return resposta({ enviados, subscricoes: subs.length })
 })

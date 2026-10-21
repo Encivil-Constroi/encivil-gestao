@@ -33,13 +33,6 @@ export function invalidateCache(...keys: string[]): void {
   for (const ouvinte of [..._ouvintes]) ouvinte(keys)
 }
 
-/** Esquece todo o cache em memória (logout num telemóvel partilhado: o utilizador
- *  seguinte não pode ver dados do anterior). Não recarrega hooks montados: sem sessão
- *  só daria erros, e o logout desmonta as páginas. */
-export function limparCacheMemoria(): void {
-  _cache.clear()
-}
-
 /**
  * Generic async data-fetching hook. Runs `asyncFn` whenever `deps` change or
  * `enabled` flips to true. Avoids the loading/error/useCallback/useEffect
@@ -105,7 +98,6 @@ export function useAsync<T>(
 
   // silencioso: refresh em segundo plano (invalidação) — mantém os dados atuais
   // no ecrã em vez de os trocar por um skeleton
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const run = useCallback(async (silencioso = false) => {
     if (!enabled) { setLoading(false); return }
     const gen = ++genRef.current
@@ -139,8 +131,9 @@ export function useAsync<T>(
   }, [enabled, cacheKey, cacheTtl, sessaoAtual, ...deps])
 
   useEffect(() => {
+    const geracao = genRef
     void run()
-    return () => { genRef.current++ }
+    return () => { geracao.current++ }
   }, [run])
 
   useEffect(() => {

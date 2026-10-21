@@ -6,7 +6,9 @@ Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'chave-servico')
 
 const servirOriginal = Deno.serve
 ;(Deno as unknown as { serve: unknown }).serve = () => ({})
-const { cifrarPayload, b64urlParaBytes, bytesParaB64url, mensagemNovo, mensagemDecisao } = await import('./index.ts')
+const {
+  cifrarPayload, b64urlParaBytes, bytesParaB64url, mensagemNovo, mensagemDecisao, podeNotificarNovo, entregar,
+} = await import('./index.ts')
 type Pedido = Parameters<typeof mensagemNovo>[0]
 ;(Deno as unknown as { serve: unknown }).serve = servirOriginal
 
@@ -88,4 +90,24 @@ Deno.test('a maior mensagem possível cabe num registo cifrado', async () => {
   }, 99)
   const corpo = await cifrarPayload(new TextEncoder().encode(JSON.stringify(m)), RFC.uaPublic, RFC.auth)
   assert(corpo.length < 4096)
+})
+
+Deno.test('pedido novo só notifica enquanto aguarda decisão e ainda não foi notificado', () => {
+  assertEquals(podeNotificarNovo({ estado: 'AGUARDA_AUTORIZACAO', push_notificado_em: null }), true)
+  assertEquals(podeNotificarNovo({ estado: 'AGUARDA_AUTORIZACAO', push_notificado_em: '2026-10-20T10:00:00Z' }), false)
+  assertEquals(podeNotificarNovo({ estado: 'AUTORIZADO', push_notificado_em: null }), false)
+})
+
+Deno.test('push_notificado_em só fica marcado depois de pelo menos um envio com sucesso', async () => {
+  const correr = async (estados: number[]) => {
+    const ordem: string[] = []
+    const r = await entregar({
+      enviar: () => { ordem.push('enviar'); return Promise.resolve(estados) },
+      marcar: () => { ordem.push('marcar'); return Promise.resolve() },
+    })
+    return { ...r, ordem }
+  }
+  assertEquals(await correr([500, 0, 410]), { enviados: 0, ordem: ['enviar'] })
+  assertEquals(await correr([]), { enviados: 0, ordem: ['enviar'] })
+  assertEquals(await correr([410, 201, 201]), { enviados: 2, ordem: ['enviar', 'marcar'] })
 })

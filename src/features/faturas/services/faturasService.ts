@@ -98,9 +98,6 @@ function toFatura(row: FaturaRow): FaturaFornecedor {
 const SELECT_LIST   = '*, obras(nome)'
 const SELECT_DETAIL = '*, obras(nome), linhas_fatura(*, produtos(nome))'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as unknown as any
-
 // ── Filtros ───────────────────────────────────────────────────────────────────
 
 export type FiltrosFaturas = {
@@ -112,7 +109,7 @@ export type FiltrosFaturas = {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export async function listarFaturas(filtros: FiltrosFaturas = {}): Promise<FaturaFornecedor[]> {
-  let query = db
+  let query = supabase
     .from('faturas_fornecedor')
     .select(SELECT_LIST)
     .order('created_at', { ascending: false })
@@ -125,7 +122,7 @@ export async function listarFaturas(filtros: FiltrosFaturas = {}): Promise<Fatur
 }
 
 export async function buscarFatura(id: string): Promise<FaturaFornecedor> {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('faturas_fornecedor')
     .select(SELECT_DETAIL)
     .eq('id', id)
@@ -163,7 +160,7 @@ export async function criarFatura(input: NovaFatura): Promise<FaturaFornecedor> 
     .upload(path, input.file, { contentType: input.file.type })
   if (uploadErr) throw uploadErr
 
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('faturas_fornecedor')
     .insert({
       fornecedor:    input.fornecedor,
@@ -227,7 +224,7 @@ export async function classificarFatura(
   id:     string,
   linhas: ClassificarLinhaInput[]
 ): Promise<void> {
-  const { error } = await db.rpc('classificar_e_aprender', {
+  const { error } = await supabase.rpc('classificar_e_aprender', {
     p_fatura_id: id,
     p_linhas:    linhas,
   })
@@ -241,7 +238,7 @@ export type DadosFiscaisFatura = {
 }
 
 export async function atualizarDadosFiscaisFatura(id: string, d: DadosFiscaisFatura): Promise<FaturaFornecedor> {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('faturas_fornecedor')
     .update({
       nif_fornecedor:  d.nifFornecedor  ?? null,
@@ -256,7 +253,7 @@ export async function atualizarDadosFiscaisFatura(id: string, d: DadosFiscaisFat
 }
 
 export async function lancarFatura(id: string, responsavel: string): Promise<void> {
-  const { error } = await db.rpc('lancar_fatura', {
+  const { error } = await supabase.rpc('lancar_fatura', {
     p_fatura_id:   id,
     p_responsavel: responsavel,
   })
@@ -265,13 +262,13 @@ export async function lancarFatura(id: string, responsavel: string): Promise<voi
 
 export async function eliminarFatura(id: string): Promise<void> {
   // Só faturas no estado RECEBIDA podem ser eliminadas (forçado pela RLS)
-  const { data } = await db
+  const { data } = await supabase
     .from('faturas_fornecedor')
     .select('ficheiro_path')
     .eq('id', id)
     .single()
 
-  const { error } = await db.from('faturas_fornecedor').delete().eq('id', id)
+  const { error } = await supabase.from('faturas_fornecedor').delete().eq('id', id)
   if (error) throw error
 
   // Limpar ficheiro do storage após eliminar o registo

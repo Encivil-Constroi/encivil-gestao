@@ -383,6 +383,11 @@ deno_version = 2
 [functions.pump-status]
 verify_jwt = false
 
+# Chamada pelo trigger trg_notificar_abastecimento (pg_net) com a chave sb_publishable_*
+# e o cabeçalho x-segredo; a função valida o segredo com abastecimento_push_autorizado()
+[functions.notificar-abastecimento]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

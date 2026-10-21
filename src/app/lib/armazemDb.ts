@@ -23,13 +23,19 @@ type Com<Tab extends keyof T, Extra> = Omit<T[Tab], 'Row' | 'Insert' | 'Update'>
 export type ProdutoExtra = { foto_path: string | null; localizacao: string | null }
 export type MovimentoExtra = {
   subtipo: SubtipoMovimento | null; fornecedor: string | null; numero_fatura: string | null
-  cliente: string | null; preco_unitario: number | null
+  cliente: string | null; preco_unitario: number | null; client_id: string | null
 }
 export type FerramentaExtra = {
   foto_path: string | null; marca: string | null; modelo: string | null; nova: boolean
   data_compra: string | null; garantia_ate: string | null
 }
 export type EmprestimoExtra = { foto_entrega_path: string | null; foto_devolucao_path: string | null }
+
+export type NovoProdutoRpc = {
+  id?: string; nome: string; categoria: string; unidade: string
+  stock_inicial: number; stock_minimo: number; custo_unitario: number
+  observacoes: string | null; foto_path: string | null; localizacao: string | null
+}
 
 export type MaterialObraRow = {
   obra_id: string; obra_nome: string; obra_estado: string
@@ -51,10 +57,13 @@ export type ArmazemDatabase = Omit<Database, 'public'> & {
           p_produto_id: string; p_subtipo: SubtipoMovimento; p_quantidade: number; p_responsavel: string
           p_obra_id?: string | null; p_fornecedor?: string | null; p_numero_fatura?: string | null
           p_cliente?: string | null; p_preco_unitario?: number | null; p_observacoes?: string | null
+          p_client_id?: string | null
         }
         Returns: T['movimentos_stock']['Row'] & MovimentoExtra
       }
       armazem_materiais_por_obra: { Args: { p_obra_id?: string | null }; Returns: MaterialObraRow[] }
+      // 20261020110000: cria o artigo com 0 e o stock inicial entra como movimento
+      criar_produto: { Args: { p: NovoProdutoRpc }; Returns: T['produtos']['Row'] & ProdutoExtra }
       registar_emprestimo_ferramenta: {
         Args: Pub['Functions']['registar_emprestimo_ferramenta']['Args'] & { p_foto_entrega_path?: string | null }
         Returns: T['emprestimos_ferramentas']['Row'] & EmprestimoExtra

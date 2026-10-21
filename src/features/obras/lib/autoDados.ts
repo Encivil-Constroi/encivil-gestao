@@ -36,7 +36,9 @@ type LinhasDatabase = {
   public: {
     Tables: { auto_linhas: { Row: AutoLinhaMedicaoRow; Insert: LinhaInsert; Update: never; Relationships: [] } }
     Views: { [_ in never]: never }
-    Functions: { [_ in never]: never }
+    Functions: {
+      substituir_linhas_auto: { Args: { p_auto_id: string; p_linhas: Omit<LinhaInsert, 'auto_id'>[] }; Returns: number }
+    }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
   }
@@ -54,21 +56,28 @@ export type LinhaGravar = {
   justificacao: string | null
 }
 
+const SEM_FUNCAO = new Set(['PGRST202', '42883'])
+
 export async function guardarLinhasAuto(autoId: string, linhas: LinhaGravar[]): Promise<true> {
+  const payload = linhas.map(l => ({
+    artigo_id: l.artigoId,
+    descricao: l.descricao,
+    unidade: l.unidade,
+    preco_unitario: l.precoUnitario,
+    quantidade: l.quantidade,
+    is_extra: l.isExtra,
+    qtd_pedida: l.qtdPedida,
+    justificacao: l.justificacao,
+  }))
+  const { error: rpcError } = await linhasDb.rpc('substituir_linhas_auto', { p_auto_id: autoId, p_linhas: payload })
+  if (!rpcError) return true
+  // BD ainda sem a função (site publicado antes da migration): fluxo anterior, não atómico.
+  if (!rpcError.code || !SEM_FUNCAO.has(rpcError.code)) throw rpcError
+
   const { error: delError } = await linhasDb.from('auto_linhas').delete().eq('auto_id', autoId)
   if (delError) throw delError
-  if (linhas.length > 0) {
-    const { error } = await linhasDb.from('auto_linhas').insert(linhas.map(l => ({
-      auto_id: autoId,
-      artigo_id: l.artigoId,
-      descricao: l.descricao,
-      unidade: l.unidade,
-      preco_unitario: l.precoUnitario,
-      quantidade: l.quantidade,
-      is_extra: l.isExtra,
-      qtd_pedida: l.qtdPedida,
-      justificacao: l.justificacao,
-    })))
+  if (payload.length > 0) {
+    const { error } = await linhasDb.from('auto_linhas').insert(payload.map(l => ({ auto_id: autoId, ...l })))
     if (error) throw error
   }
   return true

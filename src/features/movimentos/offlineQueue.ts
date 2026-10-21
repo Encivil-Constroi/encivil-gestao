@@ -18,9 +18,20 @@ export function ehPendenteArmazem(i: PendingMovimento): i is PendenteArmazem {
   return 'subtipo' in i
 }
 
-function uuid(): string {
+// Tem de ser um UUID válido: vai para movimentos_stock.client_id (uuid)
+export function novoIdRegisto(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.floor(Math.random() * 16)
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Registos gravados por versões antigas podem ter um id que não é UUID: esses vão sem client_id
+export function clientIdDoPendente(i: PendingMovimento): string | null {
+  return UUID.test(i.queueId) ? i.queueId : null
 }
 
 function isValidItem(item: unknown): item is PendingMovimento {
@@ -57,12 +68,15 @@ export function getQueue(): PendingMovimento[] {
   return readQueue()
 }
 
-export function enqueuePendingMovimento(input: RegistarMovimentoArmazemInput, userId: string): PendenteArmazem {
+// queueId = client_id já enviado ao servidor (se a rede caiu a meio), para o reenvio não duplicar
+export function enqueuePendingMovimento(input: RegistarMovimentoArmazemInput, userId: string, queueId = novoIdRegisto()): PendenteArmazem {
   const current = readQueue()
   if (current.length >= MAX_QUEUE_SIZE) {
     throw new Error(`Fila offline cheia (máx. ${MAX_QUEUE_SIZE} registos). Sincronize antes de continuar.`)
   }
-  const item: PendenteArmazem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString(), userId }
+  const { clientId, ...dados } = input
+  void clientId
+  const item: PendenteArmazem = { ...dados, queueId, queuedAt: new Date().toISOString(), userId }
   writeQueue([...current, item])
   return item
 }

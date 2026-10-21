@@ -57,4 +57,28 @@ describe('cancelar_autorizacao_bomba', () => {
     expect((await estado(id)).pump_activated_at).not.toBeNull()
     await expect(como_(joao, tx => tx.query('SELECT public.cancelar_autorizacao_bomba($1)', [id]))).rejects.toThrow(/já foi ligada/)
   })
+
+  it('a bomba não arrancou (NAO_ARRANCOU): o motorista volta a poder ligar ou cancelar o pedido', async () => {
+    await db.query('UPDATE public.pump_sessoes SET fim_em = now() - interval \'1 hour\', motivo_fim = \'INTERROMPIDO\' WHERE fim_em IS NULL')
+    const id = await pedidoLigado()
+    await db.query('UPDATE public.comb_abastecimentos_pendentes SET pump_auth_token = NULL WHERE id <> $1', [id])
+    await poll(false)
+    await db.query('UPDATE public.pump_sessoes SET inicio_em = inicio_em - interval \'15 seconds\' WHERE fim_em IS NULL')
+    await poll(false)
+    const e = await estado(id)
+    expect(e.pump_activated_at).toBeNull()
+    expect(e.bomba_ligada_em).toBeNull()
+    await como_(joao, tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [id]))
+    expect((await estado(id)).estado).toBe('CANCELADO')
+  })
+
+  it('a bomba forneceu (relé confirmado): o pedido já não se cancela', async () => {
+    await db.query('UPDATE public.pump_sessoes SET fim_em = now() - interval \'1 hour\', motivo_fim = \'INTERROMPIDO\' WHERE fim_em IS NULL')
+    const id = await pedidoLigado()
+    await db.query('UPDATE public.comb_abastecimentos_pendentes SET pump_auth_token = NULL WHERE id <> $1', [id])
+    await poll(false)
+    await poll(true)
+    await expect(como_(admin, tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [id])))
+      .rejects.toThrow('A bomba já forneceu combustível: conclua o pedido com a leitura final (o motorista ou quem aprova).')
+  })
 })

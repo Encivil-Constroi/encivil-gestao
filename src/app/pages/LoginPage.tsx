@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Navigate, useLocation, useNavigate } from 'react-router';
 import { Lock, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,10 +21,7 @@ export function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading]   = useState(false);
 
-  if (session) {
-    navigate('/', { replace: true });
-    return null;
-  }
+  if (session) return <Navigate to="/" replace />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -11,8 +11,9 @@ import {
   LayoutDashboard, HardHat, Truck, Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAsync } from '../lib/useAsync'
+import { carregarResumoSemanal } from '../lib/relatorios/semanal'
 import { EnviarWhatsAppDialog } from '../components/EnviarWhatsAppDialog'
-import { supabase } from '@/integrations/supabase/client'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
 import { listarFerramentas } from '@/features/ferramentas/services/ferramentasService'
@@ -841,6 +842,13 @@ type VeiculoConsumo = {
   precoMedio: number
 }
 
+// Referências estáveis para os useMemo não recalcularem a cada render enquanto carrega
+const SEM_MOVIMENTOS: Movement[] = []
+const SEM_PRODUTOS: Product[] = []
+const SEM_FERRAMENTAS: Tool[] = []
+const SEM_EMPRESTIMOS: ToolLoan[] = []
+const SEM_COMBUSTIVEL: VeiculoConsumo[] = []
+
 type CombustivelReportData = {
   loading: boolean
   linhas: VeiculoConsumo[]
@@ -1013,22 +1021,11 @@ export function ReportsPage() {
   // Por omissão a Visão geral para a gestão; os restantes papéis abrem o Stock.
   const reportType: ReportTipo = escolhido && abas.some(a => a.id === escolhido) ? escolhido : abas[0].id
   const [period, setPeriod]   = useState<Period>('mes')
-  const [loading, setLoading] = useState(true)
-  const [current,  setCurrent]  = useState<Movement[]>([])
-  const [previous, setPrevious] = useState<Movement[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [showPrint, setShowPrint] = useState(false)
 
   const [toolsPeriod, setToolsPeriod] = useState<Period>('mes')
-  const [toolsLoading, setToolsLoading] = useState(true)
-  const [tools, setTools] = useState<Tool[]>([])
-  const [loansCurrent,  setLoansCurrent]  = useState<ToolLoan[]>([])
-  const [loansPrevious, setLoansPrevious] = useState<ToolLoan[]>([])
-  const [loansActive,   setLoansActive]   = useState<ToolLoan[]>([])
   const [showToolsPrint, setShowToolsPrint] = useState(false)
 
-  const [combLoading, setCombLoading] = useState(true)
-  const [combLinhas, setCombLinhas] = useState<VeiculoConsumo[]>([])
   const [showCombPrint, setShowCombPrint] = useState(false)
 
   const [sharingWA, setSharingWA] = useState(false)
@@ -1037,136 +1034,79 @@ export function ReportsPage() {
   const partilharSemanalWhatsApp = async () => {
     setSharingWA(true)
     try {
-      const hoje = new Date()
-      const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1
-      const inicio = new Date(hoje)
-      inicio.setDate(hoje.getDate() - diaSemana)
-      inicio.setHours(0, 0, 0, 0)
-      const fim = new Date(inicio)
-      fim.setDate(inicio.getDate() + 6)
-      fim.setHours(23, 59, 59, 999)
-      const isoInicio = diaLisboa(inicio)
-      const isoFim    = diaLisboa(fim)
-      const today     = new Date().toISOString().split('T')[0]
-      const semanaLabel = `${inicio.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })} – ${fim.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}`
-
-      const [movRes, combRes, atrasoRes, stockRes] = await Promise.all([
-        supabase.from('movimentos_stock').select('tipo').gte('created_at', inicio.toISOString()).lte('created_at', fim.toISOString()),
-        supabase.from('comb_abastecimentos').select('litros, custo_total').gte('data', isoInicio).lte('data', isoFim),
-        supabase.from('emprestimos_ferramentas').select('id').eq('estado', 'ativo').not('data_prevista_devolucao', 'is', null).lt('data_prevista_devolucao', today),
-        supabase.from('produtos').select('stock_atual, stock_minimo').eq('ativo', true),
-      ])
-
-      if (movRes.error || combRes.error || atrasoRes.error || stockRes.error) {
-        toast.error('Erro ao preparar dados para partilha.')
-        return
-      }
-
-      type MovRow   = { tipo: string }
-      type CombRow  = { litros: number; custo_total: number }
-      type StockRow = { stock_atual: number; stock_minimo: number }
-
-      const movs   = (movRes.data  ?? []) as unknown as MovRow[]
-      const combs  = (combRes.data ?? []) as unknown as CombRow[]
-      const stocks = (stockRes.data ?? []) as unknown as StockRow[]
-
-      const entradas  = movs.filter(m => m.tipo === 'entrada').length
-      const saidas    = movs.filter(m => m.tipo === 'saida').length
-      const litros    = combs.reduce((s, c) => s + Number(c.litros),     0)
-      const custo     = combs.reduce((s, c) => s + Number(c.custo_total), 0)
-      const critico   = stocks.filter(p => p.stock_atual <= 0).length
-      const baixo     = stocks.filter(p => p.stock_atual > 0 && p.stock_atual <= p.stock_minimo).length
-      const atrasadas = (atrasoRes.data ?? []).length
-
+      const r = await carregarResumoSemanal('atual')
       const txt = [
         `🏗️ *ENCIVIL — Relatório Semanal*`,
-        `📅 Semana: ${semanaLabel}`,
+        `📅 Semana: ${r.semanaLabel}`,
         ``,
         `📦 *Armazém*`,
-        `• ${entradas} entrada${entradas !== 1 ? 's' : ''} · ${saidas} saída${saidas !== 1 ? 's' : ''}`,
+        `• ${r.entradas} entrada${r.entradas !== 1 ? 's' : ''} · ${r.saidas} saída${r.saidas !== 1 ? 's' : ''}`,
         ``,
         `⛽ *Combustível*`,
-        `• ${combs.length} abastecimento${combs.length !== 1 ? 's' : ''} · ${fmtNumber(litros)} L · ${fmtEuro(custo)}`,
+        `• ${r.abastecimentos} abastecimento${r.abastecimentos !== 1 ? 's' : ''} · ${fmtNumber(r.totalLitros)} L · ${fmtEuro(r.totalCombust)}`,
         ``,
         `🔧 *Ferramentas em atraso*`,
-        `• ${atrasadas} ferramenta${atrasadas !== 1 ? 's' : ''} por devolver`,
+        `• ${r.ferramAtrasadas} ferramenta${r.ferramAtrasadas !== 1 ? 's' : ''} por devolver`,
         ``,
         `⚠️ *Stock*`,
-        `• ${critico} sem stock · ${baixo} stock baixo`,
+        `• ${r.stockCritico} sem stock · ${r.stockBaixo} stock baixo`,
       ].join('\n')
 
       setTextoWA(txt)
     } catch {
-      toast.error('Erro inesperado ao preparar partilha.')
+      toast.error('Erro ao preparar dados para partilha.')
     } finally {
       setSharingWA(false)
     }
   }
 
-  useEffect(() => {
-    if (reportType !== 'stock') return
-    let cancelled = false
-    setLoading(true)
+  const { data: stockData, loading, error: erroStock } = useAsync(async () => {
     const { currFrom, prevFrom, prevTo } = getPeriodConfig(period)
-    Promise.all([
+    const [current, previous, products] = await Promise.all([
       listarMovimentos({ dataInicio: currFrom }),
       listarMovimentos({ dataInicio: prevFrom, dataFim: prevTo }),
       listarProdutos(false),
     ])
-      .then(([curr, prev, prods]) => {
-        if (cancelled) return
-        setCurrent(curr); setPrevious(prev); setProducts(prods)
-      })
-      .catch(() => { toast.error('Erro ao carregar movimentos') })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [period, reportType])
+    return { current, previous, products }
+  }, [period], { enabled: reportType === 'stock', errorMsg: 'Erro ao carregar movimentos' })
+  const current  = stockData?.current  ?? SEM_MOVIMENTOS
+  const previous = stockData?.previous ?? SEM_MOVIMENTOS
+  const products = stockData?.products ?? SEM_PRODUTOS
 
-  useEffect(() => {
-    if (reportType !== 'ferramentas') return
-    let cancelled = false
-    setToolsLoading(true)
+  const { data: ferrData, loading: toolsLoading, error: erroFerr } = useAsync(async () => {
     const { currFrom, prevFrom, prevTo } = getPeriodConfig(toolsPeriod)
-    Promise.all([
+    const [tools, loansCurrent, loansPrevious, loansActive] = await Promise.all([
       listarFerramentas(false),
       listarEmprestimos({ dataInicio: currFrom }),
       listarEmprestimos({ dataInicio: prevFrom, dataFim: prevTo }),
       listarEmprestimos({ estado: 'ativo' }),
     ])
-      .then(([t, curr, prev, active]) => {
-        if (cancelled) return
-        setTools(t); setLoansCurrent(curr); setLoansPrevious(prev); setLoansActive(active)
-      })
-      .catch(() => { toast.error('Erro ao carregar ferramentas') })
-      .finally(() => { if (!cancelled) setToolsLoading(false) })
-    return () => { cancelled = true }
-  }, [toolsPeriod, reportType])
+    return { tools, loansCurrent, loansPrevious, loansActive }
+  }, [toolsPeriod], { enabled: reportType === 'ferramentas', errorMsg: 'Erro ao carregar ferramentas' })
+  const tools         = ferrData?.tools         ?? SEM_FERRAMENTAS
+  const loansCurrent  = ferrData?.loansCurrent  ?? SEM_EMPRESTIMOS
+  const loansPrevious = ferrData?.loansPrevious ?? SEM_EMPRESTIMOS
+  const loansActive   = ferrData?.loansActive   ?? SEM_EMPRESTIMOS
 
-  useEffect(() => {
-    if (reportType !== 'combustivel') return
-    let cancelled = false
-    setCombLoading(true)
-    Promise.all([listarAbastecimentos(), listarVeiculos(false)])
-      .then(([entries, veiculos]) => {
-        if (cancelled) return
-        const acc: Record<string, VeiculoConsumo> = {}
-        veiculos.forEach(v => { acc[v.id] = { id: v.id, nome: v.name, codigo: v.code, numAbast: 0, litros: 0, custo: 0, precoMedio: 0 } })
-        entries.forEach(e => {
-          const row = acc[e.vehicleId] ?? (acc[e.vehicleId] = { id: e.vehicleId, nome: e.vehicleName ?? '—', codigo: e.vehicleCode ?? '', numAbast: 0, litros: 0, custo: 0, precoMedio: 0 })
-          row.numAbast += 1
-          row.litros += e.liters
-          row.custo += e.totalCost
-        })
-        const linhas = Object.values(acc)
-          .map(r => ({ ...r, precoMedio: r.litros > 0 ? r.custo / r.litros : 0 }))
-          .filter(r => r.numAbast > 0)
-          .sort((a, b) => b.custo - a.custo)
-        setCombLinhas(linhas)
-      })
-      .catch(() => { toast.error('Erro ao carregar combustível') })
-      .finally(() => { if (!cancelled) setCombLoading(false) })
-    return () => { cancelled = true }
-  }, [reportType])
+  const { data: combData, loading: combLoading, error: erroComb } = useAsync(async () => {
+    const [entries, veiculos] = await Promise.all([listarAbastecimentos(), listarVeiculos(false)])
+    const acc: Record<string, VeiculoConsumo> = {}
+    veiculos.forEach(v => { acc[v.id] = { id: v.id, nome: v.name, codigo: v.code, numAbast: 0, litros: 0, custo: 0, precoMedio: 0 } })
+    entries.forEach(e => {
+      const row = acc[e.vehicleId] ?? (acc[e.vehicleId] = { id: e.vehicleId, nome: e.vehicleName ?? '—', codigo: e.vehicleCode ?? '', numAbast: 0, litros: 0, custo: 0, precoMedio: 0 })
+      row.numAbast += 1
+      row.litros += e.liters
+      row.custo += e.totalCost
+    })
+    return Object.values(acc)
+      .map(r => ({ ...r, precoMedio: r.litros > 0 ? r.custo / r.litros : 0 }))
+      .filter(r => r.numAbast > 0)
+      .sort((x, y) => y.custo - x.custo)
+  }, [], { enabled: reportType === 'combustivel', errorMsg: 'Erro ao carregar combustível' })
+  const combLinhas = combData ?? SEM_COMBUSTIVEL
+
+  const erroCarregamento = erroStock ?? erroFerr ?? erroComb
+  useEffect(() => { if (erroCarregamento) toast.error(erroCarregamento) }, [erroCarregamento])
 
   /* Valores derivados */
   const currEntries = useMemo(() => current.filter(m => m.type === 'entrada').length, [current])

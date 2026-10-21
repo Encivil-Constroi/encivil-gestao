@@ -99,6 +99,13 @@ describe('movimentos_stock só pela RPC', () => {
       WHERE grantee = 'authenticated' AND table_schema = 'public' AND table_name = 'movimentos_stock' ORDER BY 1`)
     expect(rows.map(r => r.privilege_type)).toEqual(['SELECT'])
   })
+  it('stock_atual sem UPDATE direto e movimentos_stock com trigger de imutabilidade', async () => {
+    const { rows: [c] } = await db.query(`SELECT has_column_privilege('authenticated', 'public.produtos', 'stock_atual', 'UPDATE') AS pode,
+      has_column_privilege('authenticated', 'public.produtos', 'stock_minimo', 'UPDATE') AS minimo`)
+    expect(c).toEqual({ pode: false, minimo: true })
+    const { rows } = await db.query(`SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.movimentos_stock'::regclass AND tgname = 'movimentos_stock_imutavel'`)
+    expect(rows).toHaveLength(1)
+  })
   it.each(['armazem', 'gestor'])('registar_movimento como %s continua a funcionar', async (p) => {
     const antes = await stock()
     const { rows } = await comoU(papeis[p], tx => tx.query(

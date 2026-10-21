@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useAsync } from '@/app/lib/useAsync'
 import { useMutation } from '@/app/lib/useMutation'
 import {
@@ -5,7 +6,7 @@ import {
   listarEmprestimosAtivos, listarGarantiasFerramentas, registarMovimentoArmazem, POR_PAGINA,
   type FiltrosMovArmazem, type RegistarMovimentoArmazemInput,
 } from '../services/armazemService'
-import { enqueuePendingMovimento, isNetworkError } from '../offlineQueue'
+import { enqueuePendingMovimento, isNetworkError, novoIdRegisto } from '../offlineQueue'
 import { useAuth } from '@/features/auth/AuthContext'
 
 export function useArtigosArmazem() {
@@ -50,18 +51,20 @@ export type ResultadoRegisto = 'ok' | 'guardado-offline'
 
 // Sem rede (ou se a ligação cair a meio), o movimento fica na fila offline e é
 // enviado pelo useOfflineQueue; erros de negócio (stock, obra concluída…) sobem.
-async function registarOuGuardar(input: RegistarMovimentoArmazemInput, userId: string | null): Promise<ResultadoRegisto> {
+async function registarOuGuardar(input: RegistarMovimentoArmazemInput, userId: string | null, clientId: string): Promise<ResultadoRegisto> {
   if (!userId) throw new Error('Sessão terminada. Entre de novo para registar.')
+  // O mesmo id vai no envio e na fila: se o servidor gravou e só a resposta se perdeu,
+  // o reenvio devolve o movimento já gravado em vez de mexer outra vez no stock.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    enqueuePendingMovimento(input, userId)
+    enqueuePendingMovimento(input, userId, clientId)
     return 'guardado-offline'
   }
   try {
-    await registarMovimentoArmazem(input)
+    await registarMovimentoArmazem({ ...input, clientId })
     return 'ok'
   } catch (e) {
     if (!isNetworkError(e)) throw e
-    enqueuePendingMovimento(input, userId)
+    enqueuePendingMovimento(input, userId, clientId)
     return 'guardado-offline'
   }
 }
@@ -72,6 +75,15 @@ export function useRegistarMovimentoArmazem() {
   const { mutate: registarComUtilizador, loading, error } = useMutation(registarOuGuardar, 'Erro ao registar o movimento', {
     invalidates: ['armazem-*', 'produtos-*', 'produtos-ativos', 'movimentos-*', 'dashboard', 'alertas-ativos'],
   })
-  const registar = (input: RegistarMovimentoArmazemInput) => registarComUtilizador(input, userId)
+  // O id sobrevive a um erro (ex.: 504 depois de o servidor gravar) para o reenvio manual não duplicar;
+  // só se renova após sucesso ou quando os dados mudam.
+  const tentativa = useRef<{ chave: string; id: string } | null>(null)
+  const registar = async (input: RegistarMovimentoArmazemInput) => {
+    const chave = JSON.stringify(input)
+    if (tentativa.current?.chave !== chave) tentativa.current = { chave, id: novoIdRegisto() }
+    const resultado = await registarComUtilizador(input, userId, tentativa.current.id)
+    if (resultado !== null) tentativa.current = null
+    return resultado
+  }
   return { registar, loading, error }
 }

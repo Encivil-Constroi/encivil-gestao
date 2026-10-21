@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ligação do Shelly Pro 3 à bomba Polo 2</title>
+<style>
+  :root { --fg:#04090F; --mut:#475467; --bd:#d0d5dd; --bg:#fff; --warn:#fff4d6; --warnb:#b54708; --err:#fde8e8; --errb:#b42318; --ok:#e6f4ea; --okb:#067647; --brand:#001C7D; }
+  * { box-sizing:border-box; }
+  body { font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:var(--bg); margin:0; }
+  main { max-width:860px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:24px; margin:0 0 4px; color:var(--brand); }
+  h2 { font-size:18px; margin:28px 0 8px; padding-top:8px; border-top:2px solid var(--brand); }
+  h3 { font-size:15px; margin:16px 0 4px; }
+  p { margin:6px 0; }
+  .sub { color:var(--mut); margin:0 0 12px; }
+  .caixa { border:1px solid; border-radius:8px; padding:10px 12px; margin:12px 0; }
+  .aviso { background:var(--warn); border-color:var(--warnb); }
+  .perigo { background:var(--err); border-color:var(--errb); }
+  .ok { background:var(--ok); border-color:var(--okb); }
+  table { border-collapse:collapse; width:100%; margin:8px 0; }
+  th,td { border:1px solid var(--bd); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { background:#f2f4f7; }
+  ol.passos { padding-left:0; list-style:none; counter-reset:p; }
+  ol.passos > li { counter-increment:p; border:1px solid var(--bd); border-radius:8px; padding:10px 12px 10px 48px; margin:10px 0; position:relative; break-inside:avoid; }
+  ol.passos > li::before { content:counter(p); position:absolute; left:12px; top:10px; width:26px; height:26px; border-radius:50%; background:var(--brand); color:#fff; font-weight:700; text-align:center; line-height:26px; }
+  .conf { margin-top:6px; padding:6px 8px; background:var(--ok); border-left:4px solid var(--okb); border-radius:4px; }
+  .conf::before { content:"Confirmar: "; font-weight:700; }
+  .stop { margin-top:6px; padding:6px 8px; background:var(--err); border-left:4px solid var(--errb); border-radius:4px; }
+  .stop::before { content:"Se não for assim, PARE: "; font-weight:700; }
+  svg { width:100%; height:auto; border:1px solid var(--bd); border-radius:8px; background:#fff; }
+  input[type=checkbox] { width:16px; height:16px; vertical-align:-2px; }
+  .assin td { height:34px; }
+  @media print { main { max-width:none; padding:0; } h2 { break-after:avoid; } .nopr { display:none; } body { font-size:12.5px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Ligação do Shelly Pro 3 à bomba Polo 2</h1>
+<p class="sub">Guia para eletricista · ENCIVIL Gestão · bomba PIUSI ST Panther 56 K33 (230 V, 350 W, 3 A) · aparelho com o script já instalado</p>
+
+<div class="caixa perigo"><strong>Trabalho a 230 V.</strong> Só por eletricista habilitado. Corte e bloqueie a alimentação, <strong>meça a ausência de tensão</strong> antes de tocar em qualquer fio, e respeite as normas locais. Este guia descreve a ligação; o interior do quadro da bomba <strong>não estava documentado</strong>, por isso o passo 2 é um teste obrigatório antes de cortar qualquer fio.</div>
+
+<h2>1. O que se vai fazer (em 3 linhas)</h2>
+<ul>
+  <li>O <strong>relé O1/I1 do Shelly</strong> fica <strong>em série na fase</strong> que alimenta o quadro da bomba. Relé aberto = bomba sem tensão. Relé fechado = bomba livre.</li>
+  <li>Um <strong>seletor AUTO / MANUAL com chave</strong> fica <strong>em paralelo com esse relé</strong>. Em MANUAL a bomba funciona como antes do Shelly, mesmo com o Shelly desligado. É o modo de emergência e de manutenção.</li>
+  <li>O botão <strong>EMERGENZA</strong> e o sensor de nível <strong>não se tocam</strong>: continuam a cortar a bomba em qualquer modo.</li>
+</ul>
+
+<h2>2. Esquema</h2>
+<svg viewBox="0 0 780 390" role="img" aria-label="Esquema de ligação: relé O1/I1 do Shelly em série na fase do quadro, seletor AUTO/MANUAL em paralelo, neutro e terra diretos">
+  <style>
+    .t { font:12px system-ui,sans-serif; fill:#04090F; } .tb { font:700 12px system-ui,sans-serif; fill:#04090F; }
+    .ts { font:11px system-ui,sans-serif; fill:#475467; }
+    .box { fill:#f9fafb; stroke:#475467; stroke-width:1.5; } .sh { fill:#eef2ff; stroke:#001C7D; stroke-width:2; }
+    .f { stroke:#8a4b08; stroke-width:3; fill:none; } .n { stroke:#175cd3; stroke-width:3; fill:none; }
+    .p { stroke:#067647; stroke-width:3; fill:none; stroke-dasharray:8 4; } .dot { fill:#8a4b08; }
+  </style>
+  <!-- Rede -->
+  <rect class="box" x="10" y="30" width="100" height="320" rx="6"/>
+  <text class="tb" x="60" y="50" text-anchor="middle">REDE</text><text class="t" x="60" y="66" text-anchor="middle">230 V</text>
+  <text class="t" x="100" y="64" text-anchor="end">F</text><text class="t" x="100" y="304" text-anchor="end">N</text><text class="t" x="100" y="334" text-anchor="end">PE</text>
+  <!-- Quadro -->
+  <rect class="box" x="640" y="30" width="130" height="320" rx="6"/>
+  <text class="tb" x="705" y="130" text-anchor="middle">QUADRO</text><text class="t" x="705" y="146" text-anchor="middle">DA BOMBA</text><text class="ts" x="705" y="162" text-anchor="middle">(caixa Legrand)</text>
+  <text class="t" x="650" y="64">F</text><text class="t" x="650" y="304">N</text><text class="t" x="650" y="334">PE</text>
+  <!-- Barramentos -->
+  <path class="f" d="M110 60 H350"/><path class="f" d="M430 60 H640"/>
+  <path class="n" d="M110 300 H640"/><path class="p" d="M110 330 H640"/>
+  <!-- Seletor -->
+  <rect class="box" x="350" y="40" width="80" height="40" rx="6"/>
+  <text class="tb" x="390" y="57" text-anchor="middle">SELETOR</text><text class="ts" x="390" y="72" text-anchor="middle">MANUAL = fechado</text>
+  <!-- Shelly -->
+  <rect class="sh" x="300" y="120" width="180" height="120" rx="8"/>
+  <text class="tb" x="390" y="170" text-anchor="middle">SHELLY PRO 3</text><text class="ts" x="390" y="187" text-anchor="middle">canal 1 (relé O1/I1)</text>
+  <text class="ts" x="330" y="136" text-anchor="middle">I1</text><text class="ts" x="450" y="136" text-anchor="middle">O1</text>
+  <text class="ts" x="330" y="232" text-anchor="middle">L</text><text class="ts" x="450" y="232" text-anchor="middle">N</text>
+  <!-- I1 e O1 -->
+  <path class="f" d="M330 120 V60"/><circle class="dot" cx="330" cy="60" r="4"/>
+  <path class="f" d="M450 120 V60"/><circle class="dot" cx="450" cy="60" r="4"/>
+  <!-- L com disjuntor 6 A -->
+  <path class="f" d="M330 240 V262 H250 V60"/><circle class="dot" cx="250" cy="60" r="4"/>
+  <rect class="box" x="220" y="150" width="60" height="26" rx="4"/><text class="tb" x="250" y="168" text-anchor="middle">6 A</text>
+  <text class="ts" x="212" y="146" text-anchor="end">disjuntor</text>
+  <!-- N -->
+  <path class="n" d="M450 240 V300"/><circle cx="450" cy="300" r="4" fill="#175cd3"/>
+  <!-- LAN -->
+  <text class="ts" x="390" y="258" text-anchor="middle">porta LAN → cabo de rede → router</text>
+  <!-- Legenda -->
+  <text class="ts" x="130" y="82">F de entrada</text><text class="ts" x="500" y="82">F para o quadro</text>
+  <text class="ts" x="130" y="292">Neutro (direto, não passa pelo Shelly)</text><text class="ts" x="130" y="322">Terra PE (direto, não passa pelo Shelly)</text>
+  <text class="ts" x="130" y="372">Castanho/preto = fase · Azul = neutro · Verde/amarelo tracejado = terra · Pontos = ligações no mesmo ponto elétrico</text>
+</svg>
+<p><strong>Em palavras:</strong> a fase que vem da rede <em>entra</em> no Shelly por <strong>I1</strong> e <em>sai</em> por <strong>O1</strong> para o quadro. O seletor liga os mesmos dois pontos (um terminal onde está I1, o outro onde está O1). O Shelly é alimentado em <strong>L</strong> e <strong>N</strong> a partir da fase de entrada (antes do relé), passando por um disjuntor próprio de 6 A. O neutro e o terra vão direto da rede ao quadro.</p>
+
+<h2>3. Material</h2>
+<table>
+<tr><th>Item</th><th>Especificação</th></tr>
+<tr><td>Shelly Pro 3</td><td>já tem o script; ligado por cabo de rede (porta LAN) ao router</td></tr>
+<tr><td>Disjuntor</td><td>1 unidade, 6 A, curva C, só para alimentar o Shelly (L e N)</td></tr>
+<tr><td>Seletor AUTO/MANUAL</td><td>2 posições, <strong>com chave</strong>, 1 contacto NA, ≥ 6 A / 250 V AC; chave guardada pelo responsável</td></tr>
+<tr><td>Cabo</td><td>1,5 mm² (a bomba consome 3 A), cores normalizadas; ponteiras nos terminais</td></tr>
+<tr><td>Caixa</td><td>com carril DIN e proteção ≥ IP54, <strong>fora da zona de derrames de combustível</strong> sempre que possível</td></tr>
+<tr><td>Cabo de rede</td><td>Cat5e ou superior, do Shelly (LAN) ao router</td></tr>
+<tr><td>Medição</td><td>multímetro (tensão e continuidade) ou detetor de tensão</td></tr>
+</table>
+
+<h2>4. Antes de cortar qualquer fio</h2>
+<ol class="passos">
+  <li><strong>Identificar o cabo que traz a rede ao quadro da bomba.</strong> Não presumir: medir qual dos cabos que entram na caixa é a alimentação (fase, neutro e terra).
+    <div class="conf">fase, neutro e terra identificados e marcados com fita.</div></li>
+  <li><strong>Teste de auto-retenção (obrigatório, com tensão, antes de ligar o Shelly).</strong> Com o botão I/O do quadro em «I» (verde), corte a alimentação no disjuntor e volte a ligá-lo.
+    <div class="conf">a bomba <strong>arranca sozinha</strong> ao repor a tensão (luz RETE acende e a bomba fica pronta a funcionar).</div>
+    <div class="stop">a bomba só arranca depois de carregar em I. Então o quadro tem auto-retenção e <strong>este esquema não serve tal como está</strong>. Não corte fios. Fotografe o interior da caixa (tampa aberta) e envie para se escolher o esquema alternativo.</div></li>
+  <li><strong>Desligar e bloquear</strong> o disjuntor que alimenta o quadro da bomba. <strong>Medir ausência de tensão</strong> (F–N, F–PE, N–PE) no ponto onde vai trabalhar.
+    <div class="conf">0 V em todas as combinações.</div></li>
+</ol>
+
+<h2>5. Ligação (com tudo sem tensão)</h2>
+<ol class="passos">
+  <li><strong>Montar</strong> o Shelly, o disjuntor de 6 A e o seletor na caixa, no carril DIN. No Shelly, <strong>I1 e O1 são os terminais de cima</strong> (junto a «O1 I1»), <strong>L e N são os de baixo</strong>.</li>
+  <li><strong>Cortar a fase de entrada do quadro</strong> num ponto acessível, antes de entrar na caixa Legrand. Fica um fio <strong>«F de entrada»</strong> (lado da rede) e um fio <strong>«F para o quadro»</strong>. Neutro e terra <strong>não se cortam nem passam pelo Shelly</strong>.</li>
+  <li><strong>F de entrada → terminal I1</strong> do Shelly.</li>
+  <li><strong>Terminal O1 → F para o quadro.</strong></li>
+  <li><strong>Seletor em paralelo:</strong> um terminal do seletor no mesmo ponto do «F de entrada», o outro no mesmo ponto do «F para o quadro».</li>
+  <li><strong>Alimentar o Shelly:</strong> do «F de entrada» (antes do relé) → disjuntor 6 A → terminal <strong>L</strong>. Neutro (o mesmo que vai ao quadro) → terminal <strong>N</strong>.
+    <div class="conf">o L do Shelly ligado ao lado <strong>da rede</strong> (F de entrada), nunca ao «F para o quadro». Se estivesse do lado do quadro, o Shelly desligava-se a si próprio ao abrir o relé.</div></li>
+  <li><strong>Cabo de rede</strong> do Shelly (porta LAN) ao router.</li>
+  <li><strong>Apertar</strong> todos os terminais e puxar cada fio para confirmar. Fechar a caixa.</li>
+</ol>
+
+<h2>6. Verificação ainda sem tensão (continuidade)</h2>
+<table>
+<tr><th>Seletor em</th><th>Medir entre «F de entrada» e «F para o quadro»</th><th>Resultado certo</th></tr>
+<tr><td>AUTO</td><td>continuidade (relé do Shelly aberto, sem alimentação)</td><td><strong>SEM continuidade</strong></td></tr>
+<tr><td>MANUAL</td><td>continuidade</td><td><strong>COM continuidade</strong></td></tr>
+<tr><td>—</td><td>N da rede ↔ N do quadro; PE da rede ↔ PE do quadro</td><td><strong>COM continuidade</strong> (direto)</td></tr>
+<tr><td>—</td><td>F ↔ N, F ↔ PE (lado da rede)</td><td><strong>SEM continuidade</strong> (sem curto-circuito)</td></tr>
+</table>
+<div class="caixa aviso">Se qualquer linha der um resultado diferente, <strong>não ligue a tensão</strong>. Corrija a ligação primeiro.</div>
+
+<h2>7. Ligar e testar</h2>
+<p>Deixe o seletor em <strong>AUTO</strong>. Repor o disjuntor do quadro e o do Shelly.</p>
+<ol class="passos">
+  <li><strong>Shelly ligado, bomba parada.</strong>
+    <div class="conf">LED POWER do Shelly aceso, LED OUT 1 apagado, luz RETE do quadro <strong>apagada</strong> e a bomba não arranca (mesmo com a pistola).</div></li>
+  <li><strong>Ligação ao servidor.</strong> No SQL Editor: <code>SELECT pump_id, last_seen_at, now() - last_seen_at AS ha, relay_on FROM public.pump_heartbeat;</code>
+    <div class="conf">«ha» inferior a 10 s e <code>relay_on = false</code>.</div></li>
+  <li><strong>Abastecimento de teste na app</strong> (Polo 2, pedido identificado como teste): autorizar, foto do contador, <strong>LIGAR BOMBA</strong>. Ter um recipiente adequado sob a pistola.
+    <div class="conf">clique do relé, LED OUT 1 aceso, luz RETE acesa, e a bomba arranca ao premir a pistola.</div></li>
+  <li><strong>Terminei — desligar bomba</strong> na app.
+    <div class="conf">estalo do relé em ≤ 5 s, LED OUT 1 apagado, a bomba para e a luz RETE apaga.</div></li>
+  <li><strong>Corte de rede.</strong> Com a bomba ligada pela app, desligar o cabo de rede do Shelly.
+    <div class="conf">o relé abre sozinho em ≤ ~25 s e <strong>não volta a ligar</strong> ao repor a rede.</div></li>
+  <li><strong>EMERGENZA em AUTO.</strong> Com a bomba ligada, premir a EMERGENZA.
+    <div class="conf">a bomba para de imediato. Rearmar depois a EMERGENZA.</div></li>
+  <li><strong>Modo MANUAL (emergência e manutenção).</strong> Passar o seletor a MANUAL e <strong>desligar o disjuntor de 6 A do Shelly</strong>.
+    <div class="conf">a bomba funciona normalmente (pistola) com o Shelly desligado, e a EMERGENZA continua a cortá-la. Voltar a AUTO e repor o disjuntor do Shelly no fim.</div></li>
+</ol>
+
+<h2>8. Se alguma coisa falhar</h2>
+<table>
+<tr><th>Sintoma</th><th>Causa provável</th><th>O que fazer</th></tr>
+<tr><td>A bomba funciona em AUTO sem pedido na app</td><td>seletor em MANUAL, ou fase ligada ao lado errado do relé</td><td>verificar posição do seletor; refazer a verificação do ponto 6</td></tr>
+<tr><td>Relé estala mas a bomba não arranca</td><td>quadro com auto-retenção (carregar em I) ou botão I/O em «O»</td><td>refazer o teste do ponto 4.2; se confirmar, não prosseguir e pedir esquema alternativo</td></tr>
+<tr><td>O Shelly desliga-se quando o relé abre</td><td>L ligado ao lado do quadro</td><td>religar L ao «F de entrada» (passo 5.6)</td></tr>
+<tr><td>Heartbeat com «ha» &gt; 10 s</td><td>sem rede/Internet, ou segredo diferente</td><td>verificar o cabo e o router; ver o guia <code>docs/21-shelly-pro3-bomba.md</code></td></tr>
+<tr><td>Disjuntor dispara ao ligar</td><td>curto-circuito ou terra mal ligada</td><td>desligar tudo e repetir a verificação do ponto 6</td></tr>
+</table>
+
+<h2>9. Regras de uso</h2>
+<ul>
+  <li><strong>MANUAL</strong> anula o controlo da app, o corte aos 20 s sem rede e o corte automático do Shelly. A chave fica com o responsável, e só se usa em emergência ou manutenção.</li>
+  <li>Voltar sempre a <strong>AUTO</strong> depois de uma emergência ou manutenção.</li>
+  <li><strong>Reverter tudo:</strong> seletor em MANUAL, depois religar o fio de fase diretamente (sem Shelly). A bomba fica como estava antes.</li>
+  <li>Password do aparelho Shelly ativa e guardada pelo responsável.</li>
+</ul>
+
+<h2>10. Registo da instalação</h2>
+<table class="assin">
+<tr><th style="width:34%">Item</th><th>Resultado</th></tr>
+<tr><td>Teste de auto-retenção (ponto 4.2)</td><td><label><input type="checkbox"> arranca sozinha</label> &nbsp; <label><input type="checkbox"> precisa de I</label></td></tr>
+<tr><td>Continuidades (ponto 6)</td><td><label><input type="checkbox"> todas corretas</label></td></tr>
+<tr><td>Testes 7.1 a 7.7</td><td><label><input type="checkbox"> todos corretos</label></td></tr>
+<tr><td>Eletricista (nome, n.º cédula)</td><td>&nbsp;</td></tr>
+<tr><td>Data e assinatura</td><td>&nbsp;</td></tr>
+</table>
+</main>
+</body>
+</html>

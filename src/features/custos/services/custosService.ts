@@ -13,27 +13,16 @@ export type CustoObra = {
   margem?: number
 }
 
-type MovCustoRow = { quantidade: number; produtos: { custo_unitario: number } | null }
-
 export async function custoObra(obraId: string, orcamento?: number): Promise<CustoObra> {
-  const [matRes, subs, fuelRes] = await Promise.all([
-    supabase
-      .from('movimentos_stock')
-      .select('quantidade, produtos(custo_unitario)')
-      .eq('obra_id', obraId)
-      .eq('tipo', 'saida'),
+  // Mesma agregação do resto da app: saídas menos devoluções, sem o limite de 1000 linhas.
+  const [porObra, subs] = await Promise.all([
+    custosMateriaisCombustivelPorObra(),
     listarSubempreiteirosComExecutado(obraId),
-    supabase.from('comb_abastecimentos').select('custo_total').eq('obra_id', obraId),
   ])
 
-  if (matRes.error)  throw matRes.error
-  if (fuelRes.error) throw fuelRes.error
-
-  const materiais = (matRes.data as MovCustoRow[])
-    .reduce((s, r) => s + Number(r.quantidade) * Number(r.produtos?.custo_unitario ?? 0), 0)
+  const materiais = porObra[obraId]?.materiais ?? 0
+  const combustivel = porObra[obraId]?.combustivel ?? 0
   const subempreiteiros = subs.reduce((s, x) => s + x.executed, 0)
-  const combustivel = (fuelRes.data as { custo_total: number }[])
-    .reduce((s, r) => s + Number(r.custo_total), 0)
 
   const total = materiais + subempreiteiros + combustivel
   return {
@@ -75,9 +64,6 @@ export type CustoConsolidado = {
   orcamentos?:     OrcamentosObra & { total?: number }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as unknown as any
-
 export async function custoConsolidado(
   obraId:  string,
   dataIni: string,
@@ -85,12 +71,12 @@ export async function custoConsolidado(
 ): Promise<CustoConsolidado> {
   const [rpcRes, obraRes] = await Promise.all([
     // RPC adicionada em F7 — não está nos tipos gerados até regeneração
-    db.rpc('custos_consolidados_por_obra', {
+    supabase.rpc('custos_consolidados_por_obra', {
       p_obra_id:  obraId,
       p_data_ini: dataIni,
       p_data_fim: dataFim,
     }),
-    db
+    supabase
       .from('obras')
       .select('orcamento_materiais, orcamento_mao_obra, orcamento_combustivel, orcamento_fornecedores, orcamento_subempreiteiros')
       .eq('id', obraId)
@@ -141,7 +127,7 @@ export async function custoConsolidado(
 }
 
 export async function actualizarOrcamentosObra(obraId: string, orcamentos: OrcamentosObra): Promise<void> {
-  const { error } = await db
+  const { error } = await supabase
     .from('obras')
     .update({
       orcamento_materiais:       orcamentos.materiais       ?? null,

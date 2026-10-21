@@ -26,11 +26,15 @@ describe('vendorChunk', () => {
 
   // Dependências partilhadas não podem ser arrastadas para vendor-charts:
   // era isto que punha o recharts no arranque de todas as páginas.
-  it.each(['clsx', 'react-is', 'react-router', 'react-router-dom', 'lodash', 'eventemitter3',
-    'tiny-invariant', 'tailwind-merge', 'lucide-react', 'decimal.js', 'd3'])(
+  it.each(['react-is', 'react-router', 'react-router-dom', 'lodash', 'eventemitter3',
+    'tiny-invariant', 'lucide-react', 'decimal.js', 'd3'])(
     '%s fica fora dos vendor-*', (pkg) => {
       expect(vendorChunk(nm(pkg))).toBeUndefined()
     })
+
+  it.each(['clsx', 'tailwind-merge', 'class-variance-authority'])('%s vai para vendor-utils, nunca para vendor-charts', (pkg) => {
+    expect(vendorChunk(nm(pkg))).toBe('vendor-utils')
+  })
 
   it('código da app nunca vai para um vendor', () => {
     expect(vendorChunk('/projeto/src/app/pages/ReportsPage.tsx')).toBeUndefined()
@@ -41,6 +45,6 @@ describe('vendorChunk', () => {
     expect(vendorChunk('C:\\projeto\\node_modules\\recharts\\es6\\index.js')).toBe('vendor-charts')
     expect(vendorChunk('/p/node_modules/.pnpm/recharts@2.15.0/node_modules/recharts/es6/index.js'))
       .toBe('vendor-charts')
-    expect(vendorChunk('/p/node_modules/recharts/node_modules/clsx/dist/clsx.mjs')).toBeUndefined()
+    expect(vendorChunk('/p/node_modules/recharts/node_modules/clsx/dist/clsx.mjs')).toBe('vendor-utils')
   })
 })

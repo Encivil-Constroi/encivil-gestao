@@ -36,3 +36,8 @@ Deno.test('linkRecuperacaoApp aponta para a nossa página com token_hash codific
   assertEquals(linkRecuperacaoApp('https://app.x', 'ab+c/d='),
     'https://app.x/reset-password?token_hash=ab%2Bc%2Fd%3D&type=recovery')
 })
+
+Deno.test('argsPromoverRole mapeia para os parâmetros da RPC', async () => {
+  const { argsPromoverRole } = await import('./regras.ts')
+  assertEquals(argsPromoverRole('u1', 'gestor'), { p_user_id: 'u1', p_novo_role: 'gestor' })
+})

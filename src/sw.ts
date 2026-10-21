@@ -2,7 +2,7 @@
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies'
+import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { notificacaoDoPush } from './app/lib/notificacaoPush'
 
@@ -52,22 +52,17 @@ registerRoute(
   })
 )
 
-// Supabase API: NetworkFirst — dados críticos de stock nunca servidos do cache
-// Regex cobre todos os subdomínios Supabase: rest, auth, storage e Edge Functions
-registerRoute(
-  /[a-z0-9-]+\.supabase\.co\//,
-  new NetworkFirst({
-    cacheName: 'supabase-api',
-    networkTimeoutSeconds: 10,
-    plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 5 })],
-  })
-)
+// Supabase (REST, Auth, Storage, Edge Functions): só rede, nunca em cache — num
+// telemóvel partilhado uma resposta guardada podia mostrar a sessão ou os dados de
+// outro utilizador, e o stock tem de ser sempre o do servidor. O cache antigo
+// "supabase-api" continua a ser apagado no logout (CACHES_COM_DADOS).
+registerRoute(({ url }) => url.hostname.endsWith('.supabase.co'), new NetworkOnly())
 
 // ── Push notifications ────────────────────────────────────────────────────────
 // O texto vem cifrado conforme a RFC 8291 (notificar-abastecimento,
 // send-push-frota) — o browser entrega-o já decifrado. Ver src/app/lib/notificacaoPush.ts.
 self.addEventListener('push', (event: PushEvent) => {
-  let conteudo: string | null = null
+  let conteudo: string | null
   try { conteudo = event.data?.text() ?? null } catch { conteudo = null }
   const { titulo, opcoes, contagem } = notificacaoDoPush(conteudo)
   // Número no ícone da app (iPhone 16.4+ e Android); a lista de pedidos limpa-o

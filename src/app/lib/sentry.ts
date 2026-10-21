@@ -23,8 +23,9 @@ export function initSentry() {
   })
 }
 
-export function setSentryUser(id: string, email?: string) {
-  Sentry.setUser({ id, email })
+// Só o id: o email é dado pessoal e não deve sair para um serviço externo
+export function setSentryUser(id: string) {
+  Sentry.setUser({ id })
 }
 
 export function clearSentryUser() {

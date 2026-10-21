@@ -793,10 +793,6 @@ export type ObrasDatabase = {
         Returns: undefined
       }
       marcar_auto_em_atraso: { Args: { p_auto_id: string }; Returns: undefined }
-      criar_auto_rpc: {
-        Args: { p_sub_id: string; p_data: string; p_percentagem: number; p_valor: number; p_notas?: string | null }
-        Returns: CriarAutoRpcRow[]
-      }
       sub_libertar_retencao: {
         Args: { p_sub_id: string; p_valor: number; p_motivo: MotivoLiberacaoRetencao; p_obs: string | null }
         Returns: string

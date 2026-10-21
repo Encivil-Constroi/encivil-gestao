@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import { CalendarClock, Plus, CalendarCheck } from 'lucide-react'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useHorarios, useHorarioColaborador, useAtribuirHorario } from '../hooks/useHorarios'
@@ -10,7 +11,7 @@ export function AtribuicaoHorarioPage() {
 
   const [colaboradorId, setColaboradorId] = useState('')
   const [horarioId, setHorarioId]         = useState('')
-  const [validoDe, setValidoDe]           = useState(new Date().toISOString().slice(0, 10))
+  const [validoDe, setValidoDe]           = useState(hojeLisboa())
   const [validoAte, setValidoAte]         = useState('')
   const [sucesso, setSucesso]             = useState(false)
 
@@ -23,7 +24,7 @@ export function AtribuicaoHorarioPage() {
     setSucesso(true)
     reload()
     setHorarioId('')
-    setValidoDe(new Date().toISOString().slice(0, 10))
+    setValidoDe(hojeLisboa())
     setValidoAte('')
     setTimeout(() => setSucesso(false), 3000)
   }

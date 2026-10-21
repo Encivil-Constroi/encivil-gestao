@@ -1,129 +1,20 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { FileBarChart, Share2, Printer, TrendingDown, TrendingUp, Fuel, Wrench, AlertTriangle, RefreshCw, Download } from 'lucide-react'
-import { supabase } from '@/integrations/supabase/client'
+import { useAsync } from '../lib/useAsync'
+import { carregarResumoSemanal, type SemanaKey } from '../lib/relatorios/semanal'
 import { fmtEuro, fmtNumber } from '../lib/format'
 import { exportarXlsx } from '../lib/exportXlsx'
 import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '../components/print'
 import { EnviarWhatsAppDialog } from '../components/EnviarWhatsAppDialog'
 
-type Dados = {
-  semanaLabel:   string
-  entradas:      number
-  saidas:        number
-  abastecimentos: number
-  totalLitros:   number
-  totalCombust:  number
-  ferramAtrasadas: number
-  stockCritico:  number
-  stockBaixo:    number
-}
-
-function semanaAtual(): { inicio: Date; fim: Date } {
-  const hoje  = new Date()
-  const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1
-  const inicio = new Date(hoje)
-  inicio.setDate(hoje.getDate() - diaSemana)
-  inicio.setHours(0, 0, 0, 0)
-  const fim = new Date(inicio)
-  fim.setDate(inicio.getDate() + 6)
-  fim.setHours(23, 59, 59, 999)
-  return { inicio, fim }
-}
-
-function semanaAnterior(): { inicio: Date; fim: Date } {
-  const { inicio } = semanaAtual()
-  const fim2 = new Date(inicio)
-  fim2.setDate(inicio.getDate() - 1)
-  fim2.setHours(23, 59, 59, 999)
-  const inicio2 = new Date(fim2)
-  inicio2.setDate(fim2.getDate() - 6)
-  inicio2.setHours(0, 0, 0, 0)
-  return { inicio: inicio2, fim: fim2 }
-}
-
-function fmtSemana(inicio: Date, fim: Date) {
-  const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit' }
-  return `${inicio.toLocaleDateString('pt-PT', opts)} – ${fim.toLocaleDateString('pt-PT', opts)}`
-}
-
-type SemanaKey = 'atual' | 'anterior'
-
 export function RelatorioSemanalPage() {
-  const [dados,    setDados]    = useState<Dados | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState('')
   const [semana,   setSemana]   = useState<SemanaKey>('atual')
   const [textoWA,  setTextoWA]  = useState<string | null>(null)
 
-  const carregar = useCallback(async (key: SemanaKey) => {
-    setLoading(true)
-    setError('')
-
-    const { inicio, fim } = key === 'atual' ? semanaAtual() : semanaAnterior()
-    const isoInicio = inicio.toISOString().split('T')[0]
-    const isoFim    = fim.toISOString().split('T')[0]
-
-    const today = new Date().toISOString().split('T')[0]
-
-    const [movRes, combRes, atrasoRes, stockRes] = await Promise.all([
-      supabase
-        .from('movimentos_stock')
-        .select('tipo')
-        .gte('created_at', inicio.toISOString())
-        .lte('created_at', fim.toISOString()),
-      supabase
-        .from('comb_abastecimentos')
-        .select('litros, custo_total')
-        .gte('data', isoInicio)
-        .lte('data', isoFim),
-      supabase
-        .from('emprestimos_ferramentas')
-        .select('id')
-        .eq('estado', 'ativo')
-        .not('data_prevista_devolucao', 'is', null)
-        .lt('data_prevista_devolucao', today),
-      supabase
-        .from('produtos')
-        .select('stock_atual, stock_minimo')
-        .eq('ativo', true),
-    ])
-
-    if (movRes.error || combRes.error || atrasoRes.error || stockRes.error) {
-      setError('Erro ao carregar dados. Verifique a ligação.')
-      setLoading(false)
-      return
-    }
-
-    type MovRow   = { tipo: string }
-    type CombRow  = { litros: number; custo_total: number }
-    type StockRow = { stock_atual: number; stock_minimo: number }
-
-    const movs   = (movRes.data  ?? []) as unknown as MovRow[]
-    const combs  = (combRes.data ?? []) as unknown as CombRow[]
-    const stocks = (stockRes.data ?? []) as unknown as StockRow[]
-
-    const entradas  = movs.filter(m => m.tipo === 'entrada').length
-    const saidas    = movs.filter(m => m.tipo === 'saida').length
-    const litros    = combs.reduce((s, c) => s + Number(c.litros),     0)
-    const custo     = combs.reduce((s, c) => s + Number(c.custo_total), 0)
-    const critico   = stocks.filter(p => p.stock_atual <= 0).length
-    const baixo     = stocks.filter(p => p.stock_atual > 0 && p.stock_atual <= p.stock_minimo).length
-
-    setDados({
-      semanaLabel:    fmtSemana(inicio, fim),
-      entradas,
-      saidas,
-      abastecimentos: combs.length,
-      totalLitros:    litros,
-      totalCombust:   custo,
-      ferramAtrasadas: (atrasoRes.data ?? []).length,
-      stockCritico:   critico,
-      stockBaixo:     baixo,
-    })
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { void carregar(semana) }, [semana, carregar])
+  const { data: dados, loading, error, reload } = useAsync(
+    () => carregarResumoSemanal(semana), [semana],
+    { errorMsg: 'Erro ao carregar dados. Verifique a ligação.' },
+  )
 
   const exportarCSV = async () => {
     if (!dados) return
@@ -172,7 +63,7 @@ export function RelatorioSemanalPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => void carregar(semana)}
+            onClick={reload}
             className="p-2 hover:bg-accent rounded-lg transition-colors"
             title="Actualizar"
           >

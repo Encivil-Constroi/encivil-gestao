@@ -53,6 +53,8 @@ const concluir = async (uid, id, veiculo, o = {}) => {
 // O Shelly a consultar (pump-status → pump_poll com o papel de serviço)
 const shelly = (relay = false) => servico(tx => tx.query(`SELECT public.pump_poll('polo2', $1, false) AS r`, [relay]))
   .then(r => r.rows[0].r)
+// Liga (authorized), o relé confirma que arrancou (on=1) e desliga (on=0): pronto para a leitura final
+const abastecerEDesligar = async () => { await shelly(); await shelly(true); await shelly(false) }
 const limparBomba = () => db.exec(`
   UPDATE public.pump_sessoes SET fim_em = now(), motivo_fim = 'TEMPO' WHERE fim_em IS NULL;
   UPDATE public.pump_comandos SET consumido_em = now() WHERE consumido_em IS NULL;
@@ -297,6 +299,12 @@ describe('execução na Polo 2 (com o Shelly)', () => {
     await leituraInicial(motA, id, v1, 1000.5)
     await ligar(motA, id)
     expect(await shelly()).toEqual({ status: 'authorized', seconds: 600 })
+    expect(await shelly(true)).toEqual({ status: 'idle' })
+    // a bombear: a leitura final só depois de desligar ("Terminei" → stop → relé desligado)
+    await expect(concluir(motA, id, v1, { final: 1045.7 })).rejects.toThrow(/aguarde que desligue/)
+    await q1(motA, 'SELECT public.parar_bomba($1)', [id])
+    expect(await shelly(true)).toEqual({ status: 'stop' })
+    expect(await shelly(false)).toEqual({ status: 'idle' })
     const abast = await concluir(motA, id, v1, { final: 1045.7 })
 
     const p = await pedido(id)
@@ -307,9 +315,8 @@ describe('execução na Polo 2 (com o Shelly)', () => {
     expect(Number(a.litros)).toBeCloseTo(45.2, 3)
     expect(Number(a.custo_total)).toBe(67.8)           // 45,2 L × 1,50 €
     expect(Number(a.contador)).toBe(10000)             // km da viatura
-    // ainda estava a bombear: concluir manda desligar e liga a sessão ao registo
-    expect(await shelly(true)).toEqual({ status: 'stop' })
-    const s = (await db.query(`SELECT * FROM public.pump_sessoes WHERE pedido_id = $1`, [id])).rows[0]
+    // a sessão fica ligada ao registo
+    const s =(await db.query(`SELECT * FROM public.pump_sessoes WHERE pedido_id = $1`, [id])).rows[0]
     expect(s.abastecimento_id).toBe(abast)
   })
 
@@ -402,7 +409,7 @@ describe('execução na Polo 2 (com o Shelly)', () => {
     const id = await autorizado()
     await leituraInicial(motA, id, v1, 500)
     await ligar(motA, id)
-    await shelly()
+    await abastecerEDesligar()
     await expect(concluir(motA, id, v1, { final: 500 })).rejects.toThrow(/maior que a inicial/)
     await expect(concluir(motA, id, v1, { final: 499 })).rejects.toThrow(/maior que a inicial/)
     await expect(concluir(motA, id, v1, { final: 1600 })).rejects.toThrow(/Diferença impossível/)
@@ -427,7 +434,7 @@ describe('execução na Polo 2 (com o Shelly)', () => {
     const id = await autorizado()
     await leituraInicial(motA, id, v1, 0)
     await ligar(motA, id)
-    await shelly()
+    await abastecerEDesligar()
     const abast = await concluir(motA, id, v1, { final: 10 })
     const a = (await db.query(`SELECT custo_total, preco_litro FROM public.comb_abastecimentos WHERE id = $1`, [abast])).rows[0]
     expect(Number(a.custo_total)).toBe(0)

@@ -60,10 +60,10 @@ function RelatorioFormulario() {
   const mudarUpload = (valor: boolean) => { uploadRef.current = valor; setAEnviarFotos(valor) }
   const submeterRef = useRef(false)
   const montadoRef = useRef(true)
-  const navegacaoInternaRef = useRef(false)
+  const navegacaoInternaRef = useRef<string | null>(null)
   const alteracoesPendentes = (revisao > 0 && !guardado) || aEnviarFotos || aSubmeter || aSair || guardarMut.loading
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    !navegacaoInternaRef.current && alteracoesPendentes && currentLocation.pathname !== nextLocation.pathname)
+    navegacaoInternaRef.current !== nextLocation.pathname && alteracoesPendentes && currentLocation.pathname !== nextLocation.pathname)
   const bloqueioRef = useRef(blocker.state)
   bloqueioRef.current = blocker.state
   useEffect(() => {
@@ -105,7 +105,7 @@ function RelatorioFormulario() {
         if (montadoRef.current && revisaoRef.current === revisaoGuardada) setGuardado(true)
         if (eraNovo) iniciouRef.current = true
         if (!rid && navegar && montadoRef.current && !uploadRef.current && !aSairRef.current && !submeterRef.current && bloqueioRef.current === 'unblocked' && revisaoRef.current === revisaoGuardada) {
-          navegacaoInternaRef.current = true
+          navegacaoInternaRef.current = `/obras/relatorio-diario/${resultado}`
           navigate(`/obras/relatorio-diario/${resultado}`, { replace: true })
         }
       }
@@ -116,12 +116,12 @@ function RelatorioFormulario() {
   }
 
   useEffect(() => {
-    if (revisao === 0 || !obraId || aEnviarFotos || aSubmeter || blocker.state === 'blocked' || (rid && !iniciouRef.current)) return
+    if (revisao === 0 || guardado || relatorio?.estado === 'submetido' || !obraId || aEnviarFotos || aSubmeter || aSair || blocker.state === 'blocked' || (rid && !iniciouRef.current)) return
     temporizadorRef.current = window.setTimeout(() => { temporizadorRef.current = null; void guardarNaFila(dados) }, 1000)
     return () => { if (temporizadorRef.current != null) window.clearTimeout(temporizadorRef.current) }
   // Autosave depende da revisão; outras alterações antes do prazo reiniciam o temporizador.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revisao, obraId, aEnviarFotos, aSubmeter, blocker.state])
+  }, [revisao, guardado, relatorio?.estado, obraId, aEnviarFotos, aSubmeter, aSair, blocker.state])
 
   const submeter = async () => {
     if (aEnviarFotos || submeterRef.current) return
@@ -134,7 +134,7 @@ function RelatorioFormulario() {
       const id = await guardarNaFila(dados, false)
       if (!id) return
       if (await submeterMut.submeter(id)) {
-        navegacaoInternaRef.current = true
+        navegacaoInternaRef.current = `/obras/relatorio-diario/${id}`
         reload(); navigate(`/obras/relatorio-diario/${id}`, { replace: true })
       }
     } finally {

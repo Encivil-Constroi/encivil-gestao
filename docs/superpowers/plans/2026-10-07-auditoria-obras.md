@@ -23,37 +23,37 @@
 ## Tarefa 1 — ficha e contrato RPC
 **Arquivos:** `src/features/obras/db.ts`, `services/obrasService.ts`, novo `src/__tests__/features/obras/visaoContrato.test.ts`.
 **Interface:** `buscarVisao(id: string): Promise<ObraResumoRow>` permanece; `obra_visao` retorna objeto composto; aceitar array legado na fronteira.
-- [ ] Testar objeto real, array legado, resposta vazia e erro; observar falha antes da correção.
-- [ ] Corrigir tipo e seleção da linha, sem consultas adicionais nem fallback que esconda erro.
-- [ ] Executar testes de serviço/ficha/contrato e validar obra existente no browser em leitura.
+- [x] Testar objeto real, array legado, resposta vazia e erro; observar falha antes da correção.
+- [x] Corrigir tipo e seleção da linha, sem consultas adicionais nem fallback que esconda erro.
+- [x] Executar testes de serviço/ficha/contrato e validar obra existente no browser em leitura.
 
 ## Tarefa 2 — fotos, aferições e relatórios
 **Arquivos:** `components/FotoCapture.tsx`, `components/ficha/Progresso.tsx`, `components/ficha/Fotos.tsx`, `components/RelatorioDiarioPage.tsx`, `hooks/useRelatoriosDiarios.ts`; testes de concorrência novos e existentes.
 **Interface:** callback opcional `onUploadingChange(boolean)`; contratos RPC de gravação preservados.
-- [ ] Testar upload pendente com legenda/remoção e tentativa de concluir; RED→GREEN.
-- [ ] Ref da lista atual, bloqueio síncrono contra envio duplicado, estado de upload comunicado ao pai; desativar gravar/cancelar enquanto operação está pendente.
-- [ ] Testar autor designado leitura e invalidação de galeria/eventos/últimos relatórios; alinhar hooks.
-- [ ] Testar saída antes do autosave e submissão em curso; guardar antes de sair pelo link, aviso de fechamento, proteção de navegação SPA e serialização. Evitar navegar automaticamente após criação se a página já desmontou.
-- [ ] Executar testes relevantes e de regressão; validar responsividade, erros e estados de engenharia.
-- [ ] Limpar o cache remoto na saída/troca de identidade e impedir resposta em voo de repovoá-lo após a troca: `src/app/lib/useAsync.ts`, `src/features/auth/AuthContext.tsx`, teste de isolamento de cache. É a integração de autenticação necessária para não reutilizar dados de Obras de outra sessão.
+- [x] Testar upload pendente com legenda/remoção e tentativa de concluir; RED→GREEN.
+- [x] Ref da lista atual, bloqueio síncrono contra envio duplicado, estado de upload comunicado ao pai; desativar gravar/cancelar enquanto operação está pendente.
+- [x] Testar autor designado leitura e invalidação de galeria/eventos/últimos relatórios; alinhar hooks.
+- [x] Testar saída antes do autosave e submissão em curso; guardar antes de sair pelo link, aviso de fechamento, proteção de navegação SPA e serialização. Evitar navegar automaticamente após criação se a página já desmontou.
+- [x] Executar testes relevantes e de regressão; validar responsividade, erros e estados de engenharia.
+- [x] Limpar o cache remoto na saída/troca de identidade e impedir resposta em voo de repovoá-lo após a troca: `src/app/lib/useAsync.ts`, `src/features/auth/AuthContext.tsx`, teste de isolamento de cache. É a integração de autenticação necessária para não reutilizar dados de Obras de outra sessão.
 
 ## Tarefa 3 — banco e segurança
 **Arquivos:** nova `supabase/migrations/20261007110000_obras_producao.sql`, novo `supabase/tests/obras-producao.test.mjs`; fixtures de storage de `subs-controlo-a/b.test.mjs`.
 **Contratos:** assinaturas RPC permanecem; autoria passa a ser controlada pelo servidor; nova evidência exige arquivo real.
-- [ ] Testes PGlite reproduzem autoria forjada/alterada, custos de papel negado, evidência ausente e remoção/alteração de objeto vinculado; RED antes da migration.
-- [ ] Trigger de autoria e evidência; trigger de proteção storage; função de custos com autorização por obra. GRANT/REVOKE explícitos, search_path fixo. Sem DELETE/backfill destrutivo, sem nova tabela/índice redundante.
-- [ ] Aplicar a mesma guarda de existência a `sub_documentos.path` e `autos_medicao.fatura_path`; preservar campos/assinaturas. Proteger objetos referenciados contra DELETE/UPDATE. Testar path ausente/incorreto e arquivo existente permitido; validar registros legados no preflight.
-- [ ] Proteger também fotos JSON de `obra_afericoes`, `obra_relatorios_diarios`, `sub_ocorrencias`, `autos_medicao` e `obra_fotos.path`. Verificar novos paths; preservar edição histórica sem novo vínculo. Submissão de relatório revalida fotos atuais; aprovação/pagamento revalidam evidências do auto. Atualizar fixtures em `obras-completo.test.mjs` para uploads simulados, sem alterar assertions de validação/RLS.
-- [ ] Fixtures de testes com upload antes de registrar evidência; não reduzir validações/asserts existentes.
-- [ ] Validar todas as migrations, permissões permitidas/negadas, constraints/FKs/índices e compatibilidade de leitura histórica. Documentar consulta de preflight para fotos faltantes.
+- [x] Testes PGlite reproduzem autoria forjada/alterada, custos de papel negado, evidência ausente e remoção/alteração de objeto vinculado; RED antes da migration.
+- [x] Trigger de autoria e evidência; trigger de proteção storage; função de custos com autorização por obra. GRANT/REVOKE explícitos, search_path fixo. Sem DELETE/backfill destrutivo, sem nova tabela/índice redundante.
+- [x] Aplicar a mesma guarda de existência a `sub_documentos.path` e `autos_medicao.fatura_path`; preservar campos/assinaturas. Proteger objetos referenciados contra DELETE/UPDATE. Testar path ausente/incorreto e arquivo existente permitido; validar registros legados no preflight.
+- [x] Proteger também fotos JSON de `obra_afericoes`, `obra_relatorios_diarios`, `sub_ocorrencias`, `autos_medicao` e `obra_fotos.path`. Verificar novos paths; preservar edição histórica sem novo vínculo. Submissão de relatório revalida fotos atuais; aprovação/pagamento revalidam evidências do auto. Atualizar fixtures em `obras-completo.test.mjs` para uploads simulados, sem alterar assertions de validação/RLS.
+- [x] Fixtures de testes com upload antes de registrar evidência; não reduzir validações/asserts existentes.
+- [x] Validar todas as migrations, permissões permitidas/negadas, constraints/FKs/índices e compatibilidade de leitura histórica. Documentar consulta de preflight para fotos faltantes.
 
 ## Tarefa 4 — validação, revisão e relatório
 **Arquivos:** `docs/19-obras.md`, novo `docs/auditorias/2026-10-07-obras.md`.
-- [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run check:edge`, `npm run test:edge`; lint se existir configuração (não introduzir gate fictício).
-- [ ] agent-browser em produção/local: abertura/abas em leitura; gravações só em banco isolado. Credenciais não persistidas. Rever console/logs sem copiar dados sensíveis.
-- [ ] Revisão independente do diff delimitado, corrigir falhas importantes com RED→GREEN, repetir testes relevantes.
-- [ ] Revisar git diff/check e escopo; distinguir alterações anteriores.
-- [ ] Relatório com achados corrigidos, evidências, limites, passos manuais e critérios pendentes. Sem garantia absoluta sem validação operacional.
+- [x] `npm run typecheck`, `npm test`, `npm run build`, `npm run check:edge`, `npm run test:edge`; lint se existir configuração (não introduzir gate fictício).
+- [x] agent-browser em produção/local: abertura/abas em leitura; gravações só em banco isolado. Credenciais não persistidas. Rever console/logs sem copiar dados sensíveis.
+- [x] Revisão independente do diff delimitado, corrigir falhas importantes com RED→GREEN, repetir testes relevantes.
+- [x] Revisar git diff/check e escopo; distinguir alterações anteriores.
+- [x] Relatório com achados corrigidos, evidências, limites, passos manuais e critérios pendentes. Sem garantia absoluta sem validação operacional.
 
 ## Integrações, observabilidade e rollback
 - RPC Supabase mantém erros originais; useAsync/useMutation reportam Sentry. Eventos SQL/audit_log existentes preservados; não logar credenciais/fotos/pessoas.
@@ -62,3 +62,13 @@
 - Publicação: usuário aplica migration após as anteriores; conferir preflight, objetos/RLS e testar papéis antes de publicar frontend. Não aplicar automaticamente.
 - Rollback frontend: restaurar apenas alterações desta tarefa. Banco: dados ficam preservados; correção progressiva preferida; não remover proteções de segurança como rotina.
 - Riscos de regressão: testes antigos que inventam photos sem upload precisam de fixtures reais no storage simulado; consumidores de custos que não têm acesso serão recusados intencionalmente.
+
+## Estado final da execução — 07/10/2026
+
+Implementação e validação do snapshot 63ed5eb concluídas; revalidação isolada: 2.385 testes aprovados, typecheck/build/Edge aprovados. Relatório: docs/auditorias/2026-10-07-obras.md.
+
+Critérios operacionais ainda pendentes (não são cobertos pelos itens executados acima):
+- [ ] Concluir a integração concorrente e repetir os gates na versão final, preservando isolamento de sessão.
+- [ ] Conferir a migration com o CLAUDE.md vigente na integração; aplicar manualmente no Supabase após preflight, sem alteração de SQL já aplicado.
+- [ ] Homologar API real de Storage e escrita com os papéis da engenheira e do engenheiro em ambiente autorizado.
+- [ ] Publicar seguindo a regra vigente site → migrations → Edge Functions; concluir a homologação antes da liberação operacional. Essa regra mais recente substitui a ordem descrita no planejamento original.

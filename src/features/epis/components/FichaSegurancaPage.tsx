@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserCheck, Shield, GraduationCap, ChevronDown, AlertCircle, CheckCircle2, Clock, Infinity } from 'lucide-react'
+import { UserCheck, Shield, GraduationCap, ChevronDown, AlertCircle, CheckCircle2, Clock, Infinity as IconInfinity } from 'lucide-react'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useEpisColaborador } from '../hooks/useEpisColaborador'
 import { useFormacoesColaborador } from '../hooks/useFormacoesColaborador'
@@ -14,7 +14,7 @@ function diasRestantes(dataValidade?: string): number | null {
 function ValidadeChip({ dataValidade, limiares }: { dataValidade?: string; limiares: { urgente: number; atencao: number } }) {
   if (!dataValidade) return (
     <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-info/10 text-info">
-      <Infinity className="w-3 h-3" /> Vitalícia
+      <IconInfinity className="w-3 h-3" /> Vitalícia
     </span>
   )
   const dias = diasRestantes(dataValidade)!

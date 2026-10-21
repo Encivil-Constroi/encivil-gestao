@@ -47,6 +47,29 @@ export function stockDepois(subtipo: SubtipoMovimento, atual: number, quantidade
   return t === 'entrada' ? atual + quantidade : atual - quantidade
 }
 
+// ── Números escritos em pt-PT ────────────────────────────────────────────────
+
+const MILHARES = /^\d{1,3}(\.\d{3})+$/
+
+const MILHARES_SEM_VIRGULA = /^\d{1,3}(\.\d{3}){2,}$/
+
+// "2,5" → 2.5 · "1.250" → 1.25 (um só ponto é sempre decimal: teclados com ponto) ·
+// "1.234,5" → 1234.5 e "1.234.567" → 1234567 (ponto é milhar só com vírgula ou 2+ grupos de 3).
+// parseFloat aceitaria "10abc" como 10: aqui tudo o que não é número inteiro é inválido.
+export function lerNumeroPt(valor: string): number | null {
+  const s = valor.replace(/\s/g, '')
+  const m = /^(-?)([\d.]+)(?:,(\d+))?$/.exec(s)
+  if (!m) return null
+  const [, sinal, inteira, decimal] = m
+  let normal: string
+  if (/^\d+$/.test(inteira)) normal = inteira
+  else if (decimal !== undefined ? MILHARES.test(inteira) : MILHARES_SEM_VIRGULA.test(inteira)) normal = inteira.replace(/\./g, '')
+  else if (decimal === undefined && /^\d+\.\d+$/.test(inteira)) normal = inteira
+  else return null
+  const n = Number(`${sinal}${normal}${decimal !== undefined ? `.${decimal}` : ''}`)
+  return Number.isFinite(n) ? n : null
+}
+
 // ── Datas (YYYY-MM-DD em hora local) ─────────────────────────────────────────
 
 function inicioDoDia(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate()) }

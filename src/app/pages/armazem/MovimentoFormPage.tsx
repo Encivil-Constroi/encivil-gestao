@@ -13,16 +13,11 @@ import { useArtigosArmazem, useFornecedoresUsados, useRegistarMovimentoArmazem }
 import { ArtigoCombobox } from '@/features/movimentos/components/ArtigoCombobox'
 import { visualMovimento } from '@/features/movimentos/components/movimentoVisual'
 import {
-  SUBTIPOS_ENTRADA, SUBTIPOS_SAIDA, ehSubtipoEntrada, ehSubtipoSaida, stockDepois, tipoDoSubtipo,
+  SUBTIPOS_ENTRADA, SUBTIPOS_SAIDA, ehSubtipoEntrada, ehSubtipoSaida, lerNumeroPt, stockDepois, tipoDoSubtipo,
 } from '@/features/movimentos/armazemRegras'
 
 const campo = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base'
 const rotulo = 'block text-sm font-medium mb-1.5'
-
-function numero(v: string): number | null {
-  const n = parseFloat(v.replace(',', '.'))
-  return Number.isFinite(n) ? n : null
-}
 
 export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
   const navigate = useNavigate()
@@ -61,7 +56,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
   useEffect(() => { setSubtipo(inicial); setObraId(params.get('obra') ?? '') }, [tipo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const artigo = artigos.find(a => a.id === produtoId)
-  const qtd = numero(quantidade)
+  const qtd = lerNumeroPt(quantidade)
   const qtdValida = qtd !== null && qtd > 0
   const ehContagem = subtipo === 'INVENTARIO'
   const saida = tipoDoSubtipo(subtipo) === 'saida'
@@ -69,7 +64,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
   const obrasEscolha = subtipo === 'OBRA' ? obras.filter(o => o.status === 'ativa') : obras
   const depois = artigo && qtdValida ? stockDepois(subtipo, artigo.stockAtual, qtd) : null
   const acimaDoStock = !!artigo && qtdValida && saida && qtd > artigo.stockAtual
-  const precoNum = numero(preco)
+  const precoNum = lerNumeroPt(preco)
   const unidade = artigo ? getUnitLabel(artigo.unidade) : ''
 
   const falta: string | null =
@@ -78,6 +73,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
     : acimaDoStock ? `Stock insuficiente: há ${fmtNumber(artigo?.stockAtual)} ${unidade}.`
     : subtipo === 'COMPRA' && !fornecedor.trim() ? 'Indique o fornecedor (ou ENCIVIL).'
     : subtipo === 'VENDA' && !cliente.trim() ? 'Indique o cliente da venda.'
+    : (subtipo === 'COMPRA' || subtipo === 'VENDA') && preco.trim() !== '' && (precoNum === null || precoNum < 0) ? 'Preço inválido.'
     : precisaObra && !obraId ? 'Escolha a obra.'
     : !responsavel.trim() ? 'Indique o responsável.'
     : null
@@ -169,8 +165,12 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
 
         <div>
           <label className={rotulo} htmlFor="mov-qtd">{ehContagem ? 'Stock contado' : 'Quantidade'}{unidade && <span className="text-muted-foreground font-normal"> ({unidade})</span>}</label>
-          <input id="mov-qtd" type="number" inputMode="decimal" min="0" step="any" value={quantidade}
+          <input id="mov-qtd" type="text" inputMode="decimal" autoComplete="off" value={quantidade}
             onChange={e => setQuantidade(e.target.value)} placeholder="0" className={`${campo} text-2xl font-bold text-center`} />
+          {/* "1.250" lê-se 1,25: mostrar o que vai ser gravado evita enganos de ponto/vírgula */}
+          {qtd !== null && /[.,]/.test(quantidade) && (
+            <p className="mt-1.5 text-sm text-center text-muted-foreground tabular-nums" data-testid="qtd-lida">= {fmtNumber(qtd)}{unidade && ` ${unidade}`}</p>
+          )}
           {ehContagem && artigo && qtdValida && (
             <p className="mt-2 text-sm text-center" data-testid="diferenca">
               Diferença: <strong className={qtd - artigo.stockAtual < 0 ? 'text-destructive' : 'text-success'}>{qtd - artigo.stockAtual > 0 ? '+' : ''}{fmtNumber(qtd - artigo.stockAtual)} {unidade}</strong>
@@ -197,7 +197,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
             </div>
             <div>
               <label className={rotulo} htmlFor="mov-preco">Preço unitário <span className="text-muted-foreground font-normal">(opcional)</span></label>
-              <input id="mov-preco" type="number" inputMode="decimal" min="0" step="any" value={preco} onChange={e => setPreco(e.target.value)} className={campo} placeholder="0,00" />
+              <input id="mov-preco" type="text" inputMode="decimal" autoComplete="off" value={preco} onChange={e => setPreco(e.target.value)} className={campo} placeholder="0,00" />
               {precoNum !== null && precoNum >= 0 && preco !== '' && (
                 <p className="mt-1.5 text-xs text-muted-foreground flex items-start gap-1.5"><Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />Atualiza o custo do artigo para {fmtEuro(precoNum)} (usado no custo das obras).</p>
               )}
@@ -213,7 +213,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
             </div>
             <div>
               <label className={rotulo} htmlFor="mov-pv">Preço de venda unitário <span className="text-muted-foreground font-normal">(opcional)</span></label>
-              <input id="mov-pv" type="number" inputMode="decimal" min="0" step="any" value={preco} onChange={e => setPreco(e.target.value)} className={campo} placeholder="0,00" />
+              <input id="mov-pv" type="text" inputMode="decimal" autoComplete="off" value={preco} onChange={e => setPreco(e.target.value)} className={campo} placeholder="0,00" />
               {precoNum !== null && qtdValida && preco !== '' && (
                 <p className="mt-1.5 text-sm font-semibold" data-testid="total-venda">Total: {fmtEuro(precoNum * qtd)}</p>
               )}

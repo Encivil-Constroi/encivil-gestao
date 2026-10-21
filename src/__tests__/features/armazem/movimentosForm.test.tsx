@@ -179,3 +179,51 @@ describe('saída', () => {
     expect(submit()).toBeEnabled()
   })
 })
+
+describe('números em pt-PT', () => {
+  it('aceita vírgula decimal e pontos de milhar', async () => {
+    abrir('entrada', '/armazem/movimento/entrada?tipo=PROPRIO_ENCIVIL')
+    await escolherArtigo('Cimento'); qtd('1.500,5')
+    fireEvent.click(submit())
+    await waitFor(() => expect(m.registar).toHaveBeenCalledWith(expect.objectContaining({ quantidade: 1500.5 })))
+  })
+
+  it('"10abc" não é quantidade válida', async () => {
+    abrir('saida', '/armazem/movimento/saida?tipo=QUEBRA')
+    await escolherArtigo('Cimento'); qtd('10abc')
+    expect(submit()).toBeDisabled()
+  })
+
+  it('preço inválido bloqueia o registo', async () => {
+    abrir('saida', '/armazem/movimento/saida?tipo=VENDA')
+    await escolherArtigo('Cimento'); qtd('2,5')
+    fireEvent.change(screen.getByLabelText(/Cliente/), { target: { value: 'José' } })
+    fireEvent.change(screen.getByLabelText(/Preço de venda/), { target: { value: '3x' } })
+    expect(submit()).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/Preço de venda/), { target: { value: '3,25' } })
+    fireEvent.click(submit())
+    await waitFor(() => expect(m.registar).toHaveBeenCalledWith(expect.objectContaining({ quantidade: 2.5, precoUnitario: 3.25 })))
+  })
+})
+
+describe('valor interpretado da quantidade', () => {
+  it('com ponto ou vírgula mostra o número lido; sem eles não mostra', async () => {
+    abrir('entrada', '/armazem/movimento/entrada?tipo=PROPRIO_ENCIVIL')
+    await escolherArtigo('Cimento')
+    qtd('1.25')
+    expect(screen.getByTestId('qtd-lida')).toHaveTextContent('= 1,25')
+    qtd('1.234,5')
+    expect(screen.getByTestId('qtd-lida').textContent).toMatch(/= 1.?234,5/)
+    qtd('12')
+    expect(screen.queryByTestId('qtd-lida')).not.toBeInTheDocument()
+    qtd('1,2,3')
+    expect(screen.queryByTestId('qtd-lida')).not.toBeInTheDocument()
+  })
+
+  it('"1.250" (um só ponto) regista 1,25', async () => {
+    abrir('entrada', '/armazem/movimento/entrada?tipo=PROPRIO_ENCIVIL')
+    await escolherArtigo('Cimento'); qtd('1.250')
+    fireEvent.click(submit())
+    await waitFor(() => expect(m.registar).toHaveBeenCalledWith(expect.objectContaining({ quantidade: 1.25 })))
+  })
+})

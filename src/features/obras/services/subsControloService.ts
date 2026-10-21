@@ -1,3 +1,4 @@
+import { supabase } from '@/integrations/supabase/client'
 import {
   obrasDb,
   type AutoEvidenciaRow, type AutoGlosarArgs, type AutoGlosaRow, type AutoVerificacaoItem, type AutoVerificacaoRow,
@@ -181,8 +182,8 @@ export async function marcarAutoEmAtrasoRpc(autoId: string): Promise<void> {
 export type NovoAutoRpc = { subId: string; data: string; percentagem: number; valor: number; notas?: string | null }
 
 export async function criarAutoRpc(a: NovoAutoRpc): Promise<CriarAutoRpcRow> {
-  const { data, error } = await obrasDb.rpc('criar_auto_rpc', {
-    p_sub_id: a.subId, p_data: a.data, p_percentagem: a.percentagem, p_valor: a.valor, p_notas: a.notas ?? null,
+  const { data, error } = await supabase.rpc('criar_auto_rpc', {
+    p_sub_id: a.subId, p_data: a.data, p_percentagem: a.percentagem, p_valor: a.valor, p_notas: a.notas ?? undefined,
   })
   if (error) throw error
   const linha = data?.[0]

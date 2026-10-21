@@ -6,13 +6,18 @@ const m = vi.hoisted(() => ({
   sessaoId: 'u',
   utilizador: { id: 'u' } as { id: string } | null,
   resposta: { data: null as unknown, error: null as { message: string; code?: string } | Error | null },
+  // Quando definido, decide a resposta por chamada (BD antiga, atrasos…)
+  responder: null as null | ((fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>),
 }))
 
 vi.mock('@/features/auth/AuthContext', () => ({ useAuth: () => ({ user: m.utilizador }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }))
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    rpc: (fn: string, args: Record<string, unknown> = {}) => { m.rpc.push({ fn, args }); return Promise.resolve(m.resposta) },
+    rpc: (fn: string, args: Record<string, unknown> = {}) => {
+      m.rpc.push({ fn, args })
+      return m.responder ? m.responder(fn, args) : Promise.resolve(m.resposta)
+    },
     auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: m.sessaoId } } } }) },
   },
 }))
@@ -46,7 +51,7 @@ function onLine(valor: boolean) {
 }
 
 beforeEach(() => {
-  m.sessaoId = 'u'; m.utilizador = { id: 'u' }; m.rpc = []; m.resposta = { data: null, error: null }; localStorage.clear(); onLine(true)
+  m.sessaoId = 'u'; m.utilizador = { id: 'u' }; m.rpc = []; m.resposta = { data: null, error: null }; m.responder = null; localStorage.clear(); onLine(true)
 })
 afterEach(() => onLine(true))
 
@@ -181,5 +186,102 @@ describe('registo offline', () => {
     await act(async () => { await fila.current.flushNow() })
     await waitFor(() => expect(getQueue()).toHaveLength(0))
     expect(m.rpc.some(c => c.fn === 'registar_movimento')).toBe(true)
+  })
+})
+
+describe('reenvio sem duplicar (client_id)', () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+  it('online envia um p_client_id; se a rede cair depois, a fila reenvia o MESMO id', async () => {
+    m.resposta = { data: null, error: new Error('Failed to fetch') }
+    const { result } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await result.current.registar(entrada) })
+    const enviado = m.rpc[0].args.p_client_id
+    expect(enviado).toMatch(UUID)
+    expect(getQueue()[0].queueId).toBe(enviado)
+    expect(getQueue()[0]).not.toHaveProperty('clientId')
+
+    m.resposta = { data: null, error: null }
+    const { result: fila } = renderHook(() => useOfflineQueue())
+    await act(async () => { await fila.current.flushNow() })
+    await waitFor(() => expect(getQueue()).toHaveLength(0))
+    expect(m.rpc[1].args.p_client_id).toBe(enviado)
+  })
+
+  it('retry manual após erro não-rede reutiliza o mesmo id; depois do sucesso usa um novo', async () => {
+    m.resposta = { data: null, error: { message: 'Bad Gateway', code: '504' } }
+    const { result } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await result.current.registar(entrada) })
+    await act(async () => { await result.current.registar({ ...entrada }) })
+    expect(m.rpc).toHaveLength(2)
+    expect(m.rpc[1].args.p_client_id).toBe(m.rpc[0].args.p_client_id)
+
+    // dados alterados: nova tentativa lógica, novo id
+    await act(async () => { await result.current.registar({ ...entrada, quantidade: 9 }) })
+    expect(m.rpc[2].args.p_client_id).not.toBe(m.rpc[0].args.p_client_id)
+
+    // sucesso limpa o id: o mesmo payload volta a ter id novo
+    m.resposta = { data: null, error: null }
+    await act(async () => { await result.current.registar({ ...entrada, quantidade: 9 }) })
+    const idSucesso = m.rpc[3].args.p_client_id
+    expect(idSucesso).toBe(m.rpc[2].args.p_client_id)
+    await act(async () => { await result.current.registar({ ...entrada, quantidade: 9 }) })
+    expect(m.rpc[4].args.p_client_id).not.toBe(idSucesso)
+  })
+
+  it('BD antiga (função sem p_client_id): reenvia sem o parâmetro e regista', async () => {
+    m.responder = (_fn, args) => Promise.resolve('p_client_id' in args && args.p_client_id !== undefined
+      ? { data: null, error: { code: 'PGRST202', message: 'Could not find the function public.registar_movimento_armazem' } }
+      : { data: null, error: null })
+    const { result } = renderHook(() => useRegistarMovimentoArmazem())
+    let r: unknown
+    await act(async () => { r = await result.current.registar(entrada) })
+    expect(r).toBe('ok')
+    expect(m.rpc).toHaveLength(2)
+    expect(m.rpc[1].args.p_client_id).toBeUndefined()
+    expect(getQueue()).toHaveLength(0)
+  })
+
+  it('BD antiga também na sincronização da fila', async () => {
+    onLine(false)
+    const { result: form } = renderHook(() => useRegistarMovimentoArmazem())
+    await act(async () => { await form.current.registar(entrada) })
+    onLine(true)
+    m.responder = (_fn, args) => Promise.resolve(args.p_client_id !== undefined
+      ? { data: null, error: { code: '42883', message: 'function does not exist' } }
+      : { data: null, error: null })
+    const { result: fila } = renderHook(() => useOfflineQueue())
+    await act(async () => { await fila.current.flushNow() })
+    await waitFor(() => expect(getQueue()).toHaveLength(0))
+    expect(m.rpc.map(c => c.args.p_client_id === undefined)).toEqual([false, true])
+  })
+
+  it('dois separadores a sincronizar ao mesmo tempo enviam cada movimento uma só vez', async () => {
+    let cadeia: Promise<unknown> = Promise.resolve()
+    const locks = {
+      request: (_nome: string, fn: () => Promise<unknown>) => {
+        const r = cadeia.then(() => fn())
+        cadeia = r.catch(() => undefined)
+        return r
+      },
+    }
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: locks })
+    try {
+      onLine(false)
+      const { result: form } = renderHook(() => useRegistarMovimentoArmazem())
+      await act(async () => { await form.current.registar(entrada) })
+      await act(async () => { await form.current.registar({ ...entrada, quantidade: 7 }) })
+      onLine(true)
+      m.responder = () => new Promise(res => setTimeout(() => res({ data: null, error: null }), 5))
+
+      const { result: a } = renderHook(() => useOfflineQueue())
+      const { result: b } = renderHook(() => useOfflineQueue())
+      await act(async () => { await Promise.all([a.current.flushNow(), b.current.flushNow()]) })
+      await waitFor(() => expect(getQueue()).toHaveLength(0))
+      expect(m.rpc).toHaveLength(2)
+      expect(new Set(m.rpc.map(c => c.args.p_client_id)).size).toBe(2)
+    } finally {
+      Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+    }
   })
 })

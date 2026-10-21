@@ -8,6 +8,8 @@ import {
 import { toast } from 'sonner'
 import { useObra } from '@/features/obras/hooks/useObras'
 import { useLivroObra, useRegistarOcorrencia, useEditarRegisto } from '../hooks/useLivroObra'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
+import { usePodeEscreverLivroObra } from '../lib/permissoes'
 import {
   CATEGORIAS,
   type CategoriaRegisto,
@@ -42,7 +44,7 @@ function formatarData(iso: string) {
 }
 
 function hoje(): string {
-  return new Date().toISOString().slice(0, 10)
+  return hojeLisboa()
 }
 
 // ── Modal de novo/editar registo ───────────────────────────────────────────────
@@ -149,15 +151,15 @@ const RegistoItem = memo(function RegistoItem({
   registo, onEdit,
 }: {
   registo: RegistoObra
-  onEdit:  (r: RegistoObra) => void
+  onEdit?: (r: RegistoObra) => void
 }) {
   const cfg  = CAT_CONFIG[registo.categoria]
   const Icon = cfg.icon
 
   return (
     <div
-      className="flex gap-3 group cursor-pointer"
-      onClick={() => onEdit(registo)}
+      className={`flex gap-3 group ${onEdit ? 'cursor-pointer' : ''}`}
+      onClick={onEdit ? () => onEdit(registo) : undefined}
     >
       <div className="flex flex-col items-center">
         <div className={`p-2 rounded-xl ${cfg.bg} shrink-0 mt-0.5 group-hover:scale-105 transition-transform`}>
@@ -200,6 +202,8 @@ export function LivroObraPage() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [registos])
+
+  const podeEscrever = usePodeEscreverLivroObra()
 
   const handleNovoRegisto = useCallback(() => {
     setEditRegisto(undefined)
@@ -255,13 +259,15 @@ export function LivroObraPage() {
               <Printer className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Imprimir</span>
             </button>
-            <button
-              onClick={handleNovoRegisto}
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Novo Registo</span>
-            </button>
+            {podeEscrever && (
+              <button
+                onClick={handleNovoRegisto}
+                className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Novo Registo</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -314,12 +320,14 @@ export function LivroObraPage() {
             <p className="text-sm text-muted-foreground">
               {filtro ? 'Nenhum registo nesta categoria.' : 'Sem registos no livro de obra.'}
             </p>
-            <button
-              onClick={handleNovoRegisto}
-              className="mt-1 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              Criar Primeiro Registo
-            </button>
+            {podeEscrever && (
+              <button
+                onClick={handleNovoRegisto}
+                className="mt-1 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                Criar Primeiro Registo
+              </button>
+            )}
           </div>
         )}
 
@@ -335,7 +343,7 @@ export function LivroObraPage() {
             <div className="bg-card rounded-2xl border border-border p-4 space-y-0">
               {items.map((registo, idx) => (
                 <div key={registo.id}>
-                  <RegistoItem registo={registo} onEdit={handleEdit} />
+                  <RegistoItem registo={registo} onEdit={podeEscrever ? handleEdit : undefined} />
                   {idx < items.length - 1 && <div className="h-px bg-border -mx-4 mb-3" />}
                 </div>
               ))}

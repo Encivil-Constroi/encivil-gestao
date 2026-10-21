@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import { useObra } from '@/features/obras/hooks/useObras'
 import { useGuias, useCriarGuia, useActualizarEstadoGuia } from '../hooks/useCriarGuia'
 import { GuiaPrintView } from './GuiaPrintView'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
+import { usePodeEscreverLivroObra } from '../lib/permissoes'
 import type { GuiaTransporte, EstadoGuia, LinhaGuia, CriarGuiaInput } from '../services/guiasTransporteService'
 
 // ── Estado badges ─────────────────────────────────────────────────────────────
@@ -39,7 +41,7 @@ function EmitirGuiaModal({ obraId, onClose, onSaved }: {
 }) {
   const { criar, loading } = useCriarGuia(obraId)
 
-  const [dataCarga, setDataCarga] = useState(() => new Date().toISOString().slice(0, 10))
+  const [dataCarga, setDataCarga] = useState(() => hojeLisboa())
   const [origem,    setOrigem]    = useState('')
   const [destino,   setDestino]   = useState('')
   const [linhas,    setLinhas]    = useState<LinhaGuia[]>([
@@ -186,7 +188,8 @@ function formatDataGuia(iso: string | null) {
 
 // ── Item de guia (memo — lista estável) ───────────────────────────────────────
 
-const GuiaItem = memo(function GuiaItem({ guia, onImprimir, onEstado }: {
+const GuiaItem = memo(function GuiaItem({ guia, onImprimir, onEstado, podeEscrever }: {
+  podeEscrever: boolean
   guia:       GuiaTransporte
   onImprimir: (g: GuiaTransporte) => void
   onEstado:   (g: GuiaTransporte, e: EstadoGuia) => void
@@ -222,7 +225,7 @@ const GuiaItem = memo(function GuiaItem({ guia, onImprimir, onEstado }: {
           >
             <Printer className="w-3.5 h-3.5" />
           </button>
-          {guia.estado === 'EMITIDA' && (
+          {podeEscrever && guia.estado === 'EMITIDA' && (
             <>
               <button
                 onClick={() => onEstado(guia, 'ENTREGUE')}
@@ -249,6 +252,7 @@ const GuiaItem = memo(function GuiaItem({ guia, onImprimir, onEstado }: {
 export function GuiasTransportePage() {
   const { id } = useParams<{ id: string }>()
 
+  const podeEscrever = usePodeEscreverLivroObra()
   const [showEmitir, setShowEmitir] = useState(false)
   const [printGuia,  setPrintGuia]  = useState<GuiaTransporte | null>(null)
 
@@ -285,13 +289,15 @@ export function GuiasTransportePage() {
             <p className="text-xs text-muted-foreground">Guias de Transporte</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowEmitir(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-medium hover:bg-primary/90 transition-colors shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Emitir Guia</span>
-        </button>
+        {podeEscrever && (
+          <button
+            onClick={() => setShowEmitir(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-medium hover:bg-primary/90 transition-colors shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Emitir Guia</span>
+          </button>
+        )}
       </div>
 
       {error && (
@@ -310,12 +316,14 @@ export function GuiasTransportePage() {
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <Truck className="w-10 h-10 text-muted-foreground/40" />
           <p className="text-sm text-muted-foreground">Nenhuma guia de transporte emitida.</p>
-          <button
-            onClick={() => setShowEmitir(true)}
-            className="mt-1 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Emitir Primeira Guia
-          </button>
+          {podeEscrever && (
+            <button
+              onClick={() => setShowEmitir(true)}
+              className="mt-1 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Emitir Primeira Guia
+            </button>
+          )}
         </div>
       )}
 
@@ -326,6 +334,7 @@ export function GuiasTransportePage() {
             guia={guia}
             onImprimir={setPrintGuia}
             onEstado={handleEstado}
+            podeEscrever={podeEscrever}
           />
         ))}
       </div>

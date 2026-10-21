@@ -10,6 +10,7 @@ import { useObra } from '@/features/obras/hooks/useObras'
 import { useCustoConsolidado, useActualizarOrcamentos } from '../useCustoObra'
 import { DashboardRentabilidade } from './DashboardRentabilidade'
 import type { OrcamentosObra } from '../services/custosService'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 
 // ── Categorias ────────────────────────────────────────────────────────────────
 
@@ -33,11 +34,10 @@ const EUR0 = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR'
 type Periodo = 'mes' | 'ano' | 'tudo'
 
 function calcDatas(p: Periodo): { dataIni: string; dataFim: string } {
-  const hoje = new Date()
-  const iso   = (d: Date) => d.toISOString().slice(0, 10)
-  if (p === 'mes') return { dataIni: iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), dataFim: iso(hoje) }
-  if (p === 'ano') return { dataIni: `${hoje.getFullYear()}-01-01`,                         dataFim: iso(hoje) }
-  return { dataIni: '2000-01-01', dataFim: iso(hoje) }
+  const hoje = hojeLisboa()
+  if (p === 'mes') return { dataIni: `${hoje.slice(0, 8)}01`,  dataFim: hoje }
+  if (p === 'ano') return { dataIni: `${hoje.slice(0, 4)}-01-01`, dataFim: hoje }
+  return { dataIni: '2000-01-01', dataFim: hoje }
 }
 
 // ── Modal de orçamentos ───────────────────────────────────────────────────────

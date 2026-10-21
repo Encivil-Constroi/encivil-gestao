@@ -13,10 +13,11 @@ import {
   type FiltrosExport, type ExportRow,
 } from '@/features/contabilidade/contabilidadeService'
 import { mesAtual, mesAnterior } from '@/features/contabilidade/lib/periodo'
+import { hojeLisboa } from '../lib/dataLisboa'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function hoje(): string { return new Date().toISOString().split('T')[0] }
+function hoje(): string { return hojeLisboa() }
 function nomeFicheiro(prefixo: string, filtros: FiltrosExport): string {
   const de  = filtros.dataInicio ?? 'inicio'
   const ate = filtros.dataFim    ?? hoje()

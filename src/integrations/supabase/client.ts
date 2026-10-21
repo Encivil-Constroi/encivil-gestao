@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
+import { selecionarConfiguracaoSupabase } from './config'
 
 // Valores de produção — públicos por natureza: vão embutidos no bundle que
 // qualquer utilizador descarrega. A segurança real é a RLS no Postgres.
@@ -7,16 +8,15 @@ import type { Database } from './types'
 const PROD_URL = 'https://wuruhxmbueeyhiqgvlxu.supabase.co'
 const PROD_KEY = 'sb_publishable_b2Zjbv0hhxxORNxjemsGZA_bMtFaDJa'
 
-const envUrl = (import.meta.env.VITE_SUPABASE_URL ?? '').trim()
-const envKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim()
+const config = selecionarConfiguracaoSupabase(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  import.meta.env.DEV,
+  { url: PROD_URL, chave: PROD_KEY },
+)
+if (config.usaFallback) console.warn('[supabase] env vars ausentes ou inválidas — a usar credenciais de produção embutidas')
 
-const urlValid = /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(envUrl)
-const keyValid = /^sb_publishable_[A-Za-z0-9_-]+$/.test(envKey)
-if (!urlValid || !keyValid) console.warn('[supabase] env vars ausentes ou inválidas — a usar credenciais de produção embutidas')
-const supabaseUrl = urlValid ? envUrl : PROD_URL
-const supabaseKey = keyValid ? envKey : PROD_KEY
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+export const supabase = createClient<Database>(config.url, config.chave, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

@@ -34,3 +34,8 @@ export function traduzErroAuth(msg: string): string {
 export function linkRecuperacaoApp(appUrl: string, hashedToken: string): string {
   return `${appUrl}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
 }
+
+// Argumentos da RPC promover_role (impõe o lockout e regista a auditoria; o admin-client contornaria ambos).
+export function argsPromoverRole(userId: string, role: string): { p_user_id: string; p_novo_role: string } {
+  return { p_user_id: userId, p_novo_role: role }
+}

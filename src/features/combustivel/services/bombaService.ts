@@ -65,7 +65,8 @@ export async function definirRegrasBomba(r: RegrasBomba): Promise<void> {
   })
 }
 
-export type MotivoFimSessao = 'TEMPO' | 'TERMINEI' | 'EMERGENCIA' | 'INTERROMPIDO'
+// NAO_ARRANCOU: o relé nunca confirmou que ligou (20261020100000); BD antiga nunca o devolve
+export type MotivoFimSessao = 'TEMPO' | 'TERMINEI' | 'EMERGENCIA' | 'INTERROMPIDO' | 'NAO_ARRANCOU'
 
 export type EstadoPedidoBomba = {
   estado:              string

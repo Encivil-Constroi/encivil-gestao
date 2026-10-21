@@ -207,3 +207,143 @@ describe('empréstimos com foto', () => {
     await expect(q1(leitura, `SELECT * FROM public.registar_emprestimo_ferramenta($1, 'Rui', 'Zé')`, [ferr])).rejects.toThrow(/Autorização negada/)
   })
 })
+
+// ── Integridade do stock (20261020110000) ────────────────────────────────────
+describe('integridade: reenvio idempotente (client_id)', () => {
+  const movC = (uid, cid, qtd = 2) => q1(uid,
+    `SELECT * FROM public.registar_movimento_armazem($1, 'COMPRA', $2, 'Zé', NULL, 'Leroy', NULL, NULL, NULL, NULL, $3)`,
+    [produto, qtd, cid])
+
+  it('o mesmo client_id devolve o movimento já gravado e não mexe outra vez no stock', async () => {
+    const cid = randomUUID()
+    const a = await movC(armazem, cid)
+    const b = await movC(armazem, cid)
+    expect(b.id).toBe(a.id)
+    expect(a.client_id).toBe(cid)
+    expect(await stock()).toBe(12)
+    const { rows } = await db.query(`SELECT count(*)::int AS n FROM public.movimentos_stock WHERE client_id = $1`, [cid])
+    expect(rows[0].n).toBe(1)
+  })
+
+  it('client_id de outra pessoa é recusado (não devolve o registo alheio)', async () => {
+    const cid = randomUUID()
+    await movC(armazem, cid)
+    await expect(movC(admin, cid)).rejects.toThrow(/já foi usado/)
+    expect(await stock()).toBe(12)
+  })
+
+  it('sem client_id continua a registar sempre (chamada antiga)', async () => {
+    await mov(armazem, 'COMPRA', 1, { fornecedor: 'F' })
+    await mov(armazem, 'COMPRA', 1, { fornecedor: 'F' })
+    expect(await stock()).toBe(12)
+  })
+
+  it('índice único impede dois movimentos com o mesmo client_id', async () => {
+    const { rows } = await db.query(`SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_movimentos_client_id'`)
+    expect(rows[0].indexdef).toMatch(/UNIQUE/)
+  })
+})
+
+describe('integridade: stock_atual só por movimentos', () => {
+  it('UPDATE direto de stock_atual é recusado; os outros campos continuam editáveis', async () => {
+    for (const uid of [admin, armazem]) {
+      await expect(u(uid, tx => tx.query(`UPDATE public.produtos SET stock_atual = 999 WHERE id = $1`, [produto])))
+        .rejects.toThrow(/permission denied/)
+    }
+    await u(armazem, tx => tx.query(`UPDATE public.produtos SET nome = 'Cimento 35kg', stock_minimo = 3, custo_unitario = 6,
+      categoria = 'c', unidade = 'saco', observacoes = 'o', foto_path = NULL, localizacao = 'A1', ativo = true WHERE id = $1`, [produto]))
+    const r = (await db.query(`SELECT nome, stock_atual FROM public.produtos WHERE id = $1`, [produto])).rows[0]
+    expect(r.nome).toBe('Cimento 35kg'); expect(Number(r.stock_atual)).toBe(10)
+  })
+})
+
+describe('integridade: criar_produto com stock inicial', () => {
+  const criar = (uid, p) => q1(uid, `SELECT * FROM public.criar_produto($1::jsonb)`, [JSON.stringify(p)])
+  const movs = async id => (await db.query(`SELECT tipo, quantidade, stock_antes, stock_depois FROM public.movimentos_stock WHERE produto_id = $1`, [id])).rows
+
+  it('stock inicial 5 gera um movimento de entrada de 5 (0 → 5)', async () => {
+    const id = randomUUID()
+    const p = await criar(armazem, { id, nome: 'Areia', categoria: 'agregados', unidade: 'm3', stock_inicial: 5, stock_minimo: 2, custo_unitario: 3, localizacao: 'B2' })
+    expect(p).toMatchObject({ id, nome: 'Areia', localizacao: 'B2' })
+    expect(Number(p.stock_atual)).toBe(5)
+    const m = await movs(id)
+    expect(m).toHaveLength(1)
+    expect(m[0].tipo).toBe('entrada')
+    expect([m[0].quantidade, m[0].stock_antes, m[0].stock_depois].map(Number)).toEqual([5, 0, 5])
+  })
+
+  it('sem stock inicial não cria movimento', async () => {
+    const p = await criar(armazem, { nome: 'Tijolo', categoria: 'ceramica', unidade: 'un' })
+    expect(Number(p.stock_atual)).toBe(0)
+    expect(p.codigo).toBeTruthy()
+    expect(await movs(p.id)).toHaveLength(0)
+  })
+
+  it('stock inicial negativo recusado; leitura não cria', async () => {
+    await expect(criar(armazem, { nome: 'X', categoria: 'c', unidade: 'un', stock_inicial: -1 })).rejects.toThrow(/Stock inicial/)
+    await expect(criar(leitura, { nome: 'X', categoria: 'c', unidade: 'un' })).rejects.toThrow(/Autorização negada/)
+    await expect(anon(tx => tx.query(`SELECT public.criar_produto('{}'::jsonb)`))).rejects.toThrow(/permission denied/)
+  })
+})
+
+describe('integridade: movimentos imutáveis', () => {
+  it('UPDATE e DELETE em movimentos_stock são recusados mesmo ao dono da BD', async () => {
+    const m = await mov(armazem, 'COMPRA', 1, { fornecedor: 'F' })
+    await expect(db.query(`UPDATE public.movimentos_stock SET quantidade = 99 WHERE id = $1`, [m.id])).rejects.toThrow(/imutáve/)
+    await expect(db.query(`DELETE FROM public.movimentos_stock WHERE id = $1`, [m.id])).rejects.toThrow(/imutáve/)
+  })
+
+  it('a porta do armazém grava tudo no INSERT (fornecedor, fatura, preço, subtipo)', async () => {
+    const m = await mov(armazem, 'VENDA', 1, { cliente: 'Cli', preco: 2, fatura: 'FV 1', obs: 'x' })
+    expect(m).toMatchObject({ subtipo: 'VENDA', cliente: 'Cli', numero_fatura: 'FV 1', observacoes: 'x' })
+    expect(Number(m.preco_unitario)).toBe(2)
+  })
+})
+
+describe('integridade: devolução de obra limitada ao que lá está', () => {
+  it('não devolve mais do que o líquido enviado para a obra', async () => {
+    const o = (await db.query(`INSERT INTO public.obras (nome) VALUES ('Dev') RETURNING id`)).rows[0].id
+    await expect(mov(armazem, 'DEVOLUCAO_OBRA', 1, { obra: o })).rejects.toThrow(/Só pode devolver/)
+    await mov(armazem, 'OBRA', 4, { obra: o })
+    await mov(armazem, 'DEVOLUCAO_OBRA', 3, { obra: o })
+    await expect(mov(armazem, 'DEVOLUCAO_OBRA', 2, { obra: o })).rejects.toThrow(/Só pode devolver até 1/)
+    await mov(armazem, 'DEVOLUCAO_OBRA', 1, { obra: o })
+    expect(await stock()).toBe(10)
+  })
+
+  it('conta saídas antigas só com o nome da obra em texto (sem obra_id)', async () => {
+    const o = (await db.query(`INSERT INTO public.obras (nome) VALUES ('Legado Lisboa') RETURNING id`)).rows[0].id
+    await db.query(`INSERT INTO public.movimentos_stock (produto_id, tipo, quantidade, stock_antes, stock_depois, responsavel, destino_obra)
+      VALUES ($1, 'saida', 10, 20, 10, 'Zé', '  legado LISBOA ')`, [produto])
+    await expect(mov(armazem, 'DEVOLUCAO_OBRA', 11, { obra: o })).rejects.toThrow(/Só pode devolver até 10/)
+    await mov(armazem, 'DEVOLUCAO_OBRA', 4, { obra: o })
+    await expect(mov(armazem, 'DEVOLUCAO_OBRA', 7, { obra: o })).rejects.toThrow(/Só pode devolver até 6/)
+  })
+})
+
+describe('integridade: empréstimos de ferramentas', () => {
+  it('não pode haver dois empréstimos ativos da mesma ferramenta', async () => {
+    const ins = () => db.query(`INSERT INTO public.emprestimos_ferramentas (ferramenta_id, funcionario_nome, responsavel_entrega, estado)
+      VALUES ($1, 'Rui', 'Zé', 'ativo')`, [ferr])
+    await ins()
+    await expect(ins()).rejects.toThrow(/uq_emprestimo_ativo_ferramenta/)
+  })
+
+  it('authenticated não escreve diretamente em emprestimos_ferramentas (só pelas RPCs)', async () => {
+    await expect(u(armazem, tx => tx.query(`INSERT INTO public.emprestimos_ferramentas (ferramenta_id, funcionario_nome, responsavel_entrega)
+      VALUES ($1, 'Rui', 'Zé')`, [ferr]))).rejects.toThrow(/permission denied/)
+    await expect(u(admin, tx => tx.query(`UPDATE public.emprestimos_ferramentas SET funcionario_nome = 'X'`))).rejects.toThrow(/permission denied/)
+    const { rows } = await db.query(`SELECT privilege_type FROM information_schema.role_table_grants
+      WHERE grantee = 'authenticated' AND table_schema = 'public' AND table_name = 'emprestimos_ferramentas' ORDER BY 1`)
+    expect(rows.map(r => r.privilege_type)).toEqual(['SELECT'])
+  })
+})
+
+describe('integridade: produtos_em_alerta', () => {
+  it('devolve stock com casas decimais (numeric)', async () => {
+    await db.query(`UPDATE public.produtos SET stock_atual = 2.5, stock_minimo = 3.25 WHERE id = $1`, [produto])
+    const r = (await u(armazem, tx => tx.query(`SELECT * FROM public.produtos_em_alerta() WHERE id = $1`, [produto]))).rows[0]
+    expect(Number(r.stock_atual)).toBe(2.5)
+    expect(Number(r.stock_minimo)).toBe(3.25)
+  })
+})

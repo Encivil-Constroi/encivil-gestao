@@ -48,12 +48,15 @@ export type RegistarMovimentoArmazemInput = {
   cliente?: string | null
   precoUnitario?: number | null
   observacoes?: string | null
+  // Id gerado no dispositivo: o servidor devolve o movimento já gravado em vez de o repetir
+  clientId?: string | null
 }
 
 // Todos os argumentos vão sempre (null quando não se aplicam): o PostgREST
 // escolhe a função pelo conjunto de nomes, e assim o contrato é verificável.
 export function argsMovimentoArmazem(i: RegistarMovimentoArmazemInput) {
   return {
+    p_client_id: i.clientId ?? undefined,
     p_produto_id: i.produtoId,
     p_subtipo: i.subtipo,
     p_quantidade: i.quantidade,
@@ -67,9 +70,18 @@ export function argsMovimentoArmazem(i: RegistarMovimentoArmazemInput) {
   }
 }
 
+// BD ainda sem a migration 20261020110000 (o site publica-se antes): a função não tem p_client_id
+const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
+
 export async function registarMovimentoArmazem(input: RegistarMovimentoArmazemInput): Promise<void> {
   const { error } = await armazemDb.rpc('registar_movimento_armazem', argsMovimentoArmazem(input))
-  if (error) throw error
+  if (!error) return
+  if (input.clientId && 'code' in error && RPC_INEXISTENTE.has(error.code)) {
+    const { error: semId } = await armazemDb.rpc('registar_movimento_armazem', argsMovimentoArmazem({ ...input, clientId: null }))
+    if (semId) throw semId
+    return
+  }
+  throw error
 }
 
 export async function listarFornecedoresUsados(): Promise<string[]> {

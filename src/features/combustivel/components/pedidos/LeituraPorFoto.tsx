@@ -19,7 +19,7 @@ type Estado =
 
 export function LeituraPorFoto({
   veiculoId, pedidoId, leitura, titulo, instrucao, rotuloValor, unidade, pedirCusto = false,
-  textoConfirmar, validar, resumo, aGuardar, onConfirmar,
+  textoConfirmar, validar, resumo, aGuardar, onConfirmar, semIA = false,
 }: {
   veiculoId: string
   pedidoId: string
@@ -35,6 +35,8 @@ export function LeituraPorFoto({
   resumo?: (valor: number) => ReactNode
   aGuardar: boolean
   onConfirmar: (l: LeituraConfirmada) => Promise<void> | void
+  // Leitura só escrita (quem aprova: a leitura por IA só aceita o motorista do pedido)
+  semIA?: boolean
 }) {
   const inputId = useId()
   const ficheiroRef = useRef<HTMLInputElement>(null)
@@ -68,6 +70,11 @@ export function LeituraPorFoto({
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Não foi possível enviar a foto.')
       setEstado({ passo: 'SEM_FOTO' })
+      return
+    }
+    if (semIA) {
+      setValorTxt(''); setCustoTxt('')
+      setEstado({ passo: 'LIDO', previa: url, fotoPath, valorIA: null, custoIA: null })
       return
     }
     setEstado({ passo: 'A_LER', previa: url })
@@ -137,7 +144,8 @@ export function LeituraPorFoto({
             </p>
           ) : (
             <p className="flex items-center gap-2 text-sm text-warning font-medium">
-              <PencilLine className="w-4 h-4" aria-hidden="true" /> A IA não conseguiu ler. Escreva o valor que vê na foto.
+              <PencilLine className="w-4 h-4" aria-hidden="true" />
+              {semIA ? 'Escreva o valor que vê na foto.' : 'A IA não conseguiu ler. Escreva o valor que vê na foto.'}
             </p>
           )}
 

@@ -9,6 +9,7 @@ const MOTIVO: Record<MotivoFimSessao, string> = {
   TERMINEI:     'terminou',
   EMERGENCIA:   'corte de emergência',
   INTERROMPIDO: 'interrompida',
+  NAO_ARRANCOU: 'não arrancou',
 }
 
 function tempoDesde(seg: number) {
@@ -158,7 +159,7 @@ export function BombaPolo2Card() {
                       {s.funcionarioNome && <> · {s.funcionarioNome}</>}
                     </>}
               </span>
-              <span className={`shrink-0 tabular-nums ${s.motivoFim === 'EMERGENCIA' || s.motivoFim === 'INTERROMPIDO' ? 'text-warning' : ''}`}>
+              <span className={`shrink-0 tabular-nums ${s.motivoFim === 'EMERGENCIA' || s.motivoFim === 'INTERROMPIDO' || s.motivoFim === 'NAO_ARRANCOU' ? 'text-warning' : ''}`}>
                 {duracao(s)}
                 {s.origem === 'APP' && s.motivoFim && <> · {MOTIVO[s.motivoFim]}</>}
               </span>

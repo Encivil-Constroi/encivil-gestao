@@ -23,7 +23,6 @@ export function useFormGuard<T extends unknown[]>(
         inFlight.current = false
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fn]
   )
 }

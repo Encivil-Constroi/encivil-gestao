@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import { FileX, Plus, Filter, CheckCircle2, XCircle, Clock, Paperclip } from 'lucide-react'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useFaltas, useTiposFalta, useRegistarFalta, useAtualizarEstadoFalta } from '../hooks/useFaltas'
@@ -26,7 +27,7 @@ function NovaFaltaForm({
   onCancelar: () => void
   loading: boolean
 }) {
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = hojeLisboa()
   const [form, setForm] = useState<NovaFalta>({
     colaboradorId: '',
     dataInicio: hoje,

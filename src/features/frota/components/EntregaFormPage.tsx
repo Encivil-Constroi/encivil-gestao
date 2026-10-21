@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { KeyRound, Undo2, Search, Check } from 'lucide-react'
@@ -86,11 +86,15 @@ export function EntregaFormPage({ tipo }: { tipo: Tipo }) {
 
   // Devolução: parte do estado da entrega para só se corrigir o que mudou.
   // O combustível fica por escolher de propósito — tem de ser lido na devolução.
+  const entregaInicializadaRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!entrega) return
+    if (!entrega) { entregaInicializadaRef.current = null; return }
+    // Uma recarga da mesma entrega não apaga a edição em curso.
+    if (entregaInicializadaRef.current === entrega.id) return
+    entregaInicializadaRef.current = entrega.id
     setAdblue(entrega.adblue); setOleo(entrega.oleo); setRefrigeracao(entrega.refrigeracao)
     setPneus(entrega.pneus); setLimpeza(entrega.limpeza); setInventario(entrega.inventario ?? {})
-  }, [entrega?.id])
+  }, [entrega])
 
   const colaboradoresFiltrados = useMemo(() => {
     const q = pesquisaColab.trim().toLowerCase()

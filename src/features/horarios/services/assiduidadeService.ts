@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { dataISOLocal } from '@/app/lib/dataLisboa'
 import type { ResumoAssiduidade } from '@/app/types'
 import type { Database } from '@/integrations/supabase/types'
 
@@ -28,7 +29,7 @@ export async function listarAssiduidadeMes(
   mes: number // 1-12
 ): Promise<ResumoAssiduidade[]> {
   const dataIni = `${ano}-${String(mes).padStart(2, '0')}-01`
-  const dataFim = new Date(ano, mes, 0).toISOString().slice(0, 10) // último dia do mês
+  const dataFim = dataISOLocal(new Date(ano, mes, 0)) // último dia do mês
 
   const { data, error } = await supabase
     .from('resumo_assiduidade_dia')
@@ -47,7 +48,7 @@ export async function listarAssiduidadeEquipa(
   obraId?: string
 ): Promise<ResumoAssiduidade[]> {
   const dataIni = `${ano}-${String(mes).padStart(2, '0')}-01`
-  const dataFim = new Date(ano, mes, 0).toISOString().slice(0, 10)
+  const dataFim = dataISOLocal(new Date(ano, mes, 0))
 
   let q = supabase
     .from('resumo_assiduidade_dia')

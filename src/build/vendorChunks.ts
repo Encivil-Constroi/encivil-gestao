@@ -7,6 +7,7 @@
 // (import circular entrada ↔ vendor).
 const VENDOR_CHUNKS: ReadonlyArray<readonly [string, RegExp]> = [
   ['vendor-react', /^(react|react-dom|scheduler)$/],
+  ['vendor-utils', /^(clsx|tailwind-merge|class-variance-authority)$/],
   ['vendor-charts', /^(recharts|recharts-scale|react-smooth|victory-vendor|d3-.+|internmap|decimal\.js-light)$/],
   ['vendor-qrcode', /^qrcode\.react$/],
   ['vendor-radix', /^@radix-ui\//],

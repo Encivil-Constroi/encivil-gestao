@@ -20,11 +20,9 @@ export function useVeiculos(apenasAtivos = true) {
 /* ── Abastecimentos ────────────────────────────────────────────── */
 
 export function useAbastecimentos(filtros: FiltrosAbastecimentos = {}, enabled = true) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const key = JSON.stringify(filtros)
   const { data, loading, reload } = useAsync(
     () => listarAbastecimentos(filtros),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [key],
     { enabled, cacheKey: `abastecimentos-${key}` }
   )

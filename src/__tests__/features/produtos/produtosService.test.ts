@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { listarProdutos, criarProduto, buscarProduto } from '@/features/produtos/services/produtosService'
+import { parseSupabaseError } from '@/app/lib/parseSupabaseError'
 
 // vi.mock é hoistado — vi.hoisted() garante que o builder existe antes do hoist.
 const b = vi.hoisted(() => {
@@ -19,8 +20,10 @@ const b = vi.hoisted(() => {
   return builder
 })
 
+const rpc = vi.hoisted(() => vi.fn())
+
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { from: vi.fn().mockReturnValue(b) },
+  supabase: { from: vi.fn().mockReturnValue(b), rpc },
 }))
 
 // ── Dados de teste ────────────────────────────────────────────────────────────
@@ -118,6 +121,41 @@ describe('buscarProduto', () => {
 // ── criarProduto ──────────────────────────────────────────────────────────────
 // chain: from().insert({...}).select().single()  ← single() é o terminal
 describe('criarProduto', () => {
+  it('usa a RPC criar_produto: o stock inicial vai como movimento, não como stock_atual', async () => {
+    rpc.mockResolvedValue({ data: produtoRow, error: null })
+    const p = await criarProduto({
+      id: 'uuid-1', name: 'Cimento Portland', category: 'cimento', unit: 'saco',
+      currentStock: 50, minStock: 10, unitCost: 12.5, localizacao: 'A1',
+    })
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith('criar_produto', { p: {
+      id: 'uuid-1', nome: 'Cimento Portland', categoria: 'cimento', unidade: 'saco',
+      stock_inicial: 50, stock_minimo: 10, custo_unitario: 12.5,
+      observacoes: null, foto_path: null, localizacao: 'A1',
+    } })
+    expect(b.insert).not.toHaveBeenCalled()
+    expect(p).toMatchObject({ id: 'uuid-1', currentStock: 50 })
+  })
+
+  it('erro de negócio da RPC sobe sem cair no fluxo antigo', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'Indique o nome do artigo' } })
+    await expect(criarProduto({ name: '', category: 'outro', unit: 'unidade', currentStock: 0, minStock: 0 }))
+      .rejects.toMatchObject({ message: 'Indique o nome do artigo' })
+    expect(b.insert).not.toHaveBeenCalled()
+  })
+
+  it('dado mal escrito (22P02) vira mensagem em pt-PT e não cai no fluxo antigo', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: '22P02', message: 'invalid input syntax for type numeric: "abc"' } })
+    const e = await criarProduto({ name: 'X', category: 'outro', unit: 'unidade', currentStock: 0, minStock: 0 }).catch((x: unknown) => x)
+    expect(parseSupabaseError(e)).toBe('Dados do artigo inválidos: verifique os números e a foto.')
+    expect(b.insert).not.toHaveBeenCalled()
+  })
+})
+
+// BD antiga (migration 20261020110000 por aplicar): criar_produto não existe
+describe('criarProduto sem a RPC (fluxo antigo)', () => {
+  beforeEach(() => rpc.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function' } }))
+
   it('envia os campos corretos e retorna produto criado', async () => {
     b.single.mockResolvedValue({ data: produtoRow, error: null })
 

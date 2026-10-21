@@ -275,6 +275,10 @@ Deno.serve(async (req) => {
   })
 
   // ── Persistir linhas + actualizar fatura ────────────────────────────────────
+  // Só agora, com a extração bem-sucedida, se apagam as linhas anteriores (re-extração): uma falha antes não deixa a fatura sem linhas
+  const { error: delErr } = await admin.from('linhas_fatura').delete().eq('fatura_id', fatura_id)
+  if (delErr) return err(`Erro ao limpar linhas anteriores: ${delErr.message}`, 500)
+
   const { error: insertErr } = await admin.from('linhas_fatura').insert(linhasParaInserir)
   if (insertErr) return err(`Erro ao guardar linhas: ${insertErr.message}`, 500)
 

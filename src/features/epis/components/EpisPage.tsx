@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import { Shield, Plus, RotateCcw, ChevronDown, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useEpisColaborador, useTiposEpi } from '../hooks/useEpisColaborador'
@@ -72,7 +73,7 @@ function NovaAtribuicaoForm({ colaboradorId, onClose }: { colaboradorId: string;
   const { tipos } = useTiposEpi()
   const { atribuir, loading } = useAtribuirEpi(colaboradorId)
   const [tipoId, setTipoId] = useState('')
-  const [dataEntrega, setDataEntrega] = useState(() => new Date().toISOString().split('T')[0])
+  const [dataEntrega, setDataEntrega] = useState(() => hojeLisboa())
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -133,7 +134,7 @@ export function EpisPage() {
   const { devolver, loading: devolvendo } = useDevolverEpi(colaboradorId || undefined)
 
   async function handleDevolver(id: string) {
-    await devolver(id, new Date().toISOString().split('T')[0])
+    await devolver(id, hojeLisboa())
     reload()
   }
 

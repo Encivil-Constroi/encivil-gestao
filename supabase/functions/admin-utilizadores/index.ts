@@ -9,7 +9,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
 import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
 import { validar, type Esquema } from '../_shared/validar.ts'
-import { emailEfetivo, linkRecuperacaoApp, loginDeEmail, senhaValida, SENHA_MIN, traduzErroAuth } from './regras.ts'
+import { argsPromoverRole, emailEfetivo, linkRecuperacaoApp, loginDeEmail, senhaValida, SENHA_MIN, traduzErroAuth } from './regras.ts'
 
 const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -167,10 +167,22 @@ Deno.serve(async (req) => {
       const extra: Record<string, string> = {}
       if (typeof telemovel === 'string' && telemovel.trim()) extra.telemovel = telemovel.trim()
       if (typeof fotoPath === 'string' && fotoPath.trim())   extra.foto_path = fotoPath.trim()
-      await admin.from('profiles').update({ nome, role, ...extra }).eq('id', data.user.id)
-      // Liga a ficha de pessoal à conta recém-criada
-      if (typeof colaboradorId === 'string' && colaboradorId) {
-        await admin.from('colaboradores').update({ user_id: data.user.id }).eq('id', colaboradorId)
+      const convidadoId = data.user.id
+      const { error: pErr } = await admin.from('profiles').update({ nome, role, ...extra }).eq('id', convidadoId)
+      let falha = pErr?.message ?? null
+      // Liga a ficha de pessoal à conta recém-criada (só se ainda não tiver conta)
+      if (!falha && typeof colaboradorId === 'string' && colaboradorId) {
+        const { data: lig, error: lErr } = await admin.from('colaboradores').update({ user_id: convidadoId }).eq('id', colaboradorId).is('user_id', null).select('id')
+        falha = lErr?.message ?? (lig && lig.length > 0 ? null : 'Ficha de colaborador não encontrada ou já ligada a uma conta')
+      }
+      if (falha) {
+        // Sem perfil correto o convite ficaria com o papel por defeito do trigger — apaga-se.
+        const { error: dErr } = await admin.auth.admin.deleteUser(convidadoId)
+        if (dErr) {
+          await admin.auth.admin.updateUserById(convidadoId, { ban_duration: '87600h' })
+          return err(`Convite criado com erro e bloqueado por segurança: ${falha}. Elimine-o na gestão de utilizadores.`, 500)
+        }
+        return err(`Convite não enviado: ${falha}`, 500)
       }
     }
 
@@ -201,8 +213,8 @@ Deno.serve(async (req) => {
     const { error: pErr } = await admin.from('profiles').update({ nome: nome.trim(), role, ...extra }).eq('id', userId)
     let falha = pErr?.message ?? null
     if (!falha && typeof colaboradorId === 'string' && colaboradorId) {
-      const { data: lig, error: lErr } = await admin.from('colaboradores').update({ user_id: userId }).eq('id', colaboradorId).select('id')
-      falha = lErr?.message ?? (lig && lig.length > 0 ? null : 'Ficha de colaborador não encontrada')
+      const { data: lig, error: lErr } = await admin.from('colaboradores').update({ user_id: userId }).eq('id', colaboradorId).is('user_id', null).select('id')
+      falha = lErr?.message ?? (lig && lig.length > 0 ? null : 'Ficha de colaborador não encontrada ou já ligada a uma conta')
     }
     if (falha) {
       // Sem perfil correto a conta ficaria com o papel por defeito do trigger — apaga-se.
@@ -255,7 +267,8 @@ Deno.serve(async (req) => {
   if (action === 'alterarPapel') {
     const { userId, role } = payload as { userId: string; role: Role }
 
-    const { error: uErr } = await admin.from('profiles').update({ role }).eq('id', userId)
+    // Pelo cliente do chamador: promover_role impõe o lockout e regista o audit_log
+    const { error: uErr } = await userClient.rpc('promover_role', argsPromoverRole(userId, role))
     if (uErr) return err(uErr.message, 500)
     return ok({ sucesso: true })
   }

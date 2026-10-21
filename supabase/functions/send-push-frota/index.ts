@@ -252,8 +252,11 @@ Deno.serve(async (req) => {
   const enviados = estados.filter(s => s >= 200 && s < 300).length
   if (enviados > 0) {
     const agora = new Date().toISOString()
-    for (const a of alertas) {
-      await admin.from('alertas').update({ push_severidade: a.severidade, push_em: agora }).eq('id', a.id)
+    // Um update por severidade (em vez de um por alerta)
+    const porSeveridade = new Map<string, string[]>()
+    for (const a of alertas) porSeveridade.set(a.severidade, [...(porSeveridade.get(a.severidade) ?? []), a.id])
+    for (const [severidade, idsAlertas] of porSeveridade) {
+      await admin.from('alertas').update({ push_severidade: severidade, push_em: agora }).in('id', idsAlertas)
     }
   }
   console.log(`[send-push-frota] alertas=${alertas.length} subscrições=${subs.length} enviados=${enviados} expiradas=${expiradas.length}`)

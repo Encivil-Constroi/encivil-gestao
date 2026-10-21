@@ -6,6 +6,7 @@ import {
   registarDevolucao,
   LOANS_PAGE_SIZE,
 } from '@/features/ferramentas/services/emprestimosService'
+import { parseSupabaseError } from '@/app/lib/parseSupabaseError'
 import type { LoanStatus, ReturnCondition } from '@/app/types'
 
 // ── Mock do cliente Supabase ──────────────────────────────────────────────────
@@ -204,6 +205,16 @@ describe('registarEmprestimo', () => {
       })
     ).rejects.toMatchObject({ message: 'ferramenta já emprestada' })
     expect(b.single).not.toHaveBeenCalled()
+  })
+
+  it('índice de empréstimo ativo único (23505) vira mensagem em pt-PT', async () => {
+    rpc.mockResolvedValue({ data: null, error: {
+      code: '23505', message: 'duplicate key value violates unique constraint "uq_emprestimo_ativo_ferramenta"' } })
+    const e = await registarEmprestimo({
+      toolId: 'tool-1', employeeName: 'X', deliveredBy: 'Y',
+      signature: 's1', responsibleSignature: 's2', fotoEntregaPath: 'f.jpg',
+    }).catch((x: unknown) => x)
+    expect(parseSupabaseError(e)).toBe('Esta ferramenta já tem um empréstimo ativo.')
   })
 })
 

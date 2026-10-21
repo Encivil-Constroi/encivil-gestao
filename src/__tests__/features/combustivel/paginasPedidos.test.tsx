@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, within, act } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router'
 import type { ContextoRow, PedidoRow } from '@/features/combustivel/db'
 
@@ -11,7 +11,11 @@ const m = vi.hoisted(() => ({
   pedidos: [] as PedidoRow[],
   filtros: [] as unknown[],
   contexto: null as ContextoRow | null,
-  estadoBomba: null as null | { sessaoAtiva: boolean; bombaOcupada: boolean; bloqueioMotivo: string | null },
+  estadoBomba: null as null | {
+    sessaoAtiva: boolean; bombaOcupada: boolean; bloqueioMotivo: string | null
+    desligadaConfirmada?: boolean; motivoFim?: string | null; pumpActivatedAt?: string | null
+  },
+  bombaGeral: null as null | { online: boolean; segundosSemContacto: number | null },
   autorizar: vi.fn(async (_id: string) => true),
   recusar: vi.fn(async (_id: string, _m: string | null) => true),
   cancelar: vi.fn(async (_id: string) => true),
@@ -50,7 +54,7 @@ vi.mock('@/features/combustivel/hooks/usePedidos', () => ({
 }))
 vi.mock('@/features/combustivel/hooks/useBombaPolo2', () => ({
   useEstadoPedidoBomba: () => m.estadoBomba,
-  useEstadoBomba: () => ({ estado: null, loading: false, error: null }),
+  useEstadoBomba: () => ({ estado: m.bombaGeral, loading: false, error: null }),
   usePararBomba: () => ({ parar: vi.fn(), loading: false, error: null }),
 }))
 vi.mock('@/features/combustivel/services/fotosService', () => ({
@@ -102,7 +106,7 @@ function abrir(caminho: string) {
 
 beforeEach(() => {
   m.uid = 'motorista-1'; m.papel = 'motorista'; m.podeAprovar = false
-  m.pedido = pedido(); m.pedidos = []; m.filtros = []; m.estadoBomba = null
+  m.pedido = pedido(); m.pedidos = []; m.filtros = []; m.estadoBomba = null; m.bombaGeral = null
   m.contexto = { nome: 'Zé Gaitas', colaborador_id: 'c1', veiculo_id: 'v1', veiculo_nome: 'Ford Transit', veiculo_identificacao: '50-AA-50',
     tipo_combustivel: 'gasoleo', km_atual: 10000, pedido_aberto_id: null, pode_aprovar: false }
   for (const f of [m.autorizar, m.recusar, m.cancelar, m.ligar, m.registar, m.concluir, m.criar]) f.mockClear()
@@ -160,6 +164,13 @@ describe('ecrã do pedido — motorista', () => {
     expect(screen.getByText(/Liga assim que ficar livre/)).toBeInTheDocument()
   })
 
+  it('o motorista dono (mesmo sendo aprovador) não vê "Concluir pelo motorista"', () => {
+    m.podeAprovar = true
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 900_000).toISOString() })
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.queryByText('Concluir pelo motorista')).not.toBeInTheDocument()
+  })
+
   it('a abastecer: contagem e botão Terminei', () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 1000, pump_activated_at: new Date().toISOString() })
     m.estadoBomba = { sessaoAtiva: true, bombaOcupada: false, bloqueioMotivo: null }
@@ -169,7 +180,7 @@ describe('ecrã do pedido — motorista', () => {
 
   it('bomba parada: foto final, litros pela diferença com custo estimado, concluir', async () => {
     m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 700_000).toISOString() })
-    m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null }
+    m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null, desligadaConfirmada: true, motivoFim: 'TERMINEI' }
     abrir('/abastecimento/pedido/p1')
     expect(screen.getByText('4. Foto do contador no fim')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('4. Foto do contador no fim'), {
@@ -179,6 +190,57 @@ describe('ecrã do pedido — motorista', () => {
     expect(screen.getByText(/750,00/)).toBeInTheDocument()            // 500 L × 1,50 €
     fireEvent.click(screen.getByRole('button', { name: 'Concluir abastecimento' }))
     await waitFor(() => expect(m.concluir).toHaveBeenCalledWith('p1', expect.objectContaining({ leituraFinal: 10500, litros: null, origem: 'IA' })))
+  })
+
+  it('sessão terminada sem o Shelly confirmar o relé desligado: aguarda, sem foto final', () => {
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 60_000).toISOString() })
+    m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null, desligadaConfirmada: false, motivoFim: 'TERMINEI' }
+    m.bombaGeral = { online: true, segundosSemContacto: 3 }
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.getByText(/A aguardar que a bomba desligue/)).toBeInTheDocument()
+    expect(screen.queryByText('4. Foto do contador no fim')).not.toBeInTheDocument()
+  })
+
+  it('sem confirmação ao fim de 60 s nesta fase: mostra a leitura final na mesma (decide o servidor)', () => {
+    vi.useFakeTimers()
+    try {
+      m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 60_000).toISOString() })
+      m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null, desligadaConfirmada: false, motivoFim: 'TERMINEI' }
+      m.bombaGeral = { online: true, segundosSemContacto: 3 }
+      abrir('/abastecimento/pedido/p1')
+      act(() => { vi.advanceTimersByTime(30_000) })
+      expect(screen.getByText(/A aguardar que a bomba desligue/)).toBeInTheDocument()
+      act(() => { vi.advanceTimersByTime(31_000) })
+      expect(screen.queryByText(/A aguardar que a bomba desligue/)).not.toBeInTheDocument()
+      expect(screen.getByText('4. Foto do contador no fim')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('Shelly sem contacto há mais de 30 s: deixa fazer a leitura final (o servidor aceita)', () => {
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 60_000).toISOString() })
+    m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null, desligadaConfirmada: false, motivoFim: 'TERMINEI' }
+    m.bombaGeral = { online: false, segundosSemContacto: 45 }
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.getByText('4. Foto do contador no fim')).toBeInTheDocument()
+  })
+
+  it('estado da bomba ainda desconhecido (BD antiga ou sem resposta): não bloqueia a leitura final', () => {
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 700_000).toISOString() })
+    m.estadoBomba = null
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.getByText('4. Foto do contador no fim')).toBeInTheDocument()
+  })
+
+  it('a bomba não arrancou: volta a LIGAR BOMBA com o aviso, mesmo com o pedido ainda por atualizar', async () => {
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 1000, pump_activated_at: new Date(Date.now() - 20_000).toISOString() })
+    m.estadoBomba = { sessaoAtiva: false, bombaOcupada: false, bloqueioMotivo: null, desligadaConfirmada: true,
+      motivoFim: 'NAO_ARRANCOU', pumpActivatedAt: null }
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.getByText(/A bomba não arrancou/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /LIGAR BOMBA/ }))
+    await waitFor(() => expect(m.ligar).toHaveBeenCalledWith('p1'))
   })
 
   it('concluído: litros e custo', () => {
@@ -212,6 +274,30 @@ describe('ecrã do pedido — quem aprova', () => {
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Km incorretos' }))
     fireEvent.click(within(dialogo).getByRole('button', { name: /^Recusar$/ }))
     await waitFor(() => expect(m.recusar).toHaveBeenCalledWith('p1', 'Km incorretos'))
+  })
+
+  it('pedido já fornecido e o motorista não voltou: conclui pelo motorista (leitura escrita + foto, sem IA)', async () => {
+    const fotos = await import('@/features/combustivel/services/fotosService')
+    vi.mocked(fotos.lerFotoComIA).mockClear()
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000, pump_activated_at: new Date(Date.now() - 900_000).toISOString() })
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.getByText('Concluir pelo motorista')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Foto do contador no fim'), {
+      target: { files: [new File(['x'], 'f.jpg', { type: 'image/jpeg', lastModified: Date.now() })] },
+    })
+    const campo = await screen.findByLabelText(/Leitura final do contador/)
+    expect(fotos.lerFotoComIA).not.toHaveBeenCalled()
+    fireEvent.change(campo, { target: { value: '10 042,5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registar abastecimento' }))
+    await waitFor(() => expect(m.concluir).toHaveBeenCalledWith('p1', expect.objectContaining({
+      leituraFinal: 10042.5, litros: null, custo: null, origem: 'MANUAL', fotoPath: 'v1/2026-09-30_p_1.jpg',
+    })))
+  })
+
+  it('pedido ainda sem bomba ligada: sem o cartão "Concluir pelo motorista"', () => {
+    m.pedido = pedido({ estado: 'AUTORIZADO', contador_inicial: 10000 })
+    abrir('/abastecimento/pedido/p1')
+    expect(screen.queryByText('Concluir pelo motorista')).not.toBeInTheDocument()
   })
 
   it('sem permissão de aprovar (gestor): só vê, sem botões', () => {

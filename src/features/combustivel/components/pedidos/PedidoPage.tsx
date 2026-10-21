@@ -13,13 +13,15 @@ import {
 import {
   useCancelarAutorizacaoBomba, useCancelarPedido, useConcluirPedido, useContadorInicial, useLigarBomba, usePedido, usePodeAprovar, usePrecos,
 } from '../../hooks/usePedidos'
-import { useEstadoPedidoBomba } from '../../hooks/useBombaPolo2'
+import { useEstadoBomba, useEstadoPedidoBomba } from '../../hooks/useBombaPolo2'
 import { urlFotoCombustivel } from '../../services/fotosService'
 import { BombaAtiva } from '../BombaAtiva'
 import { AcoesAprovador } from './AcoesAprovador'
 import { AtivarNotificacoes } from './AtivarNotificacoes'
 import { LeituraPorFoto } from './LeituraPorFoto'
 import { Aviso, BadgeEspera, BadgeEstado, Cabecalho, Cartao, botaoSecundario } from './ui'
+
+const ESPERA_DESLIGAR_MS = 60_000
 
 function useAgora(ms = 1_000) {
   const [agora, setAgora] = useState(() => Date.now())
@@ -65,6 +67,9 @@ export function PedidoPage() {
           <AcoesAprovador pedido={pedido} />
         </Cartao>
       )}
+      {podeAprovar && !souDono && pedido.estado === 'AUTORIZADO' && pedido.tipo_fonte === 'POLO2' && pedido.pump_activated_at && (
+        <ConcluirPeloMotorista pedido={pedido} />
+      )}
       {/* O aprovador que pede para si próprio também decide (ex.: o CEO a abastecer) */}
       {podeAprovar && souDono && pedido.estado === 'AGUARDA_AUTORIZACAO' && (
         <Cartao><AcoesAprovador pedido={pedido} /></Cartao>
@@ -76,11 +81,27 @@ export function PedidoPage() {
 }
 
 // ── Execução (só o motorista que pediu) ──────────────────────────────────────
-function Execucao({ pedido }: { pedido: PedidoRow }) {
+function Execucao({ pedido: pedidoLido }: { pedido: PedidoRow }) {
   const agora = useAgora()
-  const polo2Autorizado = pedido.tipo_fonte === 'POLO2' && pedido.estado === 'AUTORIZADO'
-  const estadoBomba = useEstadoPedidoBomba(pedido.id, polo2Autorizado)
+  const polo2Autorizado = pedidoLido.tipo_fonte === 'POLO2' && pedidoLido.estado === 'AUTORIZADO'
+  const estadoBomba = useEstadoPedidoBomba(pedidoLido.id, polo2Autorizado)
+  // O servidor devolveu o pedido a "Ligar bomba" (NAO_ARRANCOU, 20261020100000): o estado da bomba
+  // é lido mais vezes do que o pedido, por isso manda até o pedido ser relido
+  const naoArrancou = estadoBomba?.motivoFim === 'NAO_ARRANCOU' && !estadoBomba.sessaoAtiva && !estadoBomba.pumpActivatedAt
+  const pedido = naoArrancou ? { ...pedidoLido, pump_activated_at: null } : pedidoLido
   const fase = fasePedido(pedido, estadoBomba ? estadoBomba.sessaoAtiva : null, agora)
+  // Leitura final só com o relé confirmado desligado; Shelly sem contacto (> 30 s) não bloqueia
+  // (o dead-man do aparelho já cortou e o servidor aceita). Estado desconhecido: decide o servidor.
+  const { estado: bombaGeral } = useEstadoBomba(fase === 'CONTADOR_FINAL')
+  const shellySemContacto = bombaGeral != null && (bombaGeral.segundosSemContacto == null || bombaGeral.segundosSemContacto > 30)
+  const semConfirmacao = fase === 'CONTADOR_FINAL' && estadoBomba != null && !estadoBomba.desligadaConfirmada && !shellySemContacto
+  // Teto de 60 s: com a BD antiga a confirmação pode não chegar enquanto outro motorista abastece
+  const [semConfirmacaoDesde, setSemConfirmacaoDesde] = useState<number | null>(null)
+  useEffect(() => {
+    if (semConfirmacao && semConfirmacaoDesde === null) setSemConfirmacaoDesde(Date.now())
+    else if (!semConfirmacao && semConfirmacaoDesde !== null) setSemConfirmacaoDesde(null)
+  }, [semConfirmacao, semConfirmacaoDesde])
+  const aguardaDesligar = semConfirmacao && (semConfirmacaoDesde === null || agora - semConfirmacaoDesde < ESPERA_DESLIGAR_MS)
 
   const { cancelar, loading: aCancelar } = useCancelarPedido()
   const { registar, loading: aRegistar, error: erroRegisto } = useContadorInicial()
@@ -177,7 +198,9 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
           <p className="text-xs text-muted-foreground text-center">
             A bomba fica ligada no máximo {BOMBA_MAX_SEGUNDOS / 60} minutos. Quando acabar, carregue em “Terminei”.
           </p>
-          {pedido.bomba_ligada_em && (
+          {naoArrancou ? (
+            <Aviso tipo="alerta">A bomba não arrancou. Confirme que o quadro está ligado e carregue outra vez.</Aviso>
+          ) : pedido.bomba_ligada_em && (
             <Aviso tipo="alerta">A bomba não chegou a ligar. Confirme que o quadro está ligado e carregue outra vez.</Aviso>
           )}
           {erroLigar && <Aviso tipo="erro">{erroLigar}</Aviso>}
@@ -226,7 +249,9 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
         <Cartao className="border-primary/40">
           <Passos atual={4} />
           <BombaAtiva ativadaEm={pedido.pump_activated_at!} maxSegundos={pedido.pump_max_seconds ?? BOMBA_MAX_SEGUNDOS} pedidoId={pedido.id} />
-          <LeituraPorFoto
+          {aguardaDesligar ? (
+            <Aviso>A aguardar que a bomba desligue. A foto do contador final fica disponível logo a seguir.</Aviso>
+          ) : <LeituraPorFoto
             veiculoId={pedido.veiculo_id} pedidoId={pedido.id} leitura="CONTADOR"
             titulo="4. Foto do contador no fim"
             instrucao={`Fotografe outra vez o contador da bomba. Leitura inicial: ${formatarNumero(inicial)}.`}
@@ -251,7 +276,7 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
               const ok = await concluir(pedido.id, { leituraFinal: l.valor, litros: null, custo: null, fotoPath: l.fotoPath, origem: l.origem })
               if (ok) toast.success('Abastecimento registado.')
             }}
-          />
+          />}
           {erroConcluir && <Aviso tipo="erro">{erroConcluir}</Aviso>}
         </Cartao>
       )
@@ -280,6 +305,36 @@ function Execucao({ pedido }: { pedido: PedidoRow }) {
       )
     }
   }
+}
+
+// ── Quem aprova fecha o pedido já fornecido (o motorista não voltou) ─────────
+// Leitura escrita: a leitura por IA só aceita o motorista do pedido. O servidor
+// recusa enquanto a bomba estiver ligada (20261020100000).
+function ConcluirPeloMotorista({ pedido }: { pedido: PedidoRow }) {
+  const { concluir, loading, error } = useConcluirPedido()
+  const inicial = pedido.contador_inicial ?? 0
+  return (
+    <Cartao>
+      <p className="text-sm font-semibold">Concluir pelo motorista</p>
+      <p className="text-sm text-muted-foreground">
+        A bomba já forneceu combustível. Se o motorista não concluiu, registe aqui a leitura final do contador com a foto.
+      </p>
+      <LeituraPorFoto
+        veiculoId={pedido.veiculo_id} pedidoId={pedido.id} leitura="CONTADOR" semIA
+        titulo="Foto do contador no fim"
+        instrucao={`Fotografe o contador da bomba. Leitura inicial: ${formatarNumero(inicial)}.`}
+        rotuloValor="Leitura final do contador" unidade="L"
+        textoConfirmar="Registar abastecimento"
+        validar={v => { const r = litrosPorDiferenca(inicial, v); return r && 'erro' in r ? r.erro : null }}
+        aGuardar={loading}
+        onConfirmar={async l => {
+          const ok = await concluir(pedido.id, { leituraFinal: l.valor, litros: null, custo: null, fotoPath: l.fotoPath, origem: l.origem })
+          if (ok) toast.success('Abastecimento registado em nome do motorista.')
+        }}
+      />
+      {error && <Aviso tipo="erro">{error}</Aviso>}
+    </Cartao>
+  )
 }
 
 const PASSOS = ['Contador antes', 'Ligar bomba', 'Abastecer', 'Contador depois']

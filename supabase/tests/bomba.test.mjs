@@ -27,13 +27,13 @@ const servico = fn => como(db, { papel: 'service_role' }, fn)
 // aqui só interessa a bomba, por isso o pedido entra direto em nome do motorista
 const donoDe = id => db.query('SELECT solicitante_id AS uid FROM public.comb_abastecimentos_pendentes WHERE id = $1', [id])
   .then(r => r.rows[0].uid)
-async function pedir(nome = 'João') {
+async function pedir(nome = 'João', veiculo = viatura) {
   const id = randomUUID()
   await db.query(
     `INSERT INTO public.comb_abastecimentos_pendentes
        (id, veiculo_id, veiculo_nome, funcionario_nome, data, tipo_fonte, estado, solicitante_id, tipo_combustivel)
      VALUES ($1, $2, 'Carrinha 1', $3, CURRENT_DATE, 'POLO2', 'AGUARDA_AUTORIZACAO', $4, 'gasoleo')`,
-    [id, viatura, nome, nome === 'Rui' ? rui : joao])
+    [id, veiculo, nome, nome === 'Rui' ? rui : joao])
   return id
 }
 const decidir = id => comoAdmin(tx => tx.query('SELECT public.autorizar_abastecimento($1)', [id]))
@@ -58,6 +58,11 @@ async function concluir(id, leituraFinal) {
 const sessoes  = async () => (await db.query('SELECT * FROM public.pump_sessoes ORDER BY inicio_em, id')).rows
 const estadoPedido = async id =>
   (await comoMotorista(await donoDe(id), tx => tx.query('SELECT * FROM public.get_pend_estado_bomba($1)', [id]))).rows[0]
+// O Shelly deixa de comunicar: o último contacto fica com `seg` segundos
+const heartbeatAntigo = seg =>
+  db.query(`UPDATE public.pump_heartbeat SET last_seen_at = now() - make_interval(secs => $1)`, [seg])
+const cancelar = (uid, id) => comoMotorista(uid, tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [id]))
+const pedidoRow = async id => (await db.query('SELECT * FROM public.comb_abastecimentos_pendentes WHERE id = $1', [id])).rows[0]
 // Recua o início da sessão aberta (simula o tempo a passar)
 const passarTempo = seg =>
   db.query(`UPDATE public.pump_sessoes SET inicio_em = inicio_em - make_interval(secs => $1) WHERE fim_em IS NULL`, [seg])
@@ -106,6 +111,7 @@ describe('fluxo normal', () => {
   it('relé desliga no fim do tempo → sessão fecha como TEMPO', async () => {
     await autorizar(await pedir())
     await poll(false)
+    await poll(true)
     await passarTempo(600)
     expect(await poll(false)).toEqual({ status: 'idle' })
     const [s] = await sessoes()
@@ -116,6 +122,7 @@ describe('fluxo normal', () => {
   it('relé desliga muito antes do tempo → INTERROMPIDO', async () => {
     await autorizar(await pedir())
     await poll(false)
+    await poll(true)
     await passarTempo(60)
     await poll(false)
     expect((await sessoes())[0].motivo_fim).toBe('INTERROMPIDO')
@@ -235,6 +242,7 @@ describe('confirmação de paragem (página do motorista)', () => {
   it('fim por tempo: confirma no próprio poll que vê o relé desligado', async () => {
     const p = await pedir(); await autorizar(p)
     await poll(false)
+    await poll(true)
     await passarTempo(600)
     await poll(false)
     expect(await estadoPedido(p)).toMatchObject({ sessao_ativa: false, motivo_fim: 'TEMPO', desligada_confirmada: true })
@@ -243,6 +251,7 @@ describe('confirmação de paragem (página do motorista)', () => {
   it('relé desligado antes do tempo: confirma no mesmo poll (fim = hora do poll)', async () => {
     const p = await pedir(); await autorizar(p)
     await poll(false)
+    await poll(true)
     await passarTempo(30)
     await poll(false)
     expect(await estadoPedido(p)).toMatchObject({ motivo_fim: 'INTERROMPIDO', desligada_confirmada: true })
@@ -339,6 +348,7 @@ describe('paragem', () => {
     const p1 = await pedir('João'); await autorizar(p1)
     const p2 = await pedir('Rui');  await autorizar(p2)
     await poll(false)
+    await poll(true)
     await passarTempo(600)
     await poll(false) // fecha p1, liga p2
 
@@ -387,9 +397,11 @@ describe('paragem', () => {
     await expect(comoMotorista(joao, tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [p]))).rejects.toThrow(/A bomba já ligou/)
   })
 
-  it('concluir com a bomba a trabalhar desliga-a', async () => {
+  it('Shelly sem contacto (> 30 s) com a sessão aberta: concluir é aceite e manda desligar', async () => {
     const p = await pedir(); await autorizar(p)
     await poll(false)
+    await poll(true)
+    await heartbeatAntigo(40)
     await concluir(p, 1042.5)
     expect(await poll(true)).toEqual({ status: 'stop' })
     expect((await sessoes())[0].motivo_fim).toBe('TERMINEI')
@@ -400,7 +412,9 @@ describe('conclusão', () => {
   it('litros = diferença das leituras; a sessão fica ligada ao abastecimento; o pedido fica CONCLUIDO', async () => {
     const p = await pedir(); await autorizar(p)
     await poll(false)
+    await poll(true)
     await terminei(p); await poll(true)
+    await poll(false) // o Shelly confirma o relé desligado
     const id = await concluir(p, 1042.5)
 
     const { rows: [a] } = await db.query('SELECT * FROM public.comb_abastecimentos')
@@ -460,6 +474,276 @@ describe('registos antigos (aguardam aprovação final)', () => {
       await expect(quem(tx => tx.query('SELECT public.rejeitar_abastecimento($1)', [p]))).rejects.toThrow(/Só quem aprova/)
       await expect(quem(tx => tx.query('SELECT public.aprovar_abastecimento_pendente($1)', [p]))).rejects.toThrow(/Só quem aprova/)
     }
+  })
+})
+
+// ── Fiabilidade (20261020100000) ──────────────────────────────────────────────
+describe('STOP perdido: o relé continua a receber stop', () => {
+  it('"Terminei" → poll(on) = stop → o Shelly perde a resposta → poll(on) continua stop, sem sessão MANUAL', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await terminei(p)
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    const lista = await sessoes()
+    expect(lista).toHaveLength(1)
+    expect(lista[0]).toMatchObject({ origem: 'APP', motivo_fim: 'TERMINEI' })
+    // O relé desliga por fim: confirma e não liga nada
+    expect(await poll(false)).toEqual({ status: 'idle' })
+    expect((await estadoPedido(p)).desligada_confirmada).toBe(true)
+  })
+
+  it('corte de emergência perdido: continua stop', async () => {
+    await autorizar(await pedir())
+    await poll(false); await poll(true)
+    await comoGestor(tx => tx.query('SELECT public.parar_bomba()'))
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await sessoes()).toHaveLength(1)
+  })
+
+  it('pedido cancelado pelo aprovador com a bomba a trabalhar: continua stop', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await comoAdmin(tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [p]))
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await sessoes()).toHaveLength(1)
+  })
+
+  it('relé ligado depois do fim por TEMPO (< 15 min) recebe stop', async () => {
+    await autorizar(await pedir())
+    await poll(false); await poll(true)
+    await passarTempo(600)
+    await poll(false)
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await sessoes()).toHaveLength(1)
+  })
+
+  it('passados 15 min, relé ligado à mão volta a ser uso MANUAL', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await terminei(p)
+    await poll(true)
+    await db.query(`UPDATE public.pump_sessoes SET fim_em = fim_em - interval '16 minutes', inicio_em = inicio_em - interval '16 minutes'`)
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    expect((await sessoes())[1]).toMatchObject({ origem: 'MANUAL', fim_em: null })
+  })
+
+  it('depois de INTERROMPIDO (relé desligado no quadro) o uso manual continua a ser registado', async () => {
+    await autorizar(await pedir())
+    await poll(false); await poll(true)
+    await passarTempo(60)
+    await poll(false)
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    expect((await sessoes())[1]).toMatchObject({ origem: 'MANUAL' })
+  })
+})
+
+describe('confirmação de arranque (relay_confirmado_em)', () => {
+  it('fica gravada no 1.º poll com o relé ligado', async () => {
+    await autorizar(await pedir())
+    await poll(false)
+    expect((await sessoes())[0].relay_confirmado_em).toBeNull()
+    await poll(true)
+    const c = (await sessoes())[0].relay_confirmado_em
+    expect(c).not.toBeNull()
+    await poll(true)
+    expect((await sessoes())[0].relay_confirmado_em).toEqual(c)
+  })
+
+  it('o relé nunca ligou: NAO_ARRANCOU, o pedido volta a "Ligar bomba" e não se pode concluir', async () => {
+    const p = await pedir(); await autorizar(p)
+    expect(await poll(false)).toMatchObject({ status: 'authorized' })
+    await passarTempo(15)
+    expect(await poll(false)).toEqual({ status: 'idle' })
+
+    const [s] = await sessoes()
+    expect(s).toMatchObject({ motivo_fim: 'NAO_ARRANCOU', relay_confirmado_em: null })
+    expect(s.fim_em).not.toBeNull()
+    expect(await pedidoRow(p)).toMatchObject({
+      estado: 'AUTORIZADO', pump_activated_at: null, pump_auth_token: null, bomba_ligada_em: null,
+    })
+    expect(await estadoPedido(p)).toMatchObject({ motivo_fim: 'NAO_ARRANCOU', sessao_ativa: false })
+
+    await expect(concluir(p, 1042.5)).rejects.toThrow(/não chegou a ligar/)
+    await comoMotorista(joao, tx => tx.query('SELECT public.ligar_bomba($1)', [p]))
+    expect(await poll(false)).toMatchObject({ status: 'authorized' })
+    expect(await sessoes()).toHaveLength(2)
+  })
+
+  it('margem de 12 s: um poll com o relé ainda desligado logo a seguir à autorização não fecha a sessão', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    expect(await poll(false)).toEqual({ status: 'idle' })
+    expect((await sessoes())[0].fim_em).toBeNull()
+    expect(await poll(true)).toEqual({ status: 'idle' })
+    expect((await pedidoRow(p)).pump_activated_at).not.toBeNull()
+  })
+
+  it('"Terminei" antes de o relé arrancar: NAO_ARRANCOU', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await terminei(p)
+    expect(await poll(false)).toEqual({ status: 'stop' })
+    expect((await sessoes())[0].motivo_fim).toBe('NAO_ARRANCOU')
+    expect((await pedidoRow(p)).pump_activated_at).toBeNull()
+  })
+
+  it('relé desconhecido (sem on=) não é tomado como "não arrancou"', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await passarTempo(600)
+    await poll(null)
+    expect((await sessoes())[0].motivo_fim).toBe('TEMPO')
+    expect((await pedidoRow(p)).pump_activated_at).not.toBeNull()
+  })
+
+  it('o relé ligado tarde depois de NAO_ARRANCOU recebe stop', async () => {
+    await autorizar(await pedir())
+    await poll(false)
+    await passarTempo(15)
+    await poll(false)
+    expect(await poll(true)).toEqual({ status: 'stop' })
+    expect(await sessoes()).toHaveLength(1)
+  })
+
+  it('sessões antigas fechadas sem confirmação não são reabertas nem alteram pedidos', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await terminei(p); await poll(true); await poll(false)
+    await db.query(`UPDATE public.pump_sessoes SET relay_confirmado_em = NULL`)
+    await poll(false)
+    expect((await sessoes())[0].motivo_fim).toBe('TERMINEI')
+    expect((await pedidoRow(p)).pump_activated_at).not.toBeNull()
+  })
+})
+
+describe('concluir só com a bomba desligada', () => {
+  it('relé ligado (heartbeat < 30 s) depois do "Terminei": recusa até o Shelly confirmar', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await terminei(p)
+    await poll(true) // stop entregue, mas o relé ainda reportado ligado
+    await expect(concluir(p, 1042.5)).rejects.toThrow(/aguarde que desligue/)
+    await poll(false)
+    await concluir(p, 1042.5)
+  })
+
+  it('sessão ainda aberta com o relé ligado: recusa', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await expect(concluir(p, 1042.5)).rejects.toThrow(/aguarde que desligue/)
+  })
+
+  it('sessão aberta sem confirmação de arranque: recusa', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await expect(concluir(p, 1042.5)).rejects.toThrow(/ainda não confirmou que arrancou/)
+  })
+
+  it('a bomba ligada para o motorista seguinte não impede o anterior de concluir', async () => {
+    const p1 = await pedir('João'); await autorizar(p1)
+    const p2 = await pedir('Rui');  await autorizar(p2)
+    await poll(false); await poll(true)
+    await terminei(p1); await poll(true)
+    await poll(false)            // p1 confirmado desligado, liga p2
+    await poll(true)             // p2 a abastecer
+    await concluir(p1, 1042.5)
+    expect((await estadoPedido(p1)).desligada_confirmada).toBe(true)
+  })
+})
+
+describe('cancelar depois de a bomba fornecer', () => {
+  it('relé confirmado: nem o motorista nem o aprovador cancelam', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    const msg = /A bomba já forneceu combustível: conclua o pedido com a leitura final \(o motorista ou quem aprova\)\./
+    await expect(cancelar(joao, p)).rejects.toThrow(msg)
+    await expect(comoAdmin(tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [p]))).rejects.toThrow(msg)
+  })
+
+  it('sem confirmação de arranque o aprovador ainda cancela (e a bomba recebe stop)', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await comoAdmin(tx => tx.query('SELECT public.cancelar_pedido_abastecimento($1)', [p]))
+    expect((await pedidoRow(p)).estado).toBe('CANCELADO')
+    expect(await poll(false)).toEqual({ status: 'stop' })
+  })
+})
+
+describe('quem aprova conclui em nome do motorista', () => {
+  // Foto enviada pelo próprio utilizador (política de upload do storage aplica-se)
+  async function concluirComo(uid, id, leituraFinal) {
+    const foto = `${viatura}/${new Date().toISOString().slice(0, 10)}_${id}_${Date.now()}.jpg`
+    await comoMotorista(uid, tx => tx.query("INSERT INTO storage.objects (bucket_id, name) VALUES ('combustivel-taloes', $1)", [foto]))
+    const { rows } = await comoMotorista(uid, tx => tx.query(
+      `SELECT public.concluir_pedido_abastecimento($1, $2, NULL, NULL, $3, 'MANUAL') AS id`, [id, leituraFinal, foto]))
+    return rows[0].id
+  }
+  async function fornecidoEDesligado() {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await terminei(p); await poll(true); await poll(false)
+    return p
+  }
+
+  it('o aprovador conclui um pedido já fornecido: fica registado quem fechou, o abastecimento é do motorista', async () => {
+    const p = await fornecidoEDesligado()
+    const id = await concluirComo(admin, p, 1042.5)
+    expect(await pedidoRow(p)).toMatchObject({ estado: 'CONCLUIDO', concluido_por: admin, abastecimento_id: id })
+    const { rows: [a] } = await db.query('SELECT * FROM public.comb_abastecimentos WHERE id = $1', [id])
+    expect(a).toMatchObject({ solicitante_id: joao, responsavel: 'João' })
+    expect(Number(a.litros)).toBe(42.5)
+  })
+
+  it('o motorista que conclui fica como quem fechou', async () => {
+    const p = await fornecidoEDesligado()
+    await concluir(p, 1010)
+    expect((await pedidoRow(p)).concluido_por).toBe(joao)
+  })
+
+  it('quem não é o motorista nem aprova não conclui (gestor, outro motorista)', async () => {
+    const p = await fornecidoEDesligado()
+    await expect(concluirComo(gestor, p, 1042.5)).rejects.toThrow()
+    const foto = `${viatura}/${new Date().toISOString().slice(0, 10)}_${p}_${Date.now()}.jpg`
+    await db.query("INSERT INTO storage.objects (bucket_id, name) VALUES ('combustivel-taloes', $1)", [foto])
+    for (const uid of [gestor, rui]) {
+      await expect(comoMotorista(uid, tx => tx.query(
+        `SELECT public.concluir_pedido_abastecimento($1, 1042.5, NULL, NULL, $2, 'MANUAL')`, [p, foto]))).rejects.toThrow(/Pedido não encontrado/)
+    }
+  })
+
+  it('o aprovador também não conclui com o relé ligado', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false); await poll(true)
+    await expect(concluirComo(admin, p, 1042.5)).rejects.toThrow(/aguarde que desligue/)
+  })
+})
+
+describe('Shelly sem contacto não prende a conclusão', () => {
+  it('sessão aberta sem confirmação de arranque e heartbeat > 30 s: aceita e manda desligar', async () => {
+    const p = await pedir(); await autorizar(p)
+    await poll(false)
+    await heartbeatAntigo(40)
+    await concluir(p, 1010)
+    expect((await pedidoRow(p)).estado).toBe('CONCLUIDO')
+    const { rows } = await db.query(`SELECT 1 FROM public.pump_comandos WHERE pedido_id = $1 AND consumido_em IS NULL`, [p])
+    expect(rows).toHaveLength(1)
+  })
+})
+
+describe('tempo de bomba da viatura', () => {
+  it('"Ligar bomba" usa o tempo da viatura quando é maior que 10 min', async () => {
+    const { rows } = await db.query(`INSERT INTO public.comb_veiculos (nome, pump_max_seconds) VALUES ('Camião', 900) RETURNING id`)
+    await autorizar(await pedir('João', rows[0].id))
+    expect(await poll(false)).toEqual({ status: 'authorized', seconds: 900 })
+  })
+
+  it('viatura com o valor por omissão (180 s) mantém os 10 min', async () => {
+    await autorizar(await pedir())
+    expect(await poll(false)).toEqual({ status: 'authorized', seconds: 600 })
   })
 })
 

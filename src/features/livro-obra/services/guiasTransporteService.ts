@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client'
+import { livroObraDb, type GuiaTransporteRow } from '../db'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -33,21 +33,11 @@ export type CriarGuiaInput = {
   linhas:      LinhaGuia[]
 }
 
-// ── DB cast (tabela não está nos tipos gerados) ───────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as unknown as any
-
 const SELECT = 'id, numero, obra_id, viatura_id, motorista_id, origem, destino, data_carga, estado, linhas, created_at'
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
-type Row = {
-  id: string; numero: string; obra_id: string | null; viatura_id: string | null
-  motorista_id: string | null; origem: string | null; destino: string | null
-  data_carga: string | null; estado: string; linhas: LinhaGuia[]; created_at: string
-}
-
-function toEntity(row: Row): GuiaTransporte {
+function toEntity(row: GuiaTransporteRow): GuiaTransporte {
   return {
     id:          row.id,
     numero:      row.numero,
@@ -58,7 +48,7 @@ function toEntity(row: Row): GuiaTransporte {
     destino:     row.destino,
     dataCarga:   row.data_carga,
     estado:      row.estado as EstadoGuia,
-    linhas:      (row.linhas as LinhaGuia[]) ?? [],
+    linhas:      row.linhas ?? [],
     createdAt:   row.created_at,
   }
 }
@@ -66,18 +56,18 @@ function toEntity(row: Row): GuiaTransporte {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export async function listarGuias(obraId: string): Promise<GuiaTransporte[]> {
-  const { data, error } = await db
+  const { data, error } = await livroObraDb
     .from('guias_transporte')
     .select(SELECT)
     .eq('obra_id', obraId)
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return (data as Row[]).map(toEntity)
+  return (data ?? []).map(toEntity)
 }
 
 export async function criarGuia(input: CriarGuiaInput): Promise<string> {
-  const { data, error } = await db.rpc('criar_guia_transporte', {
+  const { data, error } = await livroObraDb.rpc('criar_guia_transporte', {
     p_obra_id:    input.obraId    ?? null,
     p_motorista:  input.motoristaId ?? null,
     p_origem:     input.origem    ?? null,
@@ -87,11 +77,11 @@ export async function criarGuia(input: CriarGuiaInput): Promise<string> {
   })
 
   if (error) throw error
-  return data as string
+  return data
 }
 
 export async function actualizarEstadoGuia(id: string, estado: EstadoGuia): Promise<void> {
-  const { error } = await db
+  const { error } = await livroObraDb
     .from('guias_transporte')
     .update({ estado })
     .eq('id', id)
