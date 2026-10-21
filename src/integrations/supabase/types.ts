@@ -771,6 +771,7 @@ export type Database = {
           cancelado_por: string | null
           colaborador_id: string | null
           concluido_em: string | null
+          concluido_por: string | null
           contador: number | null
           contador_final: number | null
           contador_final_origem: string | null
@@ -819,6 +820,7 @@ export type Database = {
           cancelado_por?: string | null
           colaborador_id?: string | null
           concluido_em?: string | null
+          concluido_por?: string | null
           contador?: number | null
           contador_final?: number | null
           contador_final_origem?: string | null
@@ -867,6 +869,7 @@ export type Database = {
           cancelado_por?: string | null
           colaborador_id?: string | null
           concluido_em?: string | null
+          concluido_por?: string | null
           contador?: number | null
           contador_final?: number | null
           contador_final_origem?: string | null
@@ -1904,6 +1907,7 @@ export type Database = {
       }
       movimentos_stock: {
         Row: {
+          client_id: string | null
           cliente: string | null
           created_at: string
           created_by: string | null
@@ -1923,6 +1927,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_movimento"]
         }
         Insert: {
+          client_id?: string | null
           cliente?: string | null
           created_at?: string
           created_by?: string | null
@@ -1942,6 +1947,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_movimento"]
         }
         Update: {
+          client_id?: string | null
           cliente?: string | null
           created_at?: string
           created_by?: string | null
@@ -2741,6 +2747,8 @@ export type Database = {
           origem: string
           pedido_id: string | null
           pump_id: string
+          relay_confirmado_em: string | null
+          relay_desligado_em: string | null
           segundos_autorizados: number
           veiculo_id: string | null
           veiculo_nome: string | null
@@ -2756,6 +2764,8 @@ export type Database = {
           origem?: string
           pedido_id?: string | null
           pump_id: string
+          relay_confirmado_em?: string | null
+          relay_desligado_em?: string | null
           segundos_autorizados: number
           veiculo_id?: string | null
           veiculo_nome?: string | null
@@ -2771,6 +2781,8 @@ export type Database = {
           origem?: string
           pedido_id?: string | null
           pump_id?: string
+          relay_confirmado_em?: string | null
+          relay_desligado_em?: string | null
           segundos_autorizados?: number
           veiculo_id?: string | null
           veiculo_nome?: string | null
@@ -3860,6 +3872,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      _obras_exigir_objeto: {
+        Args: { p_bucket: string; p_path: string }
+        Returns: undefined
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -3878,6 +3894,15 @@ export type Database = {
         Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
       }
+      _pump_fechar_sessao: {
+        Args: {
+          p_fim: string
+          p_motivo: string
+          p_relay_on: boolean
+          p_sessao: string
+        }
+        Returns: undefined
+      }
       _quem_pede: { Args: never; Returns: Record<string, unknown> }
       _recalcular_item_manutencao: {
         Args: { p_item_id: string; p_veiculo_id: string }
@@ -3891,6 +3916,49 @@ export type Database = {
           p_utilizador: string
         }
         Returns: undefined
+      }
+      _registar_movimento_stock: {
+        Args: {
+          p_client_id: string
+          p_cliente: string
+          p_destino_obra: string
+          p_fornecedor: string
+          p_numero_fatura: string
+          p_obra_id: string
+          p_observacoes: string
+          p_preco_unitario: number
+          p_produto_id: string
+          p_quantidade: number
+          p_responsavel: string
+          p_subtipo: string
+          p_tipo: Database["public"]["Enums"]["tipo_movimento"]
+        }
+        Returns: {
+          client_id: string | null
+          cliente: string | null
+          created_at: string
+          created_by: string | null
+          destino_obra: string | null
+          fornecedor: string | null
+          id: string
+          numero_fatura: string | null
+          obra_id: string | null
+          observacoes: string | null
+          preco_unitario: number | null
+          produto_id: string
+          quantidade: number
+          responsavel: string
+          stock_antes: number
+          stock_depois: number
+          subtipo: string | null
+          tipo: Database["public"]["Enums"]["tipo_movimento"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "movimentos_stock"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       _registar_picagem_geofence_impl: {
         Args: {
@@ -4306,6 +4374,23 @@ export type Database = {
         }
         Returns: string
       }
+      contabilidade_dados_laborais: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          cargo: string
+          categoria_profissional: string
+          colaborador_id: string
+          data_admissao: string
+          data_fim_contrato: string
+          iban: string
+          nif: string
+          niss: string
+          nome: string
+          numero_mecan: string
+          tipo_contrato: string
+        }[]
+      }
       contabilidade_mapa_assiduidade: {
         Args: { p_fim: string; p_inicio: string }
         Returns: {
@@ -4353,6 +4438,31 @@ export type Database = {
           p_veiculo_id: string
         }
         Returns: string
+      }
+      criar_produto: {
+        Args: { p: Json }
+        Returns: {
+          ativo: boolean
+          categoria: string
+          codigo: string
+          created_at: string
+          custo_unitario: number
+          foto_path: string | null
+          id: string
+          localizacao: string | null
+          nome: string
+          observacoes: string | null
+          stock_atual: number
+          stock_minimo: number
+          unidade: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "produtos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       custos_consolidados_por_obra: {
         Args: { p_data_fim?: string; p_data_ini?: string; p_obra_id: string }
@@ -5267,6 +5377,7 @@ export type Database = {
           p_tipo: Database["public"]["Enums"]["tipo_movimento"]
         }
         Returns: {
+          client_id: string | null
           cliente: string | null
           created_at: string
           created_by: string | null
@@ -5294,6 +5405,7 @@ export type Database = {
       }
       registar_movimento_armazem: {
         Args: {
+          p_client_id?: string
           p_cliente?: string
           p_fornecedor?: string
           p_numero_fatura?: string
@@ -5306,6 +5418,7 @@ export type Database = {
           p_subtipo: string
         }
         Returns: {
+          client_id: string | null
           cliente: string | null
           created_at: string
           created_by: string | null
@@ -5365,6 +5478,8 @@ export type Database = {
           origem: string
           pedido_id: string | null
           pump_id: string
+          relay_confirmado_em: string | null
+          relay_desligado_em: string | null
           segundos_autorizados: number
           veiculo_id: string | null
           veiculo_nome: string | null
@@ -6082,6 +6197,10 @@ export type Database = {
           tipo: string
           valor_contrato: number
         }[]
+      }
+      substituir_linhas_auto: {
+        Args: { p_auto_id: string; p_linhas: Json }
+        Returns: number
       }
       unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {
