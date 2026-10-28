@@ -14,3 +14,10 @@ Nota: o CLI mapeia `[auth.email] enable_signup = false` para "email logins disab
 - Cada cenário imprime `OK|FALHA <nome> <detalhe>`; sai com código 1 se algum falhar. A saída fica em `resultados/concorrencia-<ts>.txt`.
 - `--so=entradas-saidas-mistas` inclui a verificação global pós-carga (artigos `carga-` sem ajustes: stock = Σ entradas − Σ saídas; nenhum stock negativo).
 - Movimentos levam `p_client_id` como na app; numa falha de rede (o gateway local fecha sockets com ~300 pedidos simultâneos) reenviam com o mesmo id, sem duplicar.
+
+## Carga (`runner.mjs` + `cenarios.mjs`)
+`node scripts/carga/runner.mjs --perfil=leve|medio|pesado|rutura [--duracao=60] [--passo=30] [--max=500] [--sem-integridade]`
+- leve 10 VUs 70/30 leitura/escrita; medio 50 VUs, rampa 30 s, pico de picagens; pesado 200 VUs com 30 % fecho de mês; rutura degraus de 50 até erro > 1 % ou p95 > 3 s.
+- VU = utilizador `carga-u<n>` com login real e o seu papel (a RLS aplica-se); pausa de 1–3 s entre operações. As queries replicam os services (citados em `cenarios.mjs`).
+- Erros por classe: `rede`, `gw` (502/503/504 do Kong), `serv`, `cli`, `neg` (recusa prevista). Antes de cada perfil faz `pg_stat_statements_reset()`; no fim grava o top 10 e corre a integridade (`concorrencia.mjs --so=entradas-saidas-mistas`).
+- Resultado em `resultados/<perfil>-<ts>.json` e tabela no terminal. Baseline de 2026-10-28: `BASELINE-2026-10-28.md`.
