@@ -211,6 +211,126 @@ describe('A4-04 — horas efetivas a partir das picagens autorizadas', () => {
   })
 })
 
+describe('A1-04 — UPDATE continua só para admin/gestor', () => {
+  it('colaborador não passa a própria picagem a AUTORIZADA (UPDATE nem upsert)', async () => {
+    const { rows } = await comoU(motorista, tx => tx.query(
+      `INSERT INTO public.picagens (colaborador_id, obra_id, tipo, timestamp_dispositivo) VALUES ($1, $2, 'ENTRADA', now()) RETURNING id`,
+      [colabProprio, obra]))
+    const id = rows[0].id
+    const upd = await comoU(motorista, tx => tx.query(
+      `UPDATE public.picagens SET resultado = 'AUTORIZADA', hora_final_validada = now() WHERE id = $1 RETURNING id`, [id]))
+    expect(upd.rows).toEqual([])
+    await expect(comoU(motorista, tx => tx.query(
+      `INSERT INTO public.picagens (id, colaborador_id, obra_id, tipo, timestamp_dispositivo) VALUES ($1, $2, $3, 'ENTRADA', now())
+       ON CONFLICT (id) DO UPDATE SET resultado = 'AUTORIZADA'`, [id, colabProprio, obra]))).rejects.toThrow(/row-level security/)
+    const { rows: r } = await db.query(`SELECT resultado FROM public.picagens WHERE id = $1`, [id])
+    expect(r[0].resultado).toBe('PENDENTE_VALIDACAO')
+  })
+})
+
+describe('I1 — picagens validadas depois do cron entram nas horas', () => {
+  const DIA = '2026-10-22'
+  let colab, entrada, saida
+  beforeAll(async () => {
+    colab = await novoColab('Validado depois', 'V1')
+    await atribuir(colab, '2026-01-01')
+    const ins = (tipo, hora) => db.query(
+      `INSERT INTO public.picagens (colaborador_id, obra_id, tipo, timestamp_dispositivo) VALUES ($1, $2, $3, ${lx(DIA, hora)}) RETURNING id`,
+      [colab, obra, tipo]).then(r => r.rows[0].id)
+    entrada = await ins('ENTRADA', '08:00')
+    saida = await ins('SAIDA', '17:00')
+    await db.query(`SELECT public.calcular_resumo_dia($1)`, [DIA])
+  })
+  const validar = (id, set) => comoU(gestor, tx => tx.query(`UPDATE public.picagens SET ${set} WHERE id = $1`, [id]))
+
+  it('o gestor valida no dia seguinte → o resumo passa de 0 a 8 h sem esperar pelo cron', async () => {
+    expect((await resumo(colab, DIA)).efe).toBe(0)
+    await validar(entrada, `resultado = 'AUTORIZADA', validada_em = now()`)
+    await validar(saida, `resultado = 'AUTORIZADA', validada_em = now()`)
+    expect(await resumo(colab, DIA)).toMatchObject({ efe: 8, obra_id: obra })
+  })
+
+  it('corrigir a hora ou recusar recalcula', async () => {
+    await validar(saida, `hora_final_validada = ${lx(DIA, '16:00')}`)
+    expect((await resumo(colab, DIA)).efe).toBe(7)
+    await validar(saida, `resultado = 'RECUSADA'`)
+    expect((await resumo(colab, DIA)).efe).toBe(0)
+  })
+
+  it('calcular_resumo_recentes (cron) recalcula os últimos 14 dias', async () => {
+    const c = await novoColab('Recente', 'V2')
+    await atribuir(c, '2026-01-01')
+    const dia = `((now() AT TIME ZONE 'Europe/Lisbon')::date - 3)`
+    await db.exec(`SET session_replication_role = replica`)
+    try {
+      await db.query(`INSERT INTO public.picagens (colaborador_id, obra_id, tipo, timestamp_dispositivo, resultado) VALUES
+        ($1, $2, 'ENTRADA', ((${dia} + time '08:00') AT TIME ZONE 'Europe/Lisbon'), 'AUTORIZADA'),
+        ($1, $2, 'SAIDA',   ((${dia} + time '17:00') AT TIME ZONE 'Europe/Lisbon'), 'AUTORIZADA')`, [c, obra])
+    } finally {
+      await db.exec(`SET session_replication_role = DEFAULT`)
+    }
+    await db.query(`SELECT public.calcular_resumo_recentes(14)`)
+    const { rows } = await db.query(
+      `SELECT horas_efetivas::float AS efe FROM public.resumo_assiduidade_dia WHERE colaborador_id = $1 AND data = ${dia}`, [c])
+    expect(rows[0].efe).toBe(8)
+  })
+})
+
+describe('I2 — turnos que atravessam a meia-noite contam no dia da ENTRADA', () => {
+  let noturno
+  const colabNoturno = async num => { const c = await novoColab(`Noite ${num}`, num); await db.query(
+    `INSERT INTO public.horario_colaborador (colaborador_id, horario_id, valido_de) VALUES ($1, $2, '2026-01-01')`, [c, noturno]); return c }
+  beforeAll(async () => {
+    noturno = (await db.query(
+      `INSERT INTO public.horarios (designacao, periodo_diario_h, periodo_semanal_h, dias_semana, hora_entrada, hora_saida)
+       VALUES ('Noite', 8, 40, '{1,2,3,4,5,6,7}', '22:00', '06:00') RETURNING id`)).rows[0].id
+  })
+  const calc = (...dias) => Promise.all(dias.map(d => db.query(`SELECT public.calcular_resumo_dia($1)`, [d])))
+
+  it('22:00 → 06:00 do dia seguinte = 8 h no dia da entrada, 0 no seguinte', async () => {
+    const c = await colabNoturno('N1')
+    await picarDireto(c, 'ENTRADA', '2026-10-21', '22:00')
+    await picarDireto(c, 'SAIDA', '2026-10-22', '06:00')
+    await calc('2026-10-21', '2026-10-22')
+    expect((await resumo(c, '2026-10-21')).efe).toBe(8)
+    expect((await resumo(c, '2026-10-22')).efe).toBe(0)
+  })
+
+  it('08:00 → 01:00 do dia seguinte = 17 h', async () => {
+    const c = await colabNoturno('N2')
+    await picarDireto(c, 'ENTRADA', '2026-10-27', '08:00')
+    await picarDireto(c, 'SAIDA', '2026-10-28', '01:00')
+    await calc('2026-10-27')
+    expect((await resumo(c, '2026-10-27')).efe).toBe(17)
+  })
+
+  it('mudança de hora (25/10) 00:30 → 05:30 = 6 h de tempo real', async () => {
+    const c = await colabNoturno('N3')
+    await picarDireto(c, 'ENTRADA', '2026-10-25', '00:30')
+    await picarDireto(c, 'SAIDA', '2026-10-25', '05:30')
+    await calc('2026-10-25')
+    expect((await resumo(c, '2026-10-25')).efe).toBe(6)
+  })
+
+  it('SAIDA mais de 18 h depois (picagem esquecida) não emparelha', async () => {
+    const c = await colabNoturno('N5')
+    await picarDireto(c, 'ENTRADA', '2026-10-15', '08:00')
+    await picarDireto(c, 'SAIDA', '2026-10-16', '04:00')
+    await calc('2026-10-15')
+    expect((await resumo(c, '2026-10-15')).efe).toBe(0)
+  })
+
+  it('ENTRADA sem SAIDA não se cola à ENTRADA do dia seguinte', async () => {
+    const c = await colabNoturno('N4')
+    await picarDireto(c, 'ENTRADA', '2026-10-19', '08:00')
+    await picarDireto(c, 'ENTRADA', '2026-10-20', '08:00')
+    await picarDireto(c, 'SAIDA', '2026-10-20', '17:00')
+    await calc('2026-10-19', '2026-10-20')
+    expect((await resumo(c, '2026-10-19')).efe).toBe(0)
+    expect((await resumo(c, '2026-10-20')).efe).toBe(9)
+  })
+})
+
 describe('migration', () => {
   it('é idempotente (aplica 2× sem erro)', async () => {
     const sql = readFileSync(MIGRATION, 'utf8')
