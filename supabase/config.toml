@@ -388,6 +388,16 @@ verify_jwt = false
 [functions.notificar-abastecimento]
 verify_jwt = false
 
+# Chamada pelo pg_cron (pg_net) com a chave sb_publishable_* e x-frota-secret;
+# a função valida o segredo com frota_push_autorizado()
+[functions.send-push-frota]
+verify_jwt = false
+
+# Chamada pelo agendador com a chave sb_publishable_* e o segredo próprio;
+# a função valida-o com autorizadoPorSegredo()
+[functions.enviar-resumo-alertas]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

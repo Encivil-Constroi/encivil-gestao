@@ -9,6 +9,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { autorizadoPorSegredo } from '../_shared/segredo.ts'
+import { esc } from '../_shared/html.ts'
 
 const RESEND_KEY    = Deno.env.get('RESEND_API_KEY') ?? ''
 const DESTINATARIO  = Deno.env.get('EMAIL_ALERTAS_DESTINATARIO') ?? ''
@@ -47,8 +48,8 @@ function buildEmail(urgentes: AlertaRow[], atencao: AlertaRow[], reconhecidos: A
 
   const rowHtml = (a: AlertaRow, cor: string) => `
     <tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;font-weight:600;color:#1a1a2e">${a.entidade_nome ?? '—'}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#555">${a.entidade_detalhe ?? ''}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;font-weight:600;color:#1a1a2e">${esc(a.entidade_nome) || '—'}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#555">${esc(a.entidade_detalhe)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#555">${labelTipo(a.regra_tipo)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">
         <span style="background:${cor};color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">

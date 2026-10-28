@@ -7,6 +7,7 @@
 //   GOOGLE_AI_API_KEY — obter grátis em https://aistudio.google.com/apikey
 //                       configurar via: supabase secrets set GOOGLE_AI_API_KEY=AIza...
 
+import { validarLinhas } from './linhas.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { cabecalhosCors, respostaPreflight, origemRecusada } from '../_shared/cors.ts'
 import { dentroDoLimite, respostaLimite } from '../_shared/limite.ts'
@@ -121,9 +122,6 @@ Deno.serve(async (req) => {
   }
   if (!fatura.ficheiro_path) return err('Fatura sem ficheiro associado', 422)
 
-  // Limpar linhas anteriores em caso de re-extracção
-  await admin.from('linhas_fatura').delete().eq('fatura_id', fatura_id)
-
   // ── Descarregar ficheiro do storage ─────────────────────────────────────────
   const { data: fileData, error: dlErr } = await admin.storage
     .from('faturas-fornecedor')
@@ -236,6 +234,11 @@ Deno.serve(async (req) => {
 
   if (!Array.isArray(extracted.linhas) || extracted.linhas.length === 0) {
     return err('Nenhuma linha encontrada na fatura. Verifica se o documento é uma fatura válida.', 422)
+  }
+  try {
+    validarLinhas(extracted.linhas)
+  } catch (e) {
+    return err(`Linhas extraídas inválidas: ${(e as Error).message}. Tenta novamente.`, 422)
   }
 
   // ── Aplicar regras de classificação aprendidas ──────────────────────────────

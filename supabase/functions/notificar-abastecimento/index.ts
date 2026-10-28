@@ -14,6 +14,7 @@
 // Segredos: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (os mesmos da frota).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { endpointPermitido } from '../_shared/pushEndpoint.ts'
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -189,6 +190,8 @@ async function vapidJwt(endpoint: string): Promise<string> {
 type Subscricao = { endpoint: string; p256dh: string; auth: string }
 
 async function enviar(sub: Subscricao, conteudo: Bytes): Promise<number> {
+  // 410: o chamador remove a subscrição sem nunca contactar o host
+  if (!endpointPermitido(sub.endpoint)) return 410
   try {
     const corpo = await cifrarPayload(conteudo, sub.p256dh, sub.auth)
     const res = await fetch(sub.endpoint, {
