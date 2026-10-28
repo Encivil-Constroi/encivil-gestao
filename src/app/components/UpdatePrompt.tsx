@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { haTrabalhoPorGuardar } from '@/app/lib/protegerSaida'
 
 const CHECK_INTERVAL_MS = 60_000
 
@@ -8,6 +9,13 @@ export function UpdatePrompt() {
   const swIntervalRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const swVisibilityRef  = useRef<(() => void) | null>(null)
   const swFocusRef       = useRef<(() => void) | null>(null)
+
+  // Com trabalho por guardar não se navega: o utilizador escolhe quando atualizar
+  const [avisoAtualizar, setAvisoAtualizar] = useState(false)
+  const recarregar = useCallback(() => {
+    if (haTrabalhoPorGuardar()) { setAvisoAtualizar(true); return }
+    window.location.href = '/'
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -28,11 +36,11 @@ export function UpdatePrompt() {
         if (Date.now() - lastAt < 12_000) return
         sessionStorage.setItem('sw_reload_at', String(Date.now()))
       } catch { /* sessionStorage pode estar bloqueado em modo privado */ }
-      window.location.href = '/'
+      recarregar()
     }
     navigator.serviceWorker.addEventListener('controllerchange', onChange)
     return () => navigator.serviceWorker.removeEventListener('controllerchange', onChange)
-  }, [])
+  }, [recarregar])
 
   const {
     needRefresh: [needRefresh],
@@ -71,14 +79,26 @@ export function UpdatePrompt() {
     // força o SW a responder com os assets correctos.
     navigator.serviceWorker.addEventListener(
       'controllerchange',
-      () => { window.location.href = '/' },
+      recarregar,
       { once: true },
     )
     updateServiceWorker(false)
     // Fallback: se controllerchange não disparar em 4s (iOS edge case), recarregar
-    const t = setTimeout(() => { window.location.href = '/' }, 4_000)
+    const t = setTimeout(recarregar, 4_000)
     return () => clearTimeout(t)
-  }, [needRefresh, updateServiceWorker])
+  }, [needRefresh, updateServiceWorker, recarregar])
 
-  return null
+  if (!avisoAtualizar) return null
+  return (
+    <div role="alert" className="fixed bottom-4 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-sm shadow-lg">
+      <span>Nova versão disponível.</span>
+      <button
+        type="button"
+        onClick={() => { window.location.href = '/' }}
+        className="rounded-lg bg-primary px-3 py-1.5 font-semibold text-primary-foreground"
+      >
+        Atualizar
+      </button>
+    </div>
+  )
 }

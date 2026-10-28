@@ -25,6 +25,8 @@ export function useProtegerSaida(ativo: boolean, mensagem = 'Tem trabalho por gu
   }, [ativo, id, mensagem])
 }
 
+export function haTrabalhoPorGuardar() { return ativos.size > 0 }
+
 // Trabalho já guardado: chamar mesmo antes de navegar, o efeito do hook chegaria tarde
 export function libertarSaida() { ativos.clear(); notificar() }
 

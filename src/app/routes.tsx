@@ -1,11 +1,16 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, Navigate, useRouteError } from 'react-router';
+import { captureError } from '@/app/lib/sentry';
 
-function RouteErrorPage() {
+export function RouteErrorPage() {
   const error = useRouteError() as Error | undefined;
   const isChunkError =
     error?.message?.includes('Failed to fetch dynamically imported module') ||
     error?.message?.includes('Importing a module script failed');
+
+  useEffect(() => {
+    if (!isChunkError) captureError(error);
+  }, [error, isChunkError]);
 
   useEffect(() => {
     if (!isChunkError) return;
