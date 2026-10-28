@@ -239,9 +239,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const prazoUltrapassado = () =>
       Date.now() - Math.max(ultima, lerUltimaAtividade()) >= INACTIVITY_LIMIT_MS
 
+    let expirada = false
     const expirar = () => {
       clearTimeout(timer)
-      if (!sessionRef.current) return
+      if (expirada || !sessionRef.current) return
+      expirada = true
       toast.info('Sessão terminada por inatividade. Inicie sessão de novo.')
       void encerrarSessao('local')
     }

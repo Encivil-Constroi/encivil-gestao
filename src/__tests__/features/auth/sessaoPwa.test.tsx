@@ -231,6 +231,30 @@ describe('prazo de inatividade ultrapassado sem o temporizador correr', () => {
     expect(m.signOut).toHaveBeenCalledWith({ scope: 'local' })
   })
 
+  it('atividade recente gravada por outro separador impede a expiração', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await entrar()
+    vi.setSystemTime(Date.now() + 31 * MIN)
+    localStorage.setItem('encivil-ultima-atividade', String(Date.now() - MIN))
+    await act(async () => { window.dispatchEvent(new Event('mousedown')) })
+    await flush()
+    expect(m.signOut).not.toHaveBeenCalled()
+  })
+
+  it('expirar retira o push do dispositivo e só avisa uma vez', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await entrar()
+    vi.setSystemTime(Date.now() + 31 * MIN)
+    await act(async () => {
+      window.dispatchEvent(new Event('mousedown'))
+      window.dispatchEvent(new Event('mousedown'))
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await flush()
+    expect(m.removerPush).toHaveBeenCalledTimes(1)
+    expect(m.info).toHaveBeenCalledTimes(1)
+  })
+
   it('atividade dentro do prazo continua a renovar', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
     await entrar()
