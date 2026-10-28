@@ -10,14 +10,27 @@ const AQUI = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(AQUI, '..', '..')
 export const DIR_RESULTADOS = join(AQUI, 'resultados')
 
-// A raiz do repo (que contém ./supabase) é o default; CARGA_WORKDIR aponta para outra stack.
-const workdir = process.env.CARGA_WORKDIR || RAIZ
+// Obrigatório e sem default: a raiz do repo aponta para outra stack local (trabalho paralelo) que nunca se toca.
+const PROJECTO_ESPERADO = 'encivil-checkup'
+const workdir = process.env.CARGA_WORKDIR
+if (!workdir) {
+  throw new Error(`ABORTADO: defina CARGA_WORKDIR com a pasta que contém supabase/ da stack "${PROJECTO_ESPERADO}".`)
+}
+const configToml = join(workdir, 'supabase', 'config.toml')
+const projectId = existsSync(configToml)
+  ? (readFileSync(configToml, 'utf8').match(/^project_id\s*=\s*"([^"]+)"/m) ?? [])[1]
+  : undefined
+if (projectId !== PROJECTO_ESPERADO) {
+  throw new Error(`ABORTADO: CARGA_WORKDIR tem project_id "${projectId ?? 'desconhecido'}"; esperado "${PROJECTO_ESPERADO}".`)
+}
 
 function lerStatus() {
-  const saida = execFileSync('npx', ['supabase', 'status', '--workdir', workdir, '-o', 'json'], {
+  // cwd em vez de --workdir: com shell no Windows os argumentos não são citados e caminhos com espaços partem.
+  const saida = execFileSync('npx', ['supabase', 'status', '-o', 'json'], {
+    cwd: workdir,
     encoding: 'utf8',
     shell: process.platform === 'win32',
-    stdio: ['ignore', 'pipe', 'ignore'],
+    stdio: ['ignore', 'pipe', 'inherit'],
   })
   const ini = saida.indexOf('{')
   if (ini < 0) throw new Error('supabase status não devolveu JSON (a stack local está a correr?)')
@@ -46,6 +59,7 @@ export const DB_CONTAINER =
     ['ps', '--filter', `publish=${new URL(DB_URL).port}`, '--filter', 'name=supabase_db_', '--format', '{{.Names}}'],
     { encoding: 'utf8' },
   ).trim().split(/\r?\n/)[0]
+if (DB_CONTAINER !== `supabase_db_${PROJECTO_ESPERADO}`) throw new Error(`ABORTADO: contentor "${DB_CONTAINER}" não é o da stack ${PROJECTO_ESPERADO}.`)
 if (!DB_CONTAINER) throw new Error('Contentor da BD local não encontrado (docker ps).')
 
 /** Executa SQL como superutilizador na BD local (via psql no contentor). Devolve stdout. */
