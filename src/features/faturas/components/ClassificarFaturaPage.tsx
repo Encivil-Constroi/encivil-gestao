@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAsync }   from '@/app/lib/useAsync'
+import { useFormGuard } from '@/app/lib/useFormGuard'
 import { useMutation } from '@/app/lib/useMutation'
 import type { LinhaFatura, DestinoLinha } from '@/app/types'
 import { DadosFiscaisForm } from './DadosFiscaisForm'
@@ -140,7 +141,7 @@ function LinhaRow({ linha, state, produtos, onChange, readonly }: {
 
 // ── Painel lateral de linhas ──────────────────────────────────────────────────
 
-function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, guardando, lancando }: {
+function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, guardando, lancando, erro }: {
   fatura:     Awaited<ReturnType<typeof buscarFatura>>
   produtos:   { id: string; nome: string; codigo: string }[]
   states:     LinhaState[]
@@ -149,13 +150,18 @@ function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, 
   onLancar:   () => void
   guardando:  boolean
   lancando:   boolean
+  erro:       string | null
 }) {
   const readonly = fatura.estado === 'LANCADA'
   const linhas   = fatura.linhas ?? []
 
   const nDesconhecidas = states.filter(s => s.destino === 'DESCONHECIDO').length
   const nArmazemSemArtigo = states.filter(s => s.destino === 'ARMAZEM' && !s.artigoId).length
-  const canLancar = fatura.estado === 'CLASSIFICADA' && nDesconhecidas === 0
+  const porGuardar = linhas.some(l => {
+    const s = states.find(x => x.id === l.id)
+    return !!s && (s.destino !== l.destino || s.artigoId !== (l.artigoId ?? ''))
+  })
+  const canLancar = fatura.estado === 'CLASSIFICADA' && nDesconhecidas === 0 && nArmazemSemArtigo === 0 && !porGuardar
 
   // Estatísticas rápidas
   const contagens = states.reduce<Record<DestinoLinha, number>>(
@@ -218,9 +224,14 @@ function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, 
               {nArmazemSemArtigo} linha{nArmazemSemArtigo !== 1 ? 's' : ''} ARMAZEM sem artigo selecionado
             </p>
           )}
+          {erro && (
+            <p role="alert" className="flex items-start gap-2 p-2.5 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive">
+              <AlertCircle className="w-4 h-4 shrink-0" />{erro}
+            </p>
+          )}
           <button
             onClick={onGuardar}
-            disabled={guardando}
+            disabled={guardando || lancando}
             className="w-full flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
           >
             {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
@@ -230,7 +241,12 @@ function LinhasPanel({ fatura, produtos, states, onChange, onGuardar, onLancar, 
             <button
               onClick={onLancar}
               disabled={lancando || !canLancar}
-              title={nDesconhecidas > 0 ? 'Classifica todas as linhas antes de lançar' : undefined}
+              title={
+                nDesconhecidas > 0 ? 'Classifica todas as linhas antes de lançar'
+                : nArmazemSemArtigo > 0 ? 'Seleciona o artigo das linhas ARMAZEM antes de lançar'
+                : porGuardar ? 'Guarda a classificação antes de lançar'
+                : undefined
+              }
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-success text-success-foreground rounded-xl text-sm font-medium hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {lancando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -318,15 +334,19 @@ export function ClassificarFaturaPage() {
     { errorMsg: 'Erro ao carregar produtos' }
   )
 
-  const { mutate: guardarMut, loading: guardando } = useMutation(
+  const { mutate: guardarMut, loading: guardando, error: erroGuardar } = useMutation(
     (linhas: ClassificarLinhaInput[]) => classificarFatura(id!, linhas),
     'Erro ao guardar classificação'
   )
 
-  const { mutate: lancarMut, loading: lancando } = useMutation(
+  const { mutate: lancarMut, loading: lancandoMut, error: erroLancar } = useMutation(
     (responsavel: string) => lancarFatura(id!, responsavel),
     'Erro ao lançar fatura'
   )
+
+  // Cobre também o getUser() antes da mutação, que o loading do useMutation não vê.
+  const [aLancar, setALancar] = useState(false)
+  const lancando = aLancar || lancandoMut
 
   // Inicializar estado local apenas quando carrega uma fatura diferente (fatura.id muda).
   // Não re-inicializa em reloads do mesmo id — preserva edições locais não guardadas.
@@ -359,16 +379,21 @@ export function ClassificarFaturaPage() {
     }
   }
 
-  const handleLancar = async () => {
+  const handleLancar = useFormGuard(async () => {
     if (!confirm('Lançar as linhas ARMAZEM em stock? Esta acção cria movimentos de entrada e não pode ser desfeita.')) return
-    const { data: { user } } = await (await import('@/integrations/supabase/client')).supabase.auth.getUser()
-    const responsavel = user?.email ?? 'Sistema'
-    const result = await lancarMut(responsavel)
-    if (result !== null) {
-      toast.success('Fatura lançada em stock com sucesso!')
-      navigate('/faturas')
+    setALancar(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const responsavel = user?.email ?? 'Sistema'
+      const result = await lancarMut(responsavel)
+      if (result !== null) {
+        toast.success('Fatura lançada em stock com sucesso!')
+        navigate('/faturas')
+      }
+    } finally {
+      setALancar(false)
     }
-  }
+  })
 
   if (loading) {
     return (
@@ -479,6 +504,7 @@ export function ClassificarFaturaPage() {
               onLancar={handleLancar}
               guardando={guardando}
               lancando={lancando}
+              erro={erroLancar ?? erroGuardar}
             />
           )}
         </div>
