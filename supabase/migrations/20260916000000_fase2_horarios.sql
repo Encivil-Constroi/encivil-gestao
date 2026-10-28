@@ -168,7 +168,7 @@ DO $$ BEGIN
   PERFORM cron.schedule(
     'calcular-resumo-assiduidade',
     '30 22 * * *',
-    $$SELECT public.calcular_resumo_dia(CURRENT_DATE)$$
+    'SELECT public.calcular_resumo_dia(CURRENT_DATE)'
   );
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'pg_cron não disponível — agendar manualmente.';

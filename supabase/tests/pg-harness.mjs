@@ -71,11 +71,6 @@ export function adaptar(nome, sql) {
       .replace(/\b(geography|geometry)\b/gi, 'text')
       .replace(/USING gist/gi, 'USING btree')
   }
-  // $$…$$ aninhado dentro de DO $$ — o ficheiro não é válido tal como está
-  // (em produção as tabelas existem; foi aplicado noutra versão)
-  if (nome === '20260916000000_fase2_horarios.sql') {
-    return sql.replace('$$SELECT public.calcular_resumo_dia(CURRENT_DATE)$$', `'SELECT public.calcular_resumo_dia(CURRENT_DATE)'`)
-  }
   return sql
 }
 
