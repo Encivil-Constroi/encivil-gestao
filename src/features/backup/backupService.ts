@@ -92,7 +92,11 @@ export type BackupData = {
 // deixa só grants por coluna (sem nif), por isso select('*') falharia para todos.
 // Cópia de SELECT_COLABORADOR sem o join obras(...) — features/backup não pode importar de colaboradores.
 const COLUNAS_COLABORADORES =
-  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at'
+  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, foto_path, setor, created_at'
+
+// telemovel/email/notas saem só pela RPC colaboradores_contactos (admin/gestor veem todas as linhas)
+const COLUNAS_CONTACTOS = 'id, telemovel, email, notas'
+const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
 
 const SELECT_POR_TABELA: Record<string, string> = { colaboradores: COLUNAS_COLABORADORES }
 
@@ -106,6 +110,22 @@ export function colunasBackup(tabela: string): string {
 // O Supabase limita 1000 linhas por pedido — para tabelas grandes como
 // movimentos_stock, itera até não haver mais resultados.
 export async function exportarTabela(tabela: string): Promise<unknown[]> {
+  const linhas = await paginar(tabela, colunasBackup(tabela))
+  return tabela === 'colaboradores' ? juntarContactos(linhas as { id: string }[]) : linhas
+}
+
+// BD antiga (RPC inexistente): as colunas ainda são legíveis na tabela.
+async function juntarContactos(linhas: { id: string }[]): Promise<unknown[]> {
+  const { data, error } = await db.rpc('colaboradores_contactos')
+  let contactos: { id: string }[]
+  if (!error) contactos = data ?? []
+  else if (RPC_INEXISTENTE.has(error.code)) contactos = (await paginar('colaboradores', COLUNAS_CONTACTOS)) as { id: string }[]
+  else throw new Error(error.message)
+  const porId = new Map(contactos.map(c => [c.id, c]))
+  return linhas.map(l => ({ ...l, ...porId.get(l.id) }))
+}
+
+async function paginar(tabela: string, colunas: string): Promise<unknown[]> {
   const PAGE = 1000
   const all: unknown[] = []
   let from = 0
@@ -113,7 +133,7 @@ export async function exportarTabela(tabela: string): Promise<unknown[]> {
   while (true) {
     const { data, error } = await db
       .from(tabela)
-      .select(colunasBackup(tabela))
+      .select(colunas)
       .range(from, from + PAGE - 1)
 
     if (error) throw new Error(error.message)

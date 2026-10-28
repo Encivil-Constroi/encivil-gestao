@@ -1,11 +1,12 @@
 import { supabase } from '@/integrations/supabase/client'
-import { colaboradoresDb } from '../db'
+import { colaboradoresDb, type ContactosColaborador } from '../db'
 import type { Colaborador } from '@/app/types'
 
 // Colunas explícitas: authenticated não tem SELECT em nif (20261008030000);
-// o NIF lê-se só com obterNif(). Inclui o nome da obra via join (sem N+1).
+// o NIF lê-se só com obterNif(); telemovel/email/notas só pela RPC colaboradores_contactos.
+// Inclui o nome da obra via join (sem N+1).
 export const SELECT_COLABORADOR =
-  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at, obras!colaboradores_obra_id_fkey(id, nome)'
+  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, foto_path, setor, created_at, obras!colaboradores_obra_id_fkey(id, nome)'
 
 type ColaboradorRow = {
   id: string
@@ -15,16 +16,15 @@ type ColaboradorRow = {
   obra_id: string | null
   user_id: string | null
   ativo: boolean
-  notas: string | null
-  telemovel: string | null
-  email: string | null
   foto_path: string | null
   setor: string | null
   created_at: string
   obras: { id: string; nome: string } | null
 }
 
-function toColaborador(row: ColaboradorRow): Colaborador {
+type Contactos = Partial<Pick<ContactosColaborador, 'telemovel' | 'email' | 'notas'>>
+
+function toColaborador(row: ColaboradorRow, contactos?: Contactos): Colaborador {
   return {
     id: row.id,
     nome: row.nome,
@@ -34,49 +34,71 @@ function toColaborador(row: ColaboradorRow): Colaborador {
     obraNome: row.obras?.nome ?? undefined,
     userId: row.user_id ?? undefined,
     ativo: row.ativo,
-    notas: row.notas ?? undefined,
-    telemovel: row.telemovel ?? undefined,
-    email: row.email ?? undefined,
+    notas: contactos?.notas ?? undefined,
+    telemovel: contactos?.telemovel ?? undefined,
+    email: contactos?.email ?? undefined,
     fotoPath: row.foto_path ?? undefined,
     setor: row.setor ?? undefined,
     createdAt: new Date(row.created_at),
   }
 }
 
+// Função da BD inexistente: site publicado antes da migration respetiva
+const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
+
+// Uma só chamada para todas as fichas visíveis (admin/gestor: todas; outros: a própria).
+// BD antiga (RPC ainda inexistente): as colunas ainda são legíveis na tabela.
+async function obterContactos(): Promise<Map<string, Contactos>> {
+  const { data, error } = await colaboradoresDb.rpc('colaboradores_contactos')
+  let linhas: ContactosColaborador[]
+  if (!error) {
+    linhas = data ?? []
+  } else if (RPC_INEXISTENTE.has(error.code)) {
+    const antiga = await colaboradoresDb.from('colaboradores').select('id, telemovel, email, notas')
+    if (antiga.error) throw antiga.error
+    linhas = antiga.data
+  } else {
+    throw error
+  }
+  return new Map(linhas.map(c => [c.id, c]))
+}
+
 export async function listarColaboradores(apenasAtivos = true): Promise<Colaborador[]> {
   let query = colaboradoresDb.from('colaboradores').select(SELECT_COLABORADOR).order('nome')
   if (apenasAtivos) query = query.eq('ativo', true)
-  const { data, error } = await query
+  const [{ data, error }, contactos] = await Promise.all([query, obterContactos()])
   if (error) throw error
-  return (data as ColaboradorRow[]).map(toColaborador)
+  return (data as ColaboradorRow[]).map(r => toColaborador(r, contactos.get(r.id)))
 }
 
 export async function buscarColaborador(id: string): Promise<Colaborador> {
-  const { data, error } = await colaboradoresDb
-    .from('colaboradores')
-    .select(SELECT_COLABORADOR)
-    .eq('id', id)
-    .single()
+  const [{ data, error }, contactos] = await Promise.all([
+    colaboradoresDb.from('colaboradores').select(SELECT_COLABORADOR).eq('id', id).single(),
+    obterContactos(),
+  ])
   if (error) throw error
-  return toColaborador(data as ColaboradorRow)
+  const row = data as ColaboradorRow
+  return toColaborador(row, contactos.get(row.id))
 }
 
 // A ficha ligada à conta de quem está dentro da app (null: conta sem ficha de pessoal)
 export async function buscarMeuColaborador(userId: string): Promise<Colaborador | null> {
-  const { data, error } = await colaboradoresDb
-    .from('colaboradores')
-    .select(SELECT_COLABORADOR)
-    .eq('user_id', userId)
-    .eq('ativo', true)
-    .order('created_at')
-    .limit(1)
-    .maybeSingle()
+  const [{ data, error }, contactos] = await Promise.all([
+    colaboradoresDb
+      .from('colaboradores')
+      .select(SELECT_COLABORADOR)
+      .eq('user_id', userId)
+      .eq('ativo', true)
+      .order('created_at')
+      .limit(1)
+      .maybeSingle(),
+    obterContactos(),
+  ])
   if (error) throw error
-  return data ? toColaborador(data as ColaboradorRow) : null
+  if (!data) return null
+  const row = data as ColaboradorRow
+  return toColaborador(row, contactos.get(row.id))
 }
-
-// Função da BD inexistente: site publicado antes da migration do NIF
-const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
 
 // NIF só para admin, gestor e o próprio (a RPC devolve null aos outros)
 export async function obterNif(id: string): Promise<string | null> {
@@ -125,7 +147,7 @@ export async function criarColaborador(input: NovoColaborador): Promise<Colabora
     .select(SELECT_COLABORADOR)
     .single()
   if (error) throw error
-  return toColaborador(data as ColaboradorRow)
+  return toColaborador(data as ColaboradorRow, { telemovel: linha.telemovel, email: linha.email, notas: linha.notas })
 }
 
 export type AtualizarColaborador = Partial<NovoColaborador>
@@ -167,7 +189,8 @@ export async function atualizarColaborador(id: string, input: AtualizarColaborad
     .select(SELECT_COLABORADOR)
     .single()
   if (error) throw error
-  return toColaborador(data as ColaboradorRow)
+  // Sem nova leitura: os contactos não enviados neste patch ficam por preencher no retorno (as listas recarregam)
+  return toColaborador(data as ColaboradorRow, { telemovel: patch.telemovel, email: patch.email, notas: patch.notas })
 }
 
 export async function arquivarColaborador(id: string): Promise<void> {

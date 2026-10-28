@@ -37,6 +37,8 @@ export type DadosLaborais = {
   categoria_profissional: string | null
 }
 
+export type ContactosColaborador = Pick<ColaboradorDbRow, 'id' | 'telemovel' | 'email' | 'notas'>
+
 export type ColaboradoresDatabase = {
   __InternalSupabase: { PostgrestVersion: '14.5' }
   public: {
@@ -62,6 +64,8 @@ export type ColaboradoresDatabase = {
     Functions: {
       // 20261008030000: NIF só para admin, gestor e o próprio
       colaborador_nif: { Args: { p_id: string }; Returns: string | null }
+      // Contactos e notas: admin/gestor todas as linhas, os outros só a própria ficha
+      colaboradores_contactos: { Args: Record<string, never>; Returns: ContactosColaborador[] }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

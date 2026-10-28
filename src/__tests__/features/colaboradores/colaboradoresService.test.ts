@@ -25,8 +25,9 @@ const b = vi.hoisted(() => {
   return builder
 })
 
+const rpc = vi.hoisted(() => vi.fn())
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { from: vi.fn().mockReturnValue(b) },
+  supabase: { from: vi.fn().mockReturnValue(b), rpc },
 }))
 
 // ── Dados de teste ────────────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ beforeEach(() => {
   b.update.mockReturnValue(b)
   b.order.mockReturnValue(b)
   b.eq.mockReturnValue(b)
+  rpc.mockResolvedValue({ data: [], error: null })
 })
 
 // ── listarColaboradores ───────────────────────────────────────────────────────
