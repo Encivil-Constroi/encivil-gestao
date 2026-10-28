@@ -9,7 +9,15 @@ const SELECT_MOV = 'id, produto_id, tipo, subtipo, quantidade, stock_antes, stoc
   'fornecedor, cliente, numero_fatura, preco_unitario, observacoes, created_at, ' +
   'produtos(nome, codigo, unidade, foto_path), obras(nome)'
 const SELECT_COLABORADOR =
-  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, notas, telemovel, email, foto_path, setor, created_at, obras!colaboradores_obra_id_fkey(id, nome)'
+  'id, nome, numero_mecan, cargo, obra_id, user_id, ativo, foto_path, setor, created_at, obras!colaboradores_obra_id_fkey(id, nome)'
+const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
+
+// colaboradoresService.ts obterContactos: RPC colaboradores_contactos; BD sem a migration ⇒ select antigo das colunas
+async function contactosColaboradores(c) {
+  const r = await c.rpc('colaboradores_contactos')
+  if (!r.error || !RPC_INEXISTENTE.has(r.error.code)) return r
+  return c.from('colaboradores').select('id, telemovel, email, notas')
+}
 const SELECT_PICAGEM = '*, colaboradores(nome), obras(nome)'
 const SELECT_PEDIDO = 'id, veiculo_id, veiculo_nome, funcionario_nome, data, tipo_fonte, tipo_combustivel, estado, contador, km_anterior, km_suspeito, foto_km_path, observacoes, local, solicitante_id, colaborador_id, criado_em, autorizado_em, decisao_em, motivo_recusa, contador_inicial, contador_inicial_origem, foto_contador_inicial_path, bomba_ligada_em, pump_auth_expires_at, pump_activated_at, pump_max_seconds, contador_final, contador_final_origem, foto_final_path, litros, custo_total, preco_litro, concluido_em, cancelado_em, abastecimento_id, foto_url, foto_medidor_url, litros_gemini, custo_gemini'
 const FASE_SELECT = 'id,obra_id,nome,peso,progresso,data_inicio,data_fim_prevista,estado,ordem,notas,atualizado_por,atualizado_em'
@@ -78,10 +86,15 @@ export const OPERACOES = {
       ]))
     },
   },
-  // src/features/colaboradores/services/colaboradoresService.ts listarColaboradores(true) — sem NIF
+  // src/features/colaboradores/services/colaboradoresService.ts listarColaboradores(true) — sem NIF; contactos em paralelo
   colaboradores: {
     classe: 'leitura', papeis: ['admin', 'gestor'],
-    async fn({ c }) { return todos(await c.from('colaboradores').select(SELECT_COLABORADOR).eq('ativo', true).order('nome')) },
+    async fn({ c }) {
+      return todos(...await Promise.all([
+        c.from('colaboradores').select(SELECT_COLABORADOR).eq('ativo', true).order('nome'),
+        contactosColaboradores(c),
+      ]))
+    },
   },
   // src/features/notificacoes/services/notificacoesService.ts (rpc produtos_em_alerta)
   produtosEmAlerta: {
