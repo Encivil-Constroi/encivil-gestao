@@ -8,6 +8,7 @@ Deno.test('endpointPermitido aceita os serviços de push conhecidos', () => {
     'https://autopush.push.services.mozilla.com/x',
     'https://web.push.apple.com/abc',
     'https://wns2-par02p.notify.windows.com/w/?token=x',
+    'https://FCM.GoogleAPIs.com/fcm/send/abc',
   ]) assertEquals(endpointPermitido(u), true, u)
 })
 
@@ -24,6 +25,10 @@ Deno.test('endpointPermitido recusa tudo o resto', () => {
     'https://user@fcm.googleapis.com@evil.com/x',
     'https://fcm.googleapis.com:8443/x',
     'não é url',
+    'https://fcm.googleapis.com./x',
+    'https://fcm.googleapis.com:443/x',
+    'https://evil.com\@fcm.googleapis.com/x',
+    'https://fcm.googleapis.com\@evil.com/x',
     '',
   ]) assertEquals(endpointPermitido(u), false, u)
 })

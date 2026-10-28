@@ -196,6 +196,8 @@ async function enviar(sub: Subscricao, conteudo: Bytes): Promise<number> {
     const corpo = await cifrarPayload(conteudo, sub.p256dh, sub.auth)
     const res = await fetch(sub.endpoint, {
       method: 'POST',
+      // um 3xx não é seguido: contornaria a allowlist
+      redirect: 'manual',
       headers: {
         // Um pedido parado há mais de 1 h já não interessa como alerta
         'TTL': '3600',
