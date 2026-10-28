@@ -7,3 +7,10 @@
 5. Os movimentos são imutáveis, por isso o seed só acrescenta até ao alvo. Para recomeçar, `npx supabase db reset` na stack local.
 
 Nota: o CLI mapeia `[auth.email] enable_signup = false` para "email logins disabled", o que impede o login por senha. Na config da stack de carga (não na do repo) pôr `enable_signup = true` e reiniciar a stack.
+
+## Concorrência (`concorrencia.mjs`)
+`node scripts/carga/concorrencia.mjs [--so=<cenário>]` — cenários: `saidas-mesmo-artigo`, `entradas-saidas-mistas`, `autos-numeracao`, `codigos-sequencia`, `aprovacao-dupla-abastecimento`, `emprestimo-duplo-ferramenta`, `picagem-duplicada`, `fatura-lancamento-duplo`.
+- As operações vão pela API como utilizadores do seed (login sequencial; o paralelismo é nas operações, vários clientes por sessão). O psql só cria fixtures novas (marcador `carga-conc-<ts>`) e verifica o resultado.
+- Cada cenário imprime `OK|FALHA <nome> <detalhe>`; sai com código 1 se algum falhar. A saída fica em `resultados/concorrencia-<ts>.txt`.
+- `--so=entradas-saidas-mistas` inclui a verificação global pós-carga (artigos `carga-` sem ajustes: stock = Σ entradas − Σ saídas; nenhum stock negativo).
+- Movimentos levam `p_client_id` como na app; numa falha de rede (o gateway local fecha sockets com ~300 pedidos simultâneos) reenviam com o mesmo id, sem duplicar.
