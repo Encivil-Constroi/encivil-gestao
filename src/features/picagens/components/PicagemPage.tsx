@@ -9,12 +9,8 @@ import { useColaboradorAtual } from '../hooks/useColaboradorAtual'
 import { usePicagensDia } from '../hooks/usePicagensDia'
 import { usePicar } from '../hooks/usePicar'
 import { getQueue } from '../offlineQueue'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import type { TipoPicagem, ResultadoPicagem, Picagem } from '@/app/types'
-
-function todayISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 function horaLocal(d: Date): string {
   return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
@@ -68,20 +64,19 @@ export function PicagemPage() {
   const { obras } = useObras(true)
   const { colaboradores } = useColaboradores(true)
 
-  const [colaboradorId, setColaboradorId] = useState<string>(() => lsGet('enc_pic_colab'))
+  const [colaboradorEscolhido, setColaboradorEscolhido] = useState<string>(() => lsGet('enc_pic_colab'))
   const [obraId, setObraId] = useState<string>(() => lsGet('enc_pic_obra'))
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
   const [feedbackTipo, setFeedbackTipo] = useState<'ok' | 'autorizada' | 'queue'>('ok')
 
-  // Auto-select current user's colaborador when loaded
+  // Com ficha própria pica-se sempre em nome dela: o valor guardado pode ser do
+  // utilizador anterior do mesmo telemóvel e o seletor nem está visível.
+  const colaboradorId = colaboradorAtual?.id ?? colaboradorEscolhido
   useEffect(() => {
-    if (colaboradorAtual && !colaboradorId) {
-      setColaboradorId(colaboradorAtual.id)
-      lsSet('enc_pic_colab', colaboradorAtual.id)
-    }
-  }, [colaboradorAtual, colaboradorId])
+    if (colaboradorAtual) lsSet('enc_pic_colab', colaboradorAtual.id)
+  }, [colaboradorAtual])
 
-  const today = todayISO()
+  const today = hojeLisboa()
   const { picagens, pendentes, reload } = usePicagensDia(colaboradorId || undefined, today)
   const { picar, loading: picando } = usePicar()
 
@@ -95,8 +90,8 @@ export function PicagemPage() {
   const primary = nextTipo(lastPicagem)
 
   const pendingCount = getQueue().filter(
-    p => p.colaboradorId === colaboradorId && p.timestampDispositivo.startsWith(today)
-  ).length + pendentes.length
+    p => p.colaboradorId === colaboradorId && hojeLisboa(new Date(p.timestampDispositivo)) === today
+  ).length
 
   async function handlePicar(tipo: TipoPicagem) {
     if (!colaboradorId || !obraId) return
@@ -129,7 +124,7 @@ export function PicagemPage() {
     setTimeout(() => setFeedbackMsg(null), 5000)
   }
 
-  const ready = !!colaboradorId && !!obraId
+  const ready = !loadingAtual && !!colaboradorId && !!obraId
 
   return (
     <div className="max-w-md mx-auto space-y-4">
@@ -212,7 +207,7 @@ export function PicagemPage() {
               <div className="relative">
                 <select
                   value={colaboradorId}
-                  onChange={e => { setColaboradorId(e.target.value); lsSet('enc_pic_colab', e.target.value) }}
+                  onChange={e => { setColaboradorEscolhido(e.target.value); lsSet('enc_pic_colab', e.target.value) }}
                   className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-3 text-sm pr-8 min-h-[48px]"
                 >
                   <option value="">— Selecionar colaborador —</option>

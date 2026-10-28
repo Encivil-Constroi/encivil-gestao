@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import {
-  pendentesDoUtilizador, pendentesDeOutros, removeFromQueue, onQueueChange, isNetworkError, ehPendenteArmazem,
-  clientIdDoPendente, type PendingMovimento,
+  pendentesDoUtilizador, pendentesDeOutros, removeFromQueue, onQueueChange, ehPendenteArmazem,
+  clientIdDoPendente, registarTentativaFalhada, type PendingMovimento,
 } from '../offlineQueue'
+import { ehErroDefinitivo } from '@/app/lib/errosRede'
 import { registarMovimento } from '../services/movimentosService'
 import { registarMovimentoArmazem } from '../services/armazemService'
 import { invalidateCache } from '@/app/lib/useAsync'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/features/auth/AuthContext'
+
+const TENTATIVAS_ATE_AVISO = 5
 
 // Só deve existir UMA instância ativa deste hook por separador (montada uma vez
 // no MainLayout). Entre separadores/janelas, o lock do browser 'encivil-queue'
@@ -63,13 +66,19 @@ export function useOfflineQueue() {
           removeFromQueue(item.queueId)
           okCount++
         } catch (e) {
-          // Ainda sem ligação fiável — tenta de novo mais tarde, mantém o resto na fila
-          // (não vale a pena notificar, já existe o banner persistente)
-          if (isNetworkError(e)) break
           // Erro de negócio (ex: produto removido, stock alterado) — não tem como
-          // resolver-se a sozinho com retentativas. Remove da fila e avisa o utilizador.
-          removeFromQueue(item.queueId)
-          failCount++
+          // resolver-se sozinho com retentativas. Remove da fila e avisa o utilizador.
+          if (ehErroDefinitivo(e)) {
+            removeFromQueue(item.queueId)
+            failCount++
+            continue
+          }
+          // Rede, 5xx/429, timeout: o movimento fica e a ordem mantém-se (os seguintes
+          // podem depender do stock deste). O client_id evita duplicar no reenvio.
+          if (registarTentativaFalhada(item.queueId) >= TENTATIVAS_ATE_AVISO) {
+            toast.warning('Há um movimento pendente que não consegue ser enviado. Continua guardado neste dispositivo; não termine a sessão e avise o responsável do armazém.')
+          }
+          break
         }
       }
     } finally {

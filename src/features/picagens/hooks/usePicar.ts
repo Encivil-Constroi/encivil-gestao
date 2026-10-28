@@ -9,7 +9,9 @@ import {
   validarPicagem,
   corrigirHoraPicagem,
 } from '../services/picagensService'
-import { enqueuePendingPicagem, isNetworkError } from '../offlineQueue'
+import { enqueuePendingPicagem } from '../offlineQueue'
+import { isNetworkError } from '@/app/lib/errosRede'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import type { Picagem, ResultadoPicagem } from '@/app/types'
 
 export type PicarResult =
@@ -55,7 +57,7 @@ export function usePicar() {
         return { picagem: null, queued: true }
       }
 
-      const data = input.timestampDispositivo.split('T')[0]
+      const data = hojeLisboa(new Date(input.timestampDispositivo))
 
       try {
         // Geofence path: obra configurada com geofence → pedir GPS

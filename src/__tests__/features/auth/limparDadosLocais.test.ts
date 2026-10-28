@@ -40,6 +40,18 @@ describe('limparDadosLocais', () => {
     expect(localStorage.getItem('encivil-theme')).toBe('dark')
   })
 
+  it('apaga as escolhas da picagem e os WhatsApp recentes (telemóvel partilhado)', async () => {
+    localStorage.setItem('enc_pic_colab', 'colab-anterior')
+    localStorage.setItem('enc_pic_obra', 'obra-anterior')
+    localStorage.setItem('encivil:wa-recentes', '["912345678"]')
+    localStorage.setItem('encivil_pending_picagens', '[]')
+    await limparDadosLocais()
+    expect(localStorage.getItem('enc_pic_colab')).toBeNull()
+    expect(localStorage.getItem('enc_pic_obra')).toBeNull()
+    expect(localStorage.getItem('encivil:wa-recentes')).toBeNull()
+    expect(localStorage.getItem('encivil_pending_picagens')).toBe('[]')
+  })
+
   it('mantém no sessionStorage as marcas anti-ciclo de recarga e a recuperação de acesso', async () => {
     sessionStorage.setItem('sw_reload_at', '1')
     sessionStorage.setItem('chunk_reload_ts', '2')

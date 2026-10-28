@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAsync } from '@/app/lib/useAsync'
 import { listarPicagensDia, listarPicagensObraDia } from '../services/picagensService'
 import { getQueue, onQueueChange, type PendingPicagem } from '../offlineQueue'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 
 export function usePicagensDia(colaboradorId: string | undefined, data: string) {
   const { data: picagens, loading, error, reload } = useAsync(
@@ -17,7 +18,7 @@ export function usePicagensDia(colaboradorId: string | undefined, data: string) 
 
   const [pendentes, setPendentes] = useState<PendingPicagem[]>(() =>
     getQueue().filter(
-      p => p.colaboradorId === colaboradorId && p.timestampDispositivo.startsWith(data)
+      p => p.colaboradorId === colaboradorId && hojeLisboa(new Date(p.timestampDispositivo)) === data
     )
   )
 
@@ -26,7 +27,7 @@ export function usePicagensDia(colaboradorId: string | undefined, data: string) 
     const update = () =>
       setPendentes(
         getQueue().filter(
-          p => p.colaboradorId === colaboradorId && p.timestampDispositivo.startsWith(data)
+          p => p.colaboradorId === colaboradorId && hojeLisboa(new Date(p.timestampDispositivo)) === data
         )
       )
     return onQueueChange(update)

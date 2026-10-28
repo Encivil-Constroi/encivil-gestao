@@ -8,6 +8,7 @@ export type PendingPicagem = NovaPicagem & {
   queueId: string
   queuedAt: string
   userId?: string
+  tentativas?: number
 }
 
 function uuid(): string {
@@ -72,6 +73,17 @@ export function removeFromQueue(queueId: string) {
   writeQueue(readQueue().filter(i => i.queueId !== queueId))
 }
 
+// Devolve o total de tentativas falhadas do registo (0 se já não estiver na fila)
+export function registarTentativaFalhada(queueId: string): number {
+  let total = 0
+  writeQueue(readQueue().map(i => {
+    if (i.queueId !== queueId) return i
+    total = (i.tentativas ?? 0) + 1
+    return { ...i, tentativas: total }
+  }))
+  return total
+}
+
 export function onQueueChange(listener: () => void): () => void {
   window.addEventListener(QUEUE_EVENT, listener)
   window.addEventListener('storage', listener)
@@ -79,10 +91,4 @@ export function onQueueChange(listener: () => void): () => void {
     window.removeEventListener(QUEUE_EVENT, listener)
     window.removeEventListener('storage', listener)
   }
-}
-
-export function isNetworkError(e: unknown): boolean {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
-  const msg = e instanceof Error ? e.message : String(e)
-  return /failed to fetch|networkerror|network request failed|err_internet|err_connection|err_network|load failed|timeout/i.test(msg)
 }

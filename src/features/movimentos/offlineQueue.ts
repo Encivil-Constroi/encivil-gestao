@@ -5,7 +5,7 @@ const STORAGE_KEY  = 'encivil_pending_movimentos'
 const QUEUE_EVENT  = 'encivil:queue-changed'
 const MAX_QUEUE_SIZE = 200
 
-type Meta = { queueId: string; queuedAt: string; userId?: string }
+type Meta = { queueId: string; queuedAt: string; userId?: string; tentativas?: number }
 
 // Registos novos guardam os argumentos da RPC registar_movimento_armazem.
 // Os antigos (tipo/destinoObra, gravados antes da atualização num telemóvel
@@ -95,6 +95,17 @@ export function removeFromQueue(queueId: string) {
   writeQueue(readQueue().filter(i => i.queueId !== queueId))
 }
 
+// Devolve o total de tentativas falhadas do registo (0 se já não estiver na fila)
+export function registarTentativaFalhada(queueId: string): number {
+  let total = 0
+  writeQueue(readQueue().map(i => {
+    if (i.queueId !== queueId) return i
+    total = (i.tentativas ?? 0) + 1
+    return { ...i, tentativas: total }
+  }))
+  return total
+}
+
 export function onQueueChange(listener: () => void): () => void {
   window.addEventListener(QUEUE_EVENT, listener)
   window.addEventListener('storage', listener)
@@ -104,13 +115,7 @@ export function onQueueChange(listener: () => void): () => void {
   }
 }
 
-// Heurística: sem navigator.onLine OU mensagem de erro típica de falha de rede/timeout
-// (em browsers, falha de fetch por falta de ligação lança "Failed to fetch"/"NetworkError").
-export function isNetworkError(e: unknown): boolean {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
-  const msg = e instanceof Error ? e.message : typeof e === 'object' && e !== null && 'message' in e ? String(e.message) : String(e)
-  return /failed to fetch|networkerror|network request failed|err_internet|err_connection|err_network|load failed|timeout/i.test(msg)
-}
+export { isNetworkError } from '@/app/lib/errosRede'
 
 // As exceções das RPCs já vêm em português (RAISE EXCEPTION) —
 // só precisamos de um fallback genérico para erros verdadeiramente inesperados.
