@@ -334,3 +334,47 @@ e os testes do módulo; o lote Edge com `npm run check:edge && npm run test:edge
 5. **A1-09** — Dashboard › Authentication › Sign In / Providers: confirmar "Allow new users to sign up" desligado (toda a conta nova nasce `gestor`).
 6. **A1-11** — mover o segredo `app.edge_function_secret` para `privado.segredos` (como `fase9_agendar_push_frota`) quando houver janela; registado.
 7. **A3-10** — decidir: contagem de inventário (`INVENTARIO`) é só admin/gestor (como diz o doc 17) ou também `armazem` (como a BD permite)? Até lá fica como está.
+
+## 6. Lotes adicionais (decididos pelo controlador depois da concorrência, da carga e das revisões)
+
+#### Acrescentos a lotes existentes
+- **BD-6** também: (a) **A1-09 promovido a Média** — `handle_new_user` cria a conta com papel `leitura` (não `gestor`); confirmar que
+  `supabase/functions/admin-utilizadores` define sempre o papel pedido a seguir (via `promover_role`) e que nenhum teste/fluxo depende
+  do `gestor` por omissão. Teste: INSERT em `auth.users` → `profiles.role = 'leitura'`. (b) `REVOKE SELECT ON public.colaboradores FROM anon`
+  (revisão BD-1). Ficheiros extra: os mesmos do BD-6 + `supabase/tests/seguranca.test.mjs` se precisar de ajuste.
+- **FE-6** também cobre as truncagens medidas na carga (seed com 53 mil movimentos e 2 214 artigos): `listarArtigosArmazem`, `listarProdutos`,
+  relatório de stock do ano (`listarMovimentos`), `exportarMovimentosArmazem` (o `limit` de 5000 nunca chega — o PostgREST corta em 1000),
+  `exportarMateriais`, e a RPC `armazem_materiais_por_obra` (14,6 mil linhas). Regra: listas/exportações que precisam de tudo paginam com
+  `.range()` em blocos de 1000 até esgotar (helper local ao service, não genérico de filtros); totais vêm de agregação no servidor quando existir.
+  Ver `.superpowers/sdd/2026-10-28-checkup-geral-carga/task-7-report.md`.
+
+#### BD-8 · Picagens idempotentes (reenvio da fila offline) — FE-2 (preocupação), A5-07
+- Ficheiros: `supabase/migrations/20261028120800_checkup_picagens_client_id.sql`, `supabase/tests/checkup-picagens-client-id.test.mjs`.
+- Correção: coluna `picagens.client_id uuid NULL` + índice único parcial `(client_id) WHERE client_id IS NOT NULL`; o caminho de inserção usado
+  pelo site (INSERT direto e/ou `registar_picagem_geofence` — confirmar no frontend) aceita `client_id` e, se já existir picagem com esse
+  `client_id`, devolve a existente em vez de criar outra (no INSERT direto: `ON CONFLICT` não é possível via PostgREST sem `upsert`; usar
+  trigger `BEFORE INSERT` que, se o `client_id` já existe e pertence ao mesmo colaborador, faz `RETURN NULL`, ou o upsert com
+  `ignoreDuplicates` — escolher o que o PostgREST suporta e testar). GRANT da coluna nova a `authenticated` (INSERT/SELECT).
+- Teste (falha antes): dois INSERT com o mesmo `client_id` → 1 linha; `client_id` diferente → 2; outro colaborador com o mesmo `client_id` → recusado.
+
+#### FE-2b · Fila de picagens envia `client_id` — depende de BD-8 (com fallback para BD antiga)
+- Ficheiros: o serviço/fila de picagens tocados no FE-2 (`src/features/picagens/...`) + teste.
+- Correção: cada picagem recebe `client_id = crypto.randomUUID()` no momento do registo (antes de ir para a fila) e envia-o sempre;
+  coluna inexistente (`PGRST204`/`42703`) ⇒ reenvia sem `client_id` (BD antiga). Teste: o mesmo item reenviado 2× usa o mesmo `client_id`.
+
+#### BD-9 · Desempenho medido na carga (Task 7)
+- Ficheiros: `supabase/migrations/20261028120900_checkup_desempenho.sql`, `supabase/tests/checkup-desempenho.test.mjs`.
+- Correção: (1) índice `movimentos_stock (tipo, created_at DESC)` (`CREATE INDEX IF NOT EXISTS`); (2) nas policies com `auth.role()`,
+  `auth.uid()`, `public.auth_role()` ou `public.pode_escrever(...)` avaliados por linha, envolver em `(select …)` para o planner os avaliar uma
+  vez (initplan) — reescrever com `DROP POLICY IF EXISTS` + `CREATE POLICY` mantendo **exatamente** a mesma semântica, papéis e comandos;
+  (3) `obras` SELECT: trocar a chamada por linha a `pode_ver_obra(id)` por `(select public.pode_ler_obras()) OR public._autor_designado(id)`
+  ou equivalente que preserve o resultado — confirmar a semântica atual de `pode_ver_obra` antes. Listar no relatório cada policy reescrita.
+- Teste: (a) o índice existe; (b) para cada policy reescrita, a matriz de acesso por papel (admin, gestor, armazem, medicoes, mecanico,
+  motorista, leitura, anon) é idêntica antes/depois — gerar a matriz com as migrations até 120800 e comparar com a de 120900 (mesmo teste);
+  (c) `pg_policies.qual` das reescritas contém `SELECT` envolvendo as funções. A melhoria de tempo é medida pelo controlador na re-execução da carga.
+
+#### FE-11 · Contagens baratas — Task 7
+- Ficheiros: o service do dashboard que faz as contagens `count: 'exact'` de entradas/saídas de hoje, e `listarMovimentosArmazem`.
+- Correção: `listarMovimentosArmazem` pede `count: 'exact'` só na 1.ª página (as seguintes reutilizam o total) — ou `planned` se o ecrã
+  só mostra "≈"; contagens do dashboard com `head: true` e filtro por `created_at >= início do dia de Lisboa` (usa o índice do BD-9).
+  Teste: a 2.ª página não pede `count`.
