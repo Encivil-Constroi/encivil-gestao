@@ -31,10 +31,12 @@ describe('NIF protegido', () => {
     const { rows } = await comoU(leitor, tx => tx.query(`SELECT id, nome, cargo FROM public.colaboradores`))
     expect(rows.length).toBeGreaterThanOrEqual(2)
   })
-  it('todas as colunas exceto nif são legíveis (colunas futuras precisam de GRANT)', async () => {
+  // telemovel, email e notas também saíram em 20261028120100 (lidas por colaboradores_contactos())
+  it('todas as colunas exceto nif e contactos são legíveis (colunas futuras precisam de GRANT)', async () => {
     const { rows } = await db.query(`
       SELECT column_name FROM information_schema.columns
-       WHERE table_schema='public' AND table_name='colaboradores' AND column_name <> 'nif'
+       WHERE table_schema='public' AND table_name='colaboradores'
+         AND column_name NOT IN ('nif', 'telemovel', 'email', 'notas')
          AND NOT has_column_privilege('authenticated', 'public.colaboradores', column_name, 'SELECT')`)
     expect(rows).toEqual([])
   })
