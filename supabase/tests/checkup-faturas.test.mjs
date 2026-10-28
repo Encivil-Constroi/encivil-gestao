@@ -40,6 +40,10 @@ describe('A3-01 — lançamento serializado por fatura', () => {
     expect(r.d).toMatch(/FOR UPDATE/)
     expect(r.d.indexOf('FOR UPDATE')).toBeLessThan(r.d.indexOf('CLASSIFICADA'))
   })
+  it('trigger de linhas lê o estado da fatura com FOR SHARE (INSERT concorrente espera pelo lançamento)', async () => {
+    const { rows: [r] } = await db.query(`SELECT pg_get_functiondef('public._linhas_fatura_lancada_imutavel()'::regprocedure) AS d`)
+    expect(r.d.match(/WHERE id = (OLD|NEW).fatura_id FOR SHARE/g)).toHaveLength(2)
+  })
 
   it('2.º lançamento da mesma fatura é recusado e o stock só entra uma vez', async () => {
     const id = await novaFatura()
@@ -138,6 +142,53 @@ describe('A3-05 — fatura LANCADA imutável', () => {
     await db.query(`DELETE FROM public.obras WHERE id = $1`, [obra])
     const { rows } = await db.query(`SELECT obra_id, estado FROM public.faturas_fornecedor WHERE id = $1`, [f])
     expect(rows[0]).toEqual({ obra_id: null, estado: 'LANCADA' })
+  })
+})
+
+// Fix round 1 (revisão I-1): a exceção ON DELETE SET NULL não pode servir de porta a UPDATE manual
+describe('A3-05 — NULL só quando a linha referenciada desapareceu', () => {
+  let f, linhaArm, linhaObra, obra, artigo, autor
+  beforeAll(async () => {
+    autor = (await db.query(`INSERT INTO auth.users (email) VALUES ('autor@t.pt') RETURNING id`)).rows[0].id
+    obra = (await db.query(`INSERT INTO public.obras (nome) VALUES ('Obra FK') RETURNING id`)).rows[0].id
+    artigo = (await db.query(`INSERT INTO public.produtos (codigo, nome, categoria, unidade, stock_atual, custo_unitario)
+      VALUES ('F-2', 'Areia', 'agregados', 'kg', 0, 1) RETURNING id`)).rows[0].id
+    f = await novaFatura([{ destino: 'ARMAZEM', artigo: true, quantidade: 1 }])
+    await db.query(`UPDATE public.faturas_fornecedor SET criado_por = $1 WHERE id = $2`, [autor, f])
+    linhaObra = (await db.query(`INSERT INTO public.linhas_fatura (fatura_id, descricao, quantidade, destino, artigo_id)
+      VALUES ($1, 'Areia', 1, 'OBRA', $2) RETURNING id`, [f, artigo])).rows[0].id
+    await lancar(f)
+    linhaArm = (await db.query(`SELECT id FROM public.linhas_fatura WHERE fatura_id = $1 AND destino = 'ARMAZEM'`, [f])).rows[0].id
+  })
+  const faturaComObra = async () => {
+    const id = await novaFatura([{ destino: 'SERVICO', artigo: false, quantidade: 1 }])
+    await db.query(`UPDATE public.faturas_fornecedor SET obra_id = $1 WHERE id = $2`, [obra, id])
+    await lancar(id)
+    return id
+  }
+
+  it('gestor não tira a obra a uma fatura LANCADA', async () => {
+    const id = await faturaComObra()
+    await expect(q(`UPDATE public.faturas_fornecedor SET obra_id = NULL WHERE id = $1`, [id])).rejects.toThrow(/LANCADA/)
+  })
+  it('gestor não apaga criado_por de uma fatura LANCADA', async () => {
+    await expect(q(`UPDATE public.faturas_fornecedor SET criado_por = NULL WHERE id = $1`, [f])).rejects.toThrow(/LANCADA/)
+  })
+  it('gestor não desliga o movimento de uma linha lançada', async () => {
+    await expect(q(`UPDATE public.linhas_fatura SET movimento_id = NULL WHERE id = $1`, [linhaArm])).rejects.toThrow(/LANCADA/)
+  })
+  it('gestor não tira o artigo a uma linha lançada', async () => {
+    await expect(q(`UPDATE public.linhas_fatura SET artigo_id = NULL WHERE id = $1`, [linhaObra])).rejects.toThrow(/LANCADA/)
+  })
+  it('apagar o artigo continua a pôr artigo_id a NULL', async () => {
+    await db.query(`DELETE FROM public.produtos WHERE id = $1`, [artigo])
+    const { rows } = await db.query(`SELECT artigo_id FROM public.linhas_fatura WHERE id = $1`, [linhaObra])
+    expect(rows[0].artigo_id).toBeNull()
+  })
+  it('apagar o utilizador continua a pôr criado_por a NULL', async () => {
+    await db.query(`DELETE FROM auth.users WHERE id = $1`, [autor])
+    const { rows } = await db.query(`SELECT criado_por, estado FROM public.faturas_fornecedor WHERE id = $1`, [f])
+    expect(rows[0]).toEqual({ criado_por: null, estado: 'LANCADA' })
   })
 })
 
