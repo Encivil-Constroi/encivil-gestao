@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
 
 // Subscrição Web Push do dispositivo, guardada em push_subscriptions. Quem
 // recebe o quê decide-se no servidor (notificar-abastecimento, send-push-frota).
@@ -40,10 +41,33 @@ async function guardarSubscricao(sub: PushSubscription): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
+  // A RPC passa o endpoint para o utilizador atual (telemóvel partilhado); sem ela
+  // (BD antiga: PGRST202/42883) fica o upsert, que não consegue tomar um endpoint de outro
+  try {
+    await rpcSemTipos('registar_subscricao_push', {
+      p_endpoint: json.endpoint, p_p256dh: keys.p256dh, p_auth: keys.auth,
+      p_user_agent: navigator.userAgent.slice(0, 255),
+    })
+    return
+  } catch (e) {
+    const code = (e as { code?: string } | null)?.code
+    if (code !== 'PGRST202' && code !== '42883') throw e
+  }
+
   const { error } = await supabase.from('push_subscriptions').upsert(
     { user_id: user.id, endpoint: json.endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: navigator.userAgent.slice(0, 255) },
     { onConflict: 'endpoint' }
   )
+  if (error) throw error
+}
+
+// No logout: o próximo utilizador do mesmo dispositivo não herda os avisos do anterior
+export async function removerSubscricaoDoDispositivo(): Promise<void> {
+  if (typeof navigator === 'undefined' || !navigator.serviceWorker) return
+  const reg = await navigator.serviceWorker.getRegistration?.()
+  const sub = await reg?.pushManager?.getSubscription()
+  if (!sub) return
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
   if (error) throw error
 }
 

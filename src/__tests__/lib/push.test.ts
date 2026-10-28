@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }))
+const m = vi.hoisted(() => ({ rpc: vi.fn(), upsert: vi.fn(), eq: vi.fn(), del: vi.fn() }))
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    auth: { getUser: async () => ({ data: { user: { id: 'U1' } } }) },
+    rpc: m.rpc,
+    from: () => ({ upsert: m.upsert, delete: m.del }),
+  },
+}))
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14) Chrome/128 Mobile'
@@ -48,5 +55,73 @@ describe('estado das notificações', () => {
   it('browser sem push: indisponível', async () => {
     ambiente({ push: false })
     expect((await carregar())()).toBe('indisponivel')
+  })
+})
+
+describe('subscrição por dispositivo', () => {
+  const SUB = { endpoint: 'https://fcm.googleapis.com/x', toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'P', auth: 'A' } }) }
+
+  function comSubscricao(sub: unknown) {
+    ambiente({ permissao: 'granted' })
+    vi.stubGlobal('navigator', {
+      userAgent: ANDROID, platform: 'Linux', maxTouchPoints: 5,
+      serviceWorker: {
+        ready: Promise.resolve({ pushManager: { getSubscription: async () => sub } }),
+        getRegistration: async () => ({ pushManager: { getSubscription: async () => sub } }),
+      },
+    })
+  }
+
+  beforeEach(() => {
+    m.rpc.mockReset().mockResolvedValue({ data: null, error: null })
+    m.upsert.mockReset().mockResolvedValue({ error: null })
+    m.eq.mockReset().mockResolvedValue({ error: null })
+    m.del.mockReset().mockReturnValue({ eq: m.eq })
+  })
+
+  it('guarda pela RPC registar_subscricao_push (o endpoint passa para o utilizador atual)', async () => {
+    comSubscricao(SUB)
+    await carregar()
+    const push = await import('@/app/lib/push')
+    await push.subscreverSeNecessario()
+    expect(m.rpc).toHaveBeenCalledWith('registar_subscricao_push', expect.objectContaining({
+      p_endpoint: SUB.endpoint, p_p256dh: 'P', p_auth: 'A',
+    }))
+    expect(m.upsert).not.toHaveBeenCalled()
+  })
+
+  it.each(['PGRST202', '42883'])('RPC inexistente (%s): cai no upsert antigo', async code => {
+    comSubscricao(SUB)
+    m.rpc.mockResolvedValue({ data: null, error: { message: 'x', code } })
+    await carregar()
+    const push = await import('@/app/lib/push')
+    await push.subscreverSeNecessario()
+    expect(m.upsert).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'U1', endpoint: SUB.endpoint }), { onConflict: 'endpoint' })
+  })
+
+  it('outro erro da RPC não é engolido', async () => {
+    comSubscricao(SUB)
+    m.rpc.mockResolvedValue({ data: null, error: { message: 'boom', code: '42501' } })
+    await carregar()
+    const push = await import('@/app/lib/push')
+    await expect(push.subscreverSeNecessario()).rejects.toMatchObject({ code: '42501' })
+    expect(m.upsert).not.toHaveBeenCalled()
+  })
+
+  it('removerSubscricaoDoDispositivo apaga a linha do endpoint atual', async () => {
+    comSubscricao(SUB)
+    await carregar()
+    const push = await import('@/app/lib/push')
+    await push.removerSubscricaoDoDispositivo()
+    expect(m.del).toHaveBeenCalled()
+    expect(m.eq).toHaveBeenCalledWith('endpoint', SUB.endpoint)
+  })
+
+  it('sem subscrição neste dispositivo: não apaga nada', async () => {
+    comSubscricao(null)
+    await carregar()
+    const push = await import('@/app/lib/push')
+    await push.removerSubscricaoDoDispositivo()
+    expect(m.del).not.toHaveBeenCalled()
   })
 })

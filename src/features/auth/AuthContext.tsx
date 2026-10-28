@@ -6,6 +6,7 @@ import { temMarcadorRecuperacao } from '@/integrations/supabase/entradaUrl'
 import type { Enums } from '@/integrations/supabase/types'
 import { setSentryUser, clearSentryUser } from '@/app/lib/sentry'
 import { clearAsyncCache } from '@/app/lib/useAsync'
+import { removerSubscricaoDoDispositivo } from '@/app/lib/push'
 import { limparDadosLocais } from './lib/limparDadosLocais'
 import { registarEvento } from './services/eventosSegurancaService'
 
@@ -22,6 +23,20 @@ const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scr
 const CHAVE_ATIVIDADE = 'encivil-ultima-atividade'
 const INTERVALO_GRAVACAO_MS = 5000
 const ESPERA_NOVA_TENTATIVA_MS = 1000
+// O logout nunca fica preso à rede: retirar o push do dispositivo é best effort
+const ESPERA_REMOVER_PUSH_MS = 2000
+
+async function retirarPushDoDispositivo() {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      removerSubscricaoDoDispositivo(),
+      new Promise<void>(r => { timer = setTimeout(r, ESPERA_REMOVER_PUSH_MS) }),
+    ])
+  } catch { /* best effort */ } finally {
+    clearTimeout(timer)
+  }
+}
 
 function lerUltimaAtividade(): number {
   try { return Number(localStorage.getItem(CHAVE_ATIVIDADE)) || 0 } catch { return 0 }
@@ -219,7 +234,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void encerrarSessao('local')
     }
 
+    // Prazo ultrapassado mas o temporizador não correu (aba suspensa, telemóvel bloqueado):
+    // a atividade de agora não renova uma sessão que já devia ter terminado
+    const prazoUltrapassado = () =>
+      Date.now() - Math.max(ultima, lerUltimaAtividade()) >= INACTIVITY_LIMIT_MS
+
+    const expirar = () => {
+      clearTimeout(timer)
+      if (!sessionRef.current) return
+      toast.info('Sessão terminada por inatividade. Inicie sessão de novo.')
+      void encerrarSessao('local')
+    }
+
     const registarAtividade = () => {
+      if (prazoUltrapassado()) { expirar(); return }
+      marcarAtividade()
+    }
+
+    const aoVoltarVisivel = () => {
+      if (document.visibilityState === 'visible' && prazoUltrapassado()) expirar()
+    }
+
+    const marcarAtividade = () => {
       ultima = Date.now()
       // mousemove dispara dezenas de vezes por segundo: não escrever no localStorage a cada um
       if (ultima - ultimaGravada >= INTERVALO_GRAVACAO_MS) {
@@ -237,12 +273,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     ACTIVITY_EVENTS.forEach(evt => window.addEventListener(evt, registarAtividade, { passive: true }))
     window.addEventListener('storage', atividadeNoutroSeparador)
-    registarAtividade()
+    document.addEventListener('visibilitychange', aoVoltarVisivel)
+    marcarAtividade()
 
     return () => {
       clearTimeout(timer)
       ACTIVITY_EVENTS.forEach(evt => window.removeEventListener(evt, registarAtividade))
       window.removeEventListener('storage', atividadeNoutroSeparador)
+      document.removeEventListener('visibilitychange', aoVoltarVisivel)
     }
   }, [uid])
 
@@ -264,6 +302,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
     setLoading(false)
     clearSentryUser()
+    // Antes do signOut: apagar a linha precisa do token do próprio
+    await retirarPushDoDispositivo()
     await terminarSessao(scope)
   }
 

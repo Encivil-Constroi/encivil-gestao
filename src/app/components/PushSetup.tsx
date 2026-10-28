@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react'
 import { useRole } from '@/features/auth/useRole'
 import { toast } from 'sonner'
+import { captureError } from '@/app/lib/sentry'
 import { estadoPush, pedirNotificacoes, subscreverSeNecessario } from '@/app/lib/push'
 
 export function textoPedidoPush(role: string | null): string {
@@ -27,7 +28,7 @@ export function PushSetup() {
 
     // Já autorizado → subscrever em silêncio (ex.: após reinstalar o SW)
     if (estado === 'ativo') {
-      subscreverSeNecessario().catch(() => {})
+      subscreverSeNecessario().catch(e => captureError(e, { origem: 'push-subscrever' }))
       return
     }
 
@@ -35,7 +36,7 @@ export function PushSetup() {
     const t = setTimeout(() => {
       toast(textoPedidoPush(role), {
         duration: 10_000,
-        action: { label: 'Ativar', onClick: () => { pedirNotificacoes().catch(() => {}) } },
+        action: { label: 'Ativar', onClick: () => { pedirNotificacoes().catch(e => captureError(e, { origem: 'push-pedir' })) } },
         cancel: { label: 'Agora não', onClick: () => {} },
       })
     }, 5_000)

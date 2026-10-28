@@ -8,8 +8,10 @@ const m = vi.hoisted(() => ({
   perfil: vi.fn<() => Promise<ResultadoPerfil>>(),
   setSentryUser: vi.fn(),
   info: vi.fn(),
+  removerPush: vi.fn<() => Promise<void>>(),
 }))
 
+vi.mock('@/app/lib/push', () => ({ removerSubscricaoDoDispositivo: m.removerPush }))
 vi.mock('sonner', () => ({ toast: { info: m.info } }))
 vi.mock('@/app/lib/sentry', () => ({ setSentryUser: m.setSentryUser, clearSentryUser: vi.fn(), captureError: vi.fn() }))
 vi.mock('@/features/auth/services/eventosSegurancaService', () => ({ registarEvento: vi.fn() }))
@@ -61,6 +63,7 @@ beforeEach(() => {
   m.perfil.mockReset().mockResolvedValue(perfilOk)
   m.setSentryUser.mockReset()
   m.info.mockReset()
+  m.removerPush.mockReset().mockResolvedValue(undefined)
 })
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.stubGlobal('caches', undefined) })
 
@@ -198,5 +201,83 @@ describe('reabrir um telemóvel partilhado horas depois', () => {
     await act(async () => { await m.ouvinte?.('SIGNED_IN', sessao('A')) })
     await flush()
     expect(m.signOut).not.toHaveBeenCalled()
+  })
+})
+
+describe('prazo de inatividade ultrapassado sem o temporizador correr', () => {
+  async function entrar() {
+    render(<AuthProvider><Estado /></AuthProvider>)
+    await flush()
+    await act(async () => { await m.ouvinte?.('SIGNED_IN', sessao('A')) })
+    await flush()
+  }
+
+  it('31 min sem temporizadores (aba suspensa) e um mousedown: termina a sessão em vez de a renovar', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await entrar()
+    vi.setSystemTime(Date.now() + 31 * MIN) // relógio salta; nenhum temporizador corre
+    await act(async () => { window.dispatchEvent(new Event('mousedown')) })
+    await flush()
+    expect(m.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(m.info).toHaveBeenCalled()
+  })
+
+  it('voltar a ficar visível depois do prazo termina a sessão', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await entrar()
+    vi.setSystemTime(Date.now() + 31 * MIN)
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+    await flush()
+    expect(m.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('atividade dentro do prazo continua a renovar', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await entrar()
+    vi.setSystemTime(Date.now() + 20 * MIN)
+    await act(async () => { window.dispatchEvent(new Event('mousedown')) })
+    await flush()
+    expect(m.signOut).not.toHaveBeenCalled()
+  })
+})
+
+describe('fim de sessão e push do dispositivo', () => {
+  it('terminar sessão retira o push deste dispositivo antes do signOut', async () => {
+    let sair!: () => Promise<void>
+    function Botao() { sair = useAuth().signOut; return null }
+    render(<AuthProvider><Estado /><Botao /></AuthProvider>)
+    await flush()
+    await act(async () => { await m.ouvinte?.('SIGNED_IN', sessao('A')) })
+    await flush()
+    const ordem: string[] = []
+    m.removerPush.mockImplementation(async () => { ordem.push('push') })
+    m.signOut.mockImplementation(async () => { ordem.push('signOut'); return { error: null } })
+    await act(async () => { await sair() })
+    expect(ordem).toEqual(['push', 'signOut'])
+  })
+
+  it('push lento ou a falhar não prende o logout', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    let sair!: () => Promise<void>
+    function Botao() { sair = useAuth().signOut; return null }
+    render(<AuthProvider><Estado /><Botao /></AuthProvider>)
+    await flush()
+    await act(async () => { await m.ouvinte?.('SIGNED_IN', sessao('A')) })
+    await flush()
+    m.removerPush.mockImplementation(() => new Promise<void>(() => {}))
+    await act(async () => { const p = sair(); await vi.advanceTimersByTimeAsync(3000); await p })
+    expect(m.signOut).toHaveBeenCalled()
+  })
+
+  it('push a rejeitar não impede o signOut', async () => {
+    let sair!: () => Promise<void>
+    function Botao() { sair = useAuth().signOut; return null }
+    render(<AuthProvider><Estado /><Botao /></AuthProvider>)
+    await flush()
+    await act(async () => { await m.ouvinte?.('SIGNED_IN', sessao('A')) })
+    await flush()
+    m.removerPush.mockRejectedValue(new Error('rede'))
+    await act(async () => { await sair() })
+    expect(m.signOut).toHaveBeenCalled()
   })
 })
