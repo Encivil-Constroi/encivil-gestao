@@ -1,11 +1,12 @@
 import { useAsync } from '@/app/lib/useAsync'
 import { supabase } from '@/integrations/supabase/client'
 import type { DashboardStats, LowStockItem, Movement, Unit, MovementType } from '@/app/types'
+import { hojeLisboa, limitesDiaLisboa } from '@/app/lib/dataLisboa'
 import { calcStatus } from '@/app/lib/stockUtils'
 
 async function fetchDashboard(): Promise<DashboardStats> {
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  // Início do dia em Lisboa (não do fuso do telemóvel), para usar o índice de movimentos por data
+  const inicioHoje = limitesDiaLisboa(hojeLisboa()).inicio
 
   const [
     { count: totalProducts, error: e1 },
@@ -18,11 +19,11 @@ async function fetchDashboard(): Promise<DashboardStats> {
     supabase.from('movimentos_stock')
       .select('*', { count: 'exact', head: true })
       .eq('tipo', 'entrada')
-      .gte('created_at', todayStart.toISOString()),
+      .gte('created_at', inicioHoje),
     supabase.from('movimentos_stock')
       .select('*', { count: 'exact', head: true })
       .eq('tipo', 'saida')
-      .gte('created_at', todayStart.toISOString()),
+      .gte('created_at', inicioHoje),
     supabase.rpc('produtos_em_alerta'),
     supabase.from('movimentos_stock')
       .select('*, produtos(nome, unidade)')

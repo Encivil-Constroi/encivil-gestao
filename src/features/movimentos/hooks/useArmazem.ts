@@ -22,9 +22,16 @@ export function useFornecedoresUsados() {
 }
 
 export function useMovimentosArmazem(filtros: FiltrosMovArmazem, pagina = 0, porPagina = POR_PAGINA) {
-  const chave = `${JSON.stringify(filtros)}|${pagina}|${porPagina}`
+  const chaveFiltros = `${JSON.stringify(filtros)}|${porPagina}`
+  const chave = `${chaveFiltros}|${pagina}`
+  const totalRef = useRef<{ chave: string; total: number } | null>(null)
   const { data, loading, error, reload } = useAsync(
-    () => listarMovimentosArmazem(filtros, pagina, porPagina), [chave],
+    async () => {
+      const conhecido = totalRef.current?.chave === chaveFiltros ? totalRef.current.total : undefined
+      const r = await listarMovimentosArmazem(filtros, pagina, porPagina, conhecido)
+      totalRef.current = { chave: chaveFiltros, total: r.total }
+      return r
+    }, [chave],
     { cacheKey: `armazem-mov-${chave}`, cacheTtl: 15_000, errorMsg: 'Erro ao carregar movimentos' })
   return { movimentos: data?.movimentos ?? [], total: data?.total ?? 0, loading, error, reload }
 }

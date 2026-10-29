@@ -189,13 +189,16 @@ function consultaMovimentos(f: FiltrosMovArmazem, comTotal: boolean) {
   return q
 }
 
+// O count exato percorre todas as linhas do filtro: só a 1.ª página o pede; as seguintes
+// reutilizam o total (totalConhecido) que o chamador guardou dessa 1.ª resposta.
 export async function listarMovimentosArmazem(
-  f: FiltrosMovArmazem = {}, pagina = 0, porPagina = POR_PAGINA,
+  f: FiltrosMovArmazem = {}, pagina = 0, porPagina = POR_PAGINA, totalConhecido?: number,
 ): Promise<{ movimentos: MovimentoArmazem[]; total: number }> {
   const de = pagina * porPagina
-  const { data, error, count } = await consultaMovimentos(f, true).range(de, de + porPagina - 1)
+  const pedirTotal = pagina === 0 || totalConhecido === undefined
+  const { data, error, count } = await consultaMovimentos(f, pedirTotal).range(de, de + porPagina - 1)
   if (error) throw error
-  return { movimentos: (data as unknown as MovRow[]).map(toMovimento), total: count ?? 0 }
+  return { movimentos: (data as unknown as MovRow[]).map(toMovimento), total: pedirTotal ? count ?? 0 : totalConhecido }
 }
 
 export async function exportarMovimentosArmazem(f: FiltrosMovArmazem = {}): Promise<MovimentoArmazem[]> {
