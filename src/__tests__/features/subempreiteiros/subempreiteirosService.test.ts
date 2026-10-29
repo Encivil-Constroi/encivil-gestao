@@ -244,6 +244,7 @@ describe('listarSubempreiteirosComExecutado', () => {
       data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })],
       error: null,
     })
+    b.range.mockResolvedValueOnce({ data: [], error: null }) // fim da lista (a paginação só pára numa página vazia)
     // 1º eq = filtro ativo (encadeia); 2º eq = autos query (resolve)
     b.range.mockResolvedValueOnce({
       data: [
@@ -262,6 +263,7 @@ describe('listarSubempreiteirosComExecutado', () => {
 
   it('o executado é o certificado: valor do período menos glosas', async () => {
     b.range.mockResolvedValueOnce({ data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })], error: null })
+    b.range.mockResolvedValueOnce({ data: [], error: null })
     b.range.mockResolvedValueOnce({
       data: [
         { subempreiteiro_id: 's1', valor_periodo: 10000, valor_glosado: 1500, estado: 'validado' },
