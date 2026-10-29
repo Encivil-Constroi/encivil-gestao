@@ -15,6 +15,7 @@ import {
 } from '../../hooks/usePedidos'
 import { useEstadoBomba, useEstadoPedidoBomba } from '../../hooks/useBombaPolo2'
 import { urlFotoCombustivel } from '../../services/fotosService'
+import { urlHttps } from '@/app/lib/urlSegura'
 import { BombaAtiva } from '../BombaAtiva'
 import { AcoesAprovador } from './AcoesAprovador'
 import { AtivarNotificacoes } from './AtivarNotificacoes'
@@ -366,7 +367,7 @@ function Detalhes({ pedido }: { pedido: PedidoRow }) {
     { rotulo: 'Contador antes', path: pedido.foto_contador_inicial_path },
     { rotulo: pedido.tipo_fonte === 'POSTO_RUA' ? 'Talão' : pedido.tipo_fonte === 'CARRINHA' ? 'Medidor' : 'Contador depois', path: pedido.foto_final_path },
   ].filter((f): f is { rotulo: string; path: string } => !!f.path)
-  const fotoAntiga = pedido.foto_medidor_url ?? pedido.foto_url
+  const fotoAntiga = urlHttps(pedido.foto_medidor_url ?? pedido.foto_url)
 
   const linhas: [string, string | null][] = [
     ['Motorista', pedido.funcionario_nome],

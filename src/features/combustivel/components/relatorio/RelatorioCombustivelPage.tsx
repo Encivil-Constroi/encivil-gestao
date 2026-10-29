@@ -6,8 +6,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import {
-  ROTULO_FONTE_ANALISE, ROTULO_PRESET, analisar, consumoL100, granularidadeAuto, isoDia, metricasAprovacao,
+  ROTULO_FONTE_ANALISE, ROTULO_PRESET, analisar, consumoL100, granularidadeAuto, metricasAprovacao,
   periodoAnterior, periodoDoPreset, porFonte, porMotorista, porPeriodo, porViatura, totais,
   type Granularidade, type Insight, type NivelInsight, type Preset,
 } from '../../lib/analise'
@@ -39,7 +40,7 @@ export function RelatorioCombustivelPage({ embutido = false }: { embutido?: bool
   const [medida, setMedida] = useState<Medida>('custo')
   const [granEscolhida, setGranEscolhida] = useState<Granularidade | null>(null)
 
-  const hoje = isoDia(new Date())
+  const hoje = hojeLisboa()
   const periodo = useMemo(() => periodoDoPreset(preset, hoje), [preset, hoje])
   const anterior = useMemo(() => periodoAnterior(periodo), [periodo])
   const gran = granEscolhida ?? granularidadeAuto(periodo)

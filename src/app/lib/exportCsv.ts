@@ -1,3 +1,4 @@
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 import { neutralizarFormula } from './neutralizarFormula'
 
 // UTF-8 BOM necessário para o Excel abrir caracteres portugueses (ã, ç, €) corretamente
@@ -23,7 +24,7 @@ export function exportarCsv(rows: Record<string, unknown>[], nomeArquivo: string
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
   a.href     = url
-  a.download = `${nomeArquivo}_${new Date().toISOString().split('T')[0]}.csv`
+  a.download = `${nomeArquivo}_${hojeLisboa()}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }

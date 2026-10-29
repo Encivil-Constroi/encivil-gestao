@@ -1,3 +1,4 @@
+import { hojeLisboa } from '@/app/lib/dataLisboa'
 // Importação dinâmica — xlsx só carrega quando o utilizador clica em exportar,
 // sem impacto no bundle inicial.
 import type * as XLSXType from 'xlsx'
@@ -56,7 +57,7 @@ function construirFolha(XLSX: typeof XLSXType, rows: Linhas): XLSXType.WorkSheet
 }
 
 function nomeFicheiro(nomeArquivo: string): string {
-  const hoje = new Date().toISOString().split('T')[0]
+  const hoje = hojeLisboa()
   return `${nomeArquivo}_${hoje}.xlsx`
 }
 

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router';
 import { ChevronLeft, Trash2, Droplet, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtEuro } from '../lib/format';
+import { dataISOLocal, hojeLisboa } from '../lib/dataLisboa';
+import { urlHttps } from '../lib/urlSegura';
 import { useRole } from '@/features/auth/useRole';
 import { useObras } from '@/features/obras/hooks/useObras';
 import { useVeiculos, useAbastecimento, useGuardarAbastecimento, useEliminarAbastecimento } from '@/features/combustivel/hooks/useCombustivel';
@@ -25,7 +27,7 @@ export function AbastecimentoFormPage() {
   const [form, setForm] = useState({
     vehicleId: '',
     obraId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: hojeLisboa(),
     liters: '',
     totalCost: '',
     counter: '',
@@ -41,7 +43,7 @@ export function AbastecimentoFormPage() {
     setForm({
       vehicleId: entry.vehicleId,
       obraId: entry.obraId ?? '',
-      date: entry.date.toISOString().split('T')[0],
+      date: dataISOLocal(entry.date),
       liters: String(entry.liters),
       totalCost: String(entry.totalCost),
       counter: entry.counter != null ? String(entry.counter) : '',
@@ -105,18 +107,18 @@ export function AbastecimentoFormPage() {
         </div>
       </div>
 
-      {isEdit && entry?.photoUrl && (
+      {isEdit && entry && urlHttps(entry.photoUrl) && (
         <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">Foto enviada pelo motorista</p>
-            <a href={entry.photoUrl} target="_blank" rel="noopener noreferrer"
+            <a href={urlHttps(entry.photoUrl)!} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               Abrir em tamanho real
             </a>
           </div>
-          <a href={entry.photoUrl} target="_blank" rel="noopener noreferrer" className="block">
-            <img src={entry.photoUrl} alt="Foto do medidor ou talão"
+          <a href={urlHttps(entry.photoUrl)!} target="_blank" rel="noopener noreferrer" className="block">
+            <img src={urlHttps(entry.photoUrl)!} alt="Foto do medidor ou talão"
               className="w-full max-h-80 object-contain rounded-xl border border-border bg-muted" />
           </a>
         </div>

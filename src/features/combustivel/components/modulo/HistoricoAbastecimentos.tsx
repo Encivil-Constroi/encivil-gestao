@@ -6,6 +6,8 @@ import { EmptyState } from '@/app/components/EmptyState'
 import { SkeletonList } from '@/app/components/Skeletons'
 import { fmtEuro, fmtNumber } from '@/app/lib/format'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
+import { dataISOLocal, hojeLisboa } from '@/app/lib/dataLisboa'
+import { urlHttps } from '@/app/lib/urlSegura'
 import { useRole } from '@/features/auth/useRole'
 import { useAbastecimentos, useVeiculos } from '../../hooks/useCombustivel'
 import type { FuelEntry } from '@/app/types'
@@ -25,13 +27,13 @@ function ultimoDiaMes(d: Date) {
 }
 
 function toISO(d: Date) {
-  return d.toISOString().split('T')[0]
+  return dataISOLocal(d)
 }
 
 function diaLabel(dateStr: string) {
   const d = new Date(dateStr + 'T12:00:00')
-  const hoje = toISO(new Date())
-  const ontem = toISO(new Date(Date.now() - 86_400_000))
+  const hoje = hojeLisboa()
+  const ontem = hojeLisboa(new Date(Date.now() - 86_400_000))
   if (dateStr === hoje) return 'Hoje'
   if (dateStr === ontem) return 'Ontem'
   return d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'short' })
@@ -52,8 +54,8 @@ function LinhaRegisto({ e, isAdmin }: { e: FuelEntry; isAdmin: boolean }) {
   const conteudo: ReactNode = (
     <>
       <div className="min-w-0 flex items-center gap-3">
-        {e.photoUrl ? (
-          <img src={e.photoUrl} alt="Foto do abastecimento" loading="lazy"
+        {urlHttps(e.photoUrl) ? (
+          <img src={urlHttps(e.photoUrl)!} alt="Foto do abastecimento" loading="lazy"
             className="w-10 h-10 rounded-lg object-cover border border-border shrink-0 bg-muted" />
         ) : (
           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
@@ -135,7 +137,7 @@ export function HistoricoAbastecimentos() {
         Obra: e.obraName ?? '',
         Origem: e.pedidoId ? 'Pedido' : 'Registo manual',
         Observações: e.notes ?? '',
-        Foto: e.photoUrl ?? '',
+        Foto: urlHttps(e.photoUrl) ?? '',
       }))
       await exportarXlsx(rows, 'combustivel', 'Combustível')
       toast.success(`${rows.length} abastecimento${rows.length !== 1 ? 's' : ''} exportados`)
