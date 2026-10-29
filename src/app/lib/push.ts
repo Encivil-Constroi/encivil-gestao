@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client'
-import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
 
 // Subscrição Web Push do dispositivo, guardada em push_subscriptions. Quem
 // recebe o quê decide-se no servidor (notificar-abastecimento, send-push-frota).
@@ -44,10 +43,11 @@ async function guardarSubscricao(sub: PushSubscription): Promise<void> {
   // A RPC passa o endpoint para o utilizador atual (telemóvel partilhado); sem ela
   // (BD antiga: PGRST202/42883) fica o upsert, que não consegue tomar um endpoint de outro
   try {
-    await rpcSemTipos('registar_subscricao_push', {
+    const { error } = await supabase.rpc('registar_subscricao_push', {
       p_endpoint: json.endpoint, p_p256dh: keys.p256dh, p_auth: keys.auth,
       p_user_agent: navigator.userAgent.slice(0, 255),
     })
+    if (error) throw error
     return
   } catch (e) {
     const code = (e as { code?: string } | null)?.code

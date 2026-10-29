@@ -2497,6 +2497,7 @@ export type Database = {
       }
       picagens: {
         Row: {
+          client_id: string | null
           colaborador_id: string
           desvio_relogio_s: number | null
           distancia_geofence_m: number | null
@@ -2517,6 +2518,7 @@ export type Database = {
           validada_por: string | null
         }
         Insert: {
+          client_id?: string | null
           colaborador_id: string
           desvio_relogio_s?: number | null
           distancia_geofence_m?: number | null
@@ -2537,6 +2539,7 @@ export type Database = {
           validada_por?: string | null
         }
         Update: {
+          client_id?: string | null
           colaborador_id?: string
           desvio_relogio_s?: number | null
           distancia_geofence_m?: number | null
@@ -3876,6 +3879,7 @@ export type Database = {
         Args: { p_bucket: string; p_path: string }
         Returns: undefined
       }
+      _picagem_dentro_do_desvio: { Args: { p_ts: string }; Returns: boolean }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -3962,6 +3966,7 @@ export type Database = {
       }
       _registar_picagem_geofence_impl: {
         Args: {
+          p_client_id?: string
           p_colaborador_id: string
           p_lat: number
           p_lon: number
@@ -3971,6 +3976,10 @@ export type Database = {
           p_tipo: string
         }
         Returns: Json
+      }
+      _resumo_assiduidade_calcular: {
+        Args: { p_colaborador: string; p_data: string }
+        Returns: undefined
       }
       _st_3dintersects: {
         Args: { geom1: unknown; geom2: unknown }
@@ -4328,6 +4337,10 @@ export type Database = {
       avaliar_regras_alerta: { Args: never; Returns: number }
       bomba_bloqueio_motivo: { Args: { p_pump_id: string }; Returns: string }
       calcular_resumo_dia: { Args: { p_data: string }; Returns: undefined }
+      calcular_resumo_recentes: {
+        Args: { p_dias?: number }
+        Returns: undefined
+      }
       cancelar_autorizacao_bomba: { Args: { p_id: string }; Returns: undefined }
       cancelar_pedido_abastecimento: {
         Args: { p_id: string }
@@ -4342,6 +4355,15 @@ export type Database = {
         Returns: undefined
       }
       colaborador_nif: { Args: { p_id: string }; Returns: string }
+      colaboradores_contactos: {
+        Args: never
+        Returns: {
+          email: string
+          id: string
+          notas: string
+          telemovel: string
+        }[]
+      }
       concluir_abastecimento: {
         Args: {
           p_custo_total: number
@@ -5446,6 +5468,7 @@ export type Database = {
       }
       registar_picagem_geofence: {
         Args: {
+          p_client_id?: string
           p_colaborador_id: string
           p_lat: number
           p_lon: number
@@ -5455,6 +5478,15 @@ export type Database = {
           p_tipo: string
         }
         Returns: Json
+      }
+      registar_subscricao_push: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent: string
+        }
+        Returns: undefined
       }
       rejeitar_abastecimento: {
         Args: { p_id: string; p_motivo?: string }
