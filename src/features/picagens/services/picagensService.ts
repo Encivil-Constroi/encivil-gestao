@@ -13,6 +13,8 @@ export type NovaPicagem = {
   tipo: TipoPicagem
   timestampDispositivo: string
   origem?: OrigemPicagem
+  // Gerado no dispositivo antes da 1.ª tentativa e reutilizado em cada reenvio: o servidor ignora repetições
+  clientId?: string
 }
 
 export type ValidacaoPicagem = {
@@ -55,43 +57,48 @@ function toPicagem(r: RowWithJoins): Picagem {
   }
 }
 
-export async function registarPicagem(input: NovaPicagem): Promise<Picagem> {
-  const { data, error } = await supabase
-    .from('picagens')
-    .insert({
-      colaborador_id:        input.colaboradorId,
-      obra_id:               input.obraId,
-      tipo:                  input.tipo,
-      timestamp_dispositivo: input.timestampDispositivo,
-      origem:                input.origem ?? 'ONLINE',
-    })
-    .select(SELECT)
-    .single()
-  if (error) throw error
-  return toPicagem(data as RowWithJoins)
+// BD sem a coluna client_id (migration por aplicar): repete-se o pedido como antes
+function colunaClientIdInexistente(e: { code?: string } | null): boolean {
+  return e?.code === 'PGRST204' || e?.code === '42703'
+}
+
+// client_id ainda não está nos tipos gerados da tabela picagens
+type PicagemInsert = Database['public']['Tables']['picagens']['Insert']
+type LinhaNova = PicagemInsert & { client_id?: string }
+
+// data === null sem erro: o servidor reconheceu o client_id e não criou outra linha (já registada)
+async function inserirPicagem(linha: LinhaNova, clientId?: string): Promise<Picagem | null> {
+  const pedir = (l: LinhaNova) => supabase.from('picagens').insert(l as PicagemInsert).select(SELECT).maybeSingle()
+  let r = await pedir(clientId ? { ...linha, client_id: clientId } : linha)
+  if (r.error && clientId && colunaClientIdInexistente(r.error)) r = await pedir(linha)
+  if (r.error) throw r.error
+  return r.data ? toPicagem(r.data as RowWithJoins) : null
+}
+
+export async function registarPicagem(input: NovaPicagem): Promise<Picagem | null> {
+  return inserirPicagem({
+    colaborador_id:        input.colaboradorId,
+    obra_id:               input.obraId,
+    tipo:                  input.tipo,
+    timestamp_dispositivo: input.timestampDispositivo,
+    origem:                input.origem ?? 'ONLINE',
+  }, input.clientId)
 }
 
 // Chamado ao sincronizar um item da fila offline.
 // Calcula o desvio de relógio em segundos.
-export async function registarPicagemOffline(input: NovaPicagem, timestampServidor: Date): Promise<Picagem> {
+export async function registarPicagemOffline(input: NovaPicagem, timestampServidor: Date): Promise<Picagem | null> {
   const tsDisp = new Date(input.timestampDispositivo)
   const desvio = Math.round((timestampServidor.getTime() - tsDisp.getTime()) / 1000)
-
-  const { data, error } = await supabase
-    .from('picagens')
-    .insert({
-      colaborador_id:        input.colaboradorId,
-      obra_id:               input.obraId,
-      tipo:                  input.tipo,
-      timestamp_dispositivo: input.timestampDispositivo,
-      timestamp_servidor:    timestampServidor.toISOString(),
-      desvio_relogio_s:      desvio,
-      origem:                'OFFLINE',
-    })
-    .select(SELECT)
-    .single()
-  if (error) throw error
-  return toPicagem(data as RowWithJoins)
+  return inserirPicagem({
+    colaborador_id:        input.colaboradorId,
+    obra_id:               input.obraId,
+    tipo:                  input.tipo,
+    timestamp_dispositivo: input.timestampDispositivo,
+    timestamp_servidor:    timestampServidor.toISOString(),
+    desvio_relogio_s:      desvio,
+    origem:                'OFFLINE',
+  }, input.clientId)
 }
 
 export async function listarPicagensDia(colaboradorId: string, data: string): Promise<Picagem[]> {
@@ -170,15 +177,16 @@ export type GeofenceRpcResult = {
 type GeofenceRpcParams = {
   p_colaborador_id: string; p_obra_id: string; p_tipo: string
   p_lat: number; p_lon: number; p_precisao_m: number; p_timestamp_disp: string
+  p_client_id?: string
 }
 type GeofenceRpcData = { id: string; resultado: string; distancia_m: number | null }
 
 // supabase.rpc é tipado com os RPCs do schema gerado — cast necessário até migration ser aplicada
-type RpcFn = (name: 'registar_picagem_geofence', params: GeofenceRpcParams) => Promise<{ data: GeofenceRpcData | null; error: { message: string } | null }>
+type RpcFn = (name: 'registar_picagem_geofence', params: GeofenceRpcParams) => Promise<{ data: GeofenceRpcData | null; error: { message: string; code?: string } | null }>
 
 export async function registarPicagemGeofence(input: GeofencePicagemInput): Promise<GeofenceRpcResult> {
   const rpc = supabase.rpc as unknown as RpcFn
-  const { data, error } = await rpc('registar_picagem_geofence', {
+  const params: GeofenceRpcParams = {
     p_colaborador_id: input.colaboradorId,
     p_obra_id:        input.obraId,
     p_tipo:           input.tipo,
@@ -186,7 +194,13 @@ export async function registarPicagemGeofence(input: GeofencePicagemInput): Prom
     p_lon:            input.lon,
     p_precisao_m:     input.precisaoM,
     p_timestamp_disp: input.timestampDispositivo,
-  })
+  }
+  let r = await rpc('registar_picagem_geofence', input.clientId ? { ...params, p_client_id: input.clientId } : params)
+  // BD sem o parâmetro p_client_id (migration por aplicar): repete-se como antes
+  if (r.error && input.clientId && (r.error.code === 'PGRST202' || r.error.code === '42883')) {
+    r = await rpc('registar_picagem_geofence', params)
+  }
+  const { data, error } = r
   if (error) throw error
   if (!data) throw new Error('Sem resposta da RPC registar_picagem_geofence')
   return {

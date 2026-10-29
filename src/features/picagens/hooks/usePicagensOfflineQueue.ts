@@ -19,7 +19,7 @@ async function sessaoAtual() {
 
 // Só deve existir UMA instância ativa deste hook por separador (montada em OfflineSyncBanner).
 // Entre separadores/janelas (PWA + browser), o lock 'encivil-picagens' serializa o envio:
-// as picagens não têm client_id no servidor, por isso duas leituras da mesma fila duplicariam.
+// duas leituras da mesma fila em simultâneo seriam enviadas duas vezes.
 export function usePicagensOfflineQueue() {
   const { user } = useAuth()
   const userId = user?.id ?? null

@@ -52,8 +52,10 @@ export function usePicar() {
   const { mutate, loading, error } = useMutation(
     async (input: PicarInput): Promise<PicarResult> => {
       if (!userId) throw new Error('Sessão terminada. Entre de novo para registar.')
+      // Um por picagem: o mesmo valor vai ao INSERT, à RPC e à fila, para um reenvio não duplicar
+      const clientId = input.clientId ?? crypto.randomUUID()
       if (!navigator.onLine) {
-        enqueuePendingPicagem({ ...input, origem: 'OFFLINE' }, userId)
+        enqueuePendingPicagem({ ...input, clientId, origem: 'OFFLINE' }, userId)
         return { picagem: null, queued: true }
       }
 
@@ -64,7 +66,7 @@ export function usePicar() {
         if (input.obraGeofenceTipo) {
           const gps = await getGPS()
           if (gps) {
-            const result = await registarPicagemGeofence({ ...input, ...gps })
+            const result = await registarPicagemGeofence({ ...input, clientId, ...gps })
             invalidateCache(cacheKeyDia(input.colaboradorId, data), cacheKeyObra(input.obraId, data))
             return {
               picagem:    null,
@@ -77,12 +79,13 @@ export function usePicar() {
         }
 
         // MVP path: sem geofence ou GPS indisponível
-        const picagem = await registarPicagem(input)
+        const picagem = await registarPicagem({ ...input, clientId })
         invalidateCache(cacheKeyDia(input.colaboradorId, data), cacheKeyObra(input.obraId, data))
-        return { picagem, queued: false, resultado: picagem.resultado }
+        // null: o servidor já tinha esta picagem (reenvio); fica a aguardar validação como qualquer outra
+        return { picagem, queued: false, resultado: picagem?.resultado ?? 'PENDENTE_VALIDACAO' }
       } catch (e) {
         if (isNetworkError(e)) {
-          enqueuePendingPicagem({ ...input, origem: 'OFFLINE' }, userId)
+          enqueuePendingPicagem({ ...input, clientId, origem: 'OFFLINE' }, userId)
           return { picagem: null, queued: true }
         }
         throw e

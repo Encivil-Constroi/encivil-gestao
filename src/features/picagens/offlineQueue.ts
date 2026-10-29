@@ -54,7 +54,7 @@ export function enqueuePendingPicagem(input: NovaPicagem, userId: string): Pendi
   if (current.length >= MAX_QUEUE_SIZE) {
     throw new Error(`Fila offline cheia (máx. ${MAX_QUEUE_SIZE} registos). Sincronize antes de continuar.`)
   }
-  const item: PendingPicagem = { ...input, queueId: uuid(), queuedAt: new Date().toISOString(), userId }
+  const item: PendingPicagem = { ...input, clientId: input.clientId ?? uuid(), queueId: uuid(), queuedAt: new Date().toISOString(), userId }
   writeQueue([...current, item])
   return item
 }
