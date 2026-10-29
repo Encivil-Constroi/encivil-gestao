@@ -9,5 +9,6 @@ export function endpointPermitido(endpoint: string): boolean {
   try { url = new URL(endpoint) } catch { return false }
   if (url.protocol !== 'https:' || url.port !== '' || url.username !== '' || url.password !== '') return false
   const host = url.hostname.toLowerCase()
+  if (!/^[a-z0-9.-]+$/.test(host)) return false
   return HOSTS_EXATOS.includes(host) || SUFIXOS.some(s => host.endsWith(s) && host.length > s.length)
 }

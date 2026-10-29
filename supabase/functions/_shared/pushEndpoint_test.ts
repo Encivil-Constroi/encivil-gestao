@@ -21,6 +21,8 @@ Deno.test('endpointPermitido recusa tudo o resto', () => {
     'https://169.254.169.254/latest/meta-data',
     'https://evil.com/fcm.googleapis.com',
     'https://fcm.googleapis.com.evil.com/x',
+    'https://evil.com?.push.apple.com/',
+    'https://evil.com#.push.apple.com/',
     'https://evilfcm.googleapis.com/x',
     'https://push.apple.com/x',
     'https://user@fcm.googleapis.com@evil.com/x',

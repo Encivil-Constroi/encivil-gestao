@@ -83,6 +83,8 @@ describe('A2-03 — endpoint de push só dos serviços conhecidos', () => {
     'https://fcm.googleapis.com:8443/x',
     'https://user@fcm.googleapis.com/x',
     'https://push.apple.com/x',
+    'https://evil.com?.push.apple.com/',
+    'https://evil.com#.push.apple.com/',
   ])('INSERT direto com %s → recusado pelo CHECK', async (endpoint) => {
     await expect(u(userA, tx => tx.query(
       `INSERT INTO public.push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1, $2, 'k', 'a')`, [userA, endpoint])))

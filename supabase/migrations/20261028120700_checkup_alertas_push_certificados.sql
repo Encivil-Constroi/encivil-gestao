@@ -83,7 +83,7 @@ GRANT SELECT (id, designacao)                  ON public.tipos_formacao        T
 -- as inválidas); vale para todos os INSERT/UPDATE a partir de agora.
 ALTER TABLE public.push_subscriptions DROP CONSTRAINT IF EXISTS push_subscriptions_endpoint_https;
 ALTER TABLE public.push_subscriptions ADD CONSTRAINT push_subscriptions_endpoint_https CHECK (
-  endpoint ~* '^https://(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[^/@:]+\.push\.services\.mozilla\.com|[^/@:]+\.push\.apple\.com|[^/@:]+\.notify\.windows\.com)(/|$)'
+  endpoint ~* '^https://(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.push\.services\.mozilla\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)(/|$)'
 ) NOT VALID;
 
 -- ── A4-10 — o endpoint é do utilizador que o regista neste dispositivo ──────
