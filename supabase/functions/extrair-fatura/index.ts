@@ -285,7 +285,11 @@ Deno.serve(async (req) => {
   const { error: delErr } = await admin.from('linhas_fatura').delete()
     .eq('fatura_id', fatura_id)
     .not('id', 'in', `(${novas.map(n => n.id).join(',')})`)
-  if (delErr) return err(`Erro ao limpar linhas anteriores: ${delErr.message}`, 500)
+  if (delErr) {
+    // Sem isto ficavam as linhas antigas e as novas: o lançamento dobraria o stock
+    await admin.from('linhas_fatura').delete().in('id', novas.map(n => n.id))
+    return err(`Erro ao limpar linhas anteriores: ${delErr.message}`, 500)
+  }
 
   const { error: updateErr } = await admin
     .from('faturas_fornecedor')
