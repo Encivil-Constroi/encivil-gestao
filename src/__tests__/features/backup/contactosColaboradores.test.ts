@@ -9,7 +9,7 @@ vi.mock('@/integrations/supabase/client', () => ({
         const linhas = c.startsWith('id, telemovel')
           ? [{ id: 'c1', telemovel: '9', email: 'a@x.pt', notas: 'antiga' }]
           : [{ id: 'c1', nome: 'Ana' }]
-        return { range: () => Promise.resolve({ data: linhas, error: null }) }
+        return { order: () => ({ range: (de: number) => Promise.resolve({ data: de === 0 ? linhas : [], error: null }) }) }
       },
     }),
     // colaboradores_contactos lida por páginas: rpc().order().range()
@@ -27,7 +27,7 @@ describe('backup de colaboradores: contactos por RPC', () => {
   })
 
   it('junta os contactos da RPC por id', async () => {
-    m.resposta.mockResolvedValue({ data: [{ id: 'c1', telemovel: '912', email: 'a@x.pt', notas: 'n' }], error: null })
+    m.resposta.mockResolvedValueOnce({ data: [{ id: 'c1', telemovel: '912', email: 'a@x.pt', notas: 'n' }], error: null }).mockResolvedValue({ data: [], error: null })
     const r = await exportarTabela('colaboradores')
     expect(m.rpc).toHaveBeenCalledWith('colaboradores_contactos')
     expect(r).toEqual([{ id: 'c1', nome: 'Ana', telemovel: '912', email: 'a@x.pt', notas: 'n' }])
