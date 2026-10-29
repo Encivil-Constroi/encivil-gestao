@@ -3,6 +3,8 @@
 // senão a gateway responde 401 antes de a função correr:
 //   pump-status             — o Shelly envia a chave sb_publishable_* (não é um JWT)
 //   notificar-abastecimento — o trigger (pg_net) envia a chave sb_publishable_* + x-segredo
+//   send-push-frota         — o pg_cron (pg_net) envia a chave sb_publishable_* + x-frota-secret
+//   enviar-resumo-alertas   — o agendador envia a chave sb_publishable_* + o segredo próprio
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
@@ -15,7 +17,7 @@ function verifyJwt(funcao) {
 }
 
 describe('supabase/config.toml', () => {
-  it.each(['pump-status', 'notificar-abastecimento'])('[functions.%s] verify_jwt = false', funcao => {
+  it.each(['pump-status', 'notificar-abastecimento', 'send-push-frota', 'enviar-resumo-alertas'])('[functions.%s] verify_jwt = false', funcao => {
     expect(verifyJwt(funcao)).toBe('false')
   })
 })
