@@ -89,4 +89,11 @@ baseline em `scripts/carga/BASELINE-2026-10-28.md`.
 - Lista completa de Baixos registados: `docs/auditorias/2026-10-28/00-triagem.md` §1.
 
 ## 7. Contagens finais
-(preenchido na verificação final)
+Verificação final em 2026-10-29 (commit 49d5064):
+- `npm run typecheck`: 0 erros.
+- `npx vitest run` (frontend + BD): 239 ficheiros, 3707 testes, todos verdes em 3 de 4 corridas completas. Numa corrida,
+  2 ficheiros falharam e não voltaram a falhar (testes pesados de BD em PGlite sensíveis ao tempo-limite com a máquina
+  carregada; instabilidade a vigiar no CI).
+- `npm run check:edge && npm run test:edge`: 84 testes, 0 falhas.
+- `npm run build`: OK. `npm audit --omit=dev`: 0 vulnerabilidades.
+- Nada foi publicado em produção.
