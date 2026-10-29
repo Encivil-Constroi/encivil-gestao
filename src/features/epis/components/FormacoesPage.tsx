@@ -65,7 +65,7 @@ function FormacaoRow({ formacao }: { formacao: FormacaoColaborador }) {
   )
 }
 
-function NovaFormacaoForm({ colaboradorId, onClose }: { colaboradorId: string; onClose: () => void }) {
+export function NovaFormacaoForm({ colaboradorId, onClose }: { colaboradorId: string; onClose: () => void }) {
   const { tipos } = useTiposFormacao()
   const { registar, loading } = useRegistarFormacao(colaboradorId)
   const { upload, loading: uploading } = useUploadCertificado()
@@ -73,14 +73,21 @@ function NovaFormacaoForm({ colaboradorId, onClose }: { colaboradorId: string; o
   const [dataConclusao, setDataConclusao] = useState(() => hojeLisboa())
   const [entidade, setEntidade] = useState('')
   const [ficheiro, setFicheiro] = useState<File | null>(null)
+  const [erroCertificado, setErroCertificado] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!tipoId) return
+    setErroCertificado('')
     let certificadoKey: string | undefined
     if (ficheiro) {
       const key = await upload({ colaboradorId, file: ficheiro })
-      certificadoKey = key ?? undefined
+      // Sem a chave não se regista: a formação ficaria sem o certificado que o utilizador anexou
+      if (!key) {
+        setErroCertificado('Não foi possível carregar o certificado. Retire o ficheiro para registar sem certificado, ou tente de novo.')
+        return
+      }
+      certificadoKey = key
     }
     const result = await registar({
       colaboradorId, tipoId, dataConclusao,
@@ -141,6 +148,7 @@ function NovaFormacaoForm({ colaboradorId, onClose }: { colaboradorId: string; o
           className="w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-border file:text-xs file:bg-background hover:file:bg-muted/50"
         />
       </div>
+      {erroCertificado && <p role="alert" className="text-xs text-destructive">{erroCertificado}</p>}
       <div className="flex gap-2 pt-1">
         <button
           type="submit"
