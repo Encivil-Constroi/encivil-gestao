@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { FotoInput } from '@/app/components/FotoInput'
 import { useRole } from '@/features/auth/useRole'
 import {
-  useAtualizarProduto, useCodigoProdutoPreview, useCriarProduto, useProduto,
+  useAtualizarProduto, useCodigoProdutoPreview, useCriarProduto, useProduto, useProdutoTemMovimentos,
 } from '@/features/produtos/hooks/useProdutos'
 import { CATEGORIAS, UNIDADES } from '@/features/produtos/components/produtoUi'
 import type { ProductCategory, Unit } from '@/app/types'
@@ -62,6 +62,9 @@ export function ProdutoFormPage() {
   const id = idRota ?? idNovo
 
   const { product, loading: aCarregar } = useProduto(idRota)
+  // undefined enquanto não se sabe (ou se a leitura falhou): fica bloqueada por cautela, a BD recusa na mesma
+  const temMovimentos = useProdutoTemMovimentos(idRota)
+  const unidadeBloqueada = aEditar && temMovimentos !== false
   const { codigo, loading: aGerarCodigo } = useCodigoProdutoPreview(!aEditar)
   const { criar, loading: aCriar } = useCriarProduto()
   const { atualizar, loading: aAtualizar } = useAtualizarProduto()
@@ -198,9 +201,15 @@ export function ProdutoFormPage() {
             </div>
             <div>
               <label htmlFor="pf-unidade" className={rotulo}>Unidade</label>
-              <select id="pf-unidade" value={form.unit} onChange={e => a('unit', e.target.value as Unit)} className={campo}>
+              <select id="pf-unidade" value={form.unit} onChange={e => a('unit', e.target.value as Unit)} className={campo}
+                disabled={unidadeBloqueada} aria-describedby={temMovimentos ? 'pf-unidade-ajuda' : undefined}>
                 {UNIDADES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
+              {temMovimentos ? (
+                <p id="pf-unidade-ajuda" className="mt-1 text-xs text-muted-foreground">
+                  A unidade não pode mudar depois do primeiro movimento de stock, para não alterar o significado das quantidades já registadas.
+                </p>
+              ) : null}
             </div>
           </div>
         </section>

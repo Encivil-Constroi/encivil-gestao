@@ -205,6 +205,17 @@ export type MovimentoArtigo = {
   data: Date
 }
 
+// A BD recusa mudar a unidade depois do primeiro movimento; o formulário usa isto para a bloquear
+export async function produtoTemMovimentos(produtoId: string): Promise<boolean> {
+  const { data, error } = await armazemDb
+    .from('movimentos_stock')
+    .select('id')
+    .eq('produto_id', produtoId)
+    .limit(1)
+  if (error) throw error
+  return (data ?? []).length > 0
+}
+
 export async function listarMovimentosProduto(produtoId: string, limite = 50): Promise<MovimentoArtigo[]> {
   const { data, error } = await armazemDb
     .from('movimentos_stock')

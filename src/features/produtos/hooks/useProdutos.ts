@@ -3,7 +3,7 @@ import { useMutation } from '@/app/lib/useMutation'
 import {
   listarProdutos, listarProdutosArquivados, buscarProduto,
   criarProduto, atualizarProduto, desativarProduto, restaurarProduto, deletarProduto,
-  previsualizarCodigoProduto, listarMovimentosProduto,
+  previsualizarCodigoProduto, listarMovimentosProduto, produtoTemMovimentos,
 } from '../services/produtosService'
 
 const CACHE_ATIVOS     = 'produtos-ativos'
@@ -41,6 +41,11 @@ export function useProdutosArquivados(enabled = true) {
 export function useCodigoProdutoPreview(enabled = true) {
   const { data, loading } = useAsync(previsualizarCodigoProduto, [], { enabled, errorMsg: 'Erro ao gerar código' })
   return { codigo: data ?? '', loading }
+}
+
+export function useProdutoTemMovimentos(id: string | undefined) {
+  const { data } = useAsync(() => produtoTemMovimentos(id!), [id], { enabled: !!id })
+  return data
 }
 
 export function useMovimentosProduto(id: string | undefined, limite = 50) {

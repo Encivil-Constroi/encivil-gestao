@@ -6,6 +6,7 @@ import { produto } from './inventarioMocks'
 const estado = vi.hoisted(() => ({
   podeArmazem: true,
   existente: null as unknown,
+  temMovimentos: false as boolean | undefined,
   criar: vi.fn(), atualizar: vi.fn(),
 }))
 
@@ -24,6 +25,7 @@ vi.mock('@/app/components/FotoInput', () => ({
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/features/produtos/hooks/useProdutos', () => ({
   useProduto: () => ({ product: estado.existente, loading: false }),
+  useProdutoTemMovimentos: () => estado.temMovimentos,
   useCodigoProdutoPreview: () => ({ codigo: 'P099', loading: false }),
   useCriarProduto: () => ({ criar: estado.criar, loading: false }),
   useAtualizarProduto: () => ({ atualizar: estado.atualizar, loading: false }),
@@ -48,7 +50,7 @@ function abrir(caminho: string) {
   )
 }
 
-beforeEach(() => { estado.criar.mockReset(); estado.atualizar.mockReset(); estado.existente = null; estado.podeArmazem = true })
+beforeEach(() => { estado.criar.mockReset(); estado.atualizar.mockReset(); estado.existente = null; estado.podeArmazem = true; estado.temMovimentos = false })
 afterEach(cleanup)
 
 describe('ProdutoFormPage', () => {
@@ -109,6 +111,25 @@ describe('ProdutoFormPage', () => {
     expect(estado.atualizar.mock.calls[0][1]).toMatchObject({ name: 'Cimento', minStock: 8, localizacao: 'A1' })
     expect(estado.atualizar.mock.calls[0][1]).not.toHaveProperty('currentStock')
     await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent('/armazem/produto/p7'))
+  })
+
+  it('editar: unidade bloqueada, com explicação, quando o artigo já tem movimentos', () => {
+    estado.existente = produto({ id: 'p7' })
+    estado.temMovimentos = true
+    abrir('/armazem/produto/p7/editar')
+    expect(screen.getByLabelText('Unidade')).toBeDisabled()
+    expect(screen.getByText(/não pode mudar depois do primeiro movimento/)).toBeInTheDocument()
+  })
+
+  it('editar: unidade editável quando o artigo não tem movimentos; criar também', () => {
+    estado.existente = produto({ id: 'p7' })
+    abrir('/armazem/produto/p7/editar')
+    expect(screen.getByLabelText('Unidade')).not.toBeDisabled()
+    expect(screen.queryByText(/não pode mudar depois do primeiro movimento/)).not.toBeInTheDocument()
+    cleanup()
+    estado.temMovimentos = undefined
+    abrir('/armazem/produto/novo')
+    expect(screen.getByLabelText('Unidade')).not.toBeDisabled()
   })
 
   it('sem permissão não mostra o formulário', () => {
