@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
         id:         u.id,
         email:      u.email ?? '',
         nome:       (p as { nome?: string } | undefined)?.nome ?? u.email?.split('@')[0] ?? '—',
-        role:       (p as { role?: string } | undefined)?.role ?? 'gestor',
+        role:       (p as { role?: string } | undefined)?.role ?? 'leitura',
         ativo:      !banDate || new Date(banDate) < new Date(),
         login:      loginDeEmail(u.email ?? ''),
         semEmail:   loginDeEmail(u.email ?? '') !== null,
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
       return err(msg)
     }
 
-    // O trigger handle_new_user cria o perfil com role='gestor'.
+    // O trigger handle_new_user cria o perfil com o papel por omissão ('leitura').
     // Actualizamos imediatamente para o papel pretendido.
     if (data?.user) {
       const extra: Record<string, string> = {}
