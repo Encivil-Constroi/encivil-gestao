@@ -185,3 +185,9 @@ Estado: código e documentação concluídos no repositório; **por publicar/apl
 | 2 — Desempenho | em curso: 2.1 e 2.2 feitos; faltam 2.2b, 2.3 |
 | 3 — Processo | aguarda login do CLI |
 | 4 — Segurança 2026 | código e docs prontos; aguarda publicação e passos manuais (ver acima) |
+
+---
+
+## Checkup geral 2026-10-28/29
+Auditoria completa (68 achados), correções com testes e testes de carga/concorrência locais.
+Relatório, ordem de publicação e passos manuais: `docs/auditorias/2026-10-28-checkup-geral.md`.
