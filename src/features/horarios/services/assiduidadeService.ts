@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client'
 import { dataISOLocal } from '@/app/lib/dataLisboa'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import type { ResumoAssiduidade } from '@/app/types'
 import type { Database } from '@/integrations/supabase/types'
 
@@ -50,15 +51,18 @@ export async function listarAssiduidadeEquipa(
   const dataIni = `${ano}-${String(mes).padStart(2, '0')}-01`
   const dataFim = dataISOLocal(new Date(ano, mes, 0))
 
-  let q = supabase
-    .from('resumo_assiduidade_dia')
-    .select(SELECT)
-    .gte('data', dataIni)
-    .lte('data', dataFim)
-    .order('data')
-  if (obraId) q = q.eq('obra_id', obraId)
-  const { data, error } = await q
-  if (error) throw error
+  // Equipa inteira num mês passa facilmente das 1000 linhas (≈ 50 pessoas × 22 dias).
+  const data = await buscarTodas((de, ate) => {
+    let q = supabase
+      .from('resumo_assiduidade_dia')
+      .select(SELECT)
+      .gte('data', dataIni)
+      .lte('data', dataFim)
+      .order('data')
+      .order('colaborador_id')
+    if (obraId) q = q.eq('obra_id', obraId)
+    return q.range(de, ate)
+  })
   return (data as (ResumoRow & { colaboradores: { nome: string } | null })[]).map(toResumo)
 }
 

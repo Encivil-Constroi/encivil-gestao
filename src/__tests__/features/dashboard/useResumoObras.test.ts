@@ -12,7 +12,8 @@ vi.mock('@/app/lib/useAsync', () => ({
   },
 }))
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { from: vi.fn(() => ({ select: vi.fn(() => Promise.resolve(h.autos)) })) },
+  // autos lidos por páginas: select().order().range()
+  supabase: { from: vi.fn(() => ({ select: () => ({ order: () => ({ range: () => Promise.resolve(h.autos) }) }) })) },
 }))
 vi.mock('@/features/obras/services/obrasService', () => ({
   listarObras: vi.fn().mockResolvedValue([

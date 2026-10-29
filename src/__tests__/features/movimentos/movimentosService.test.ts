@@ -66,15 +66,16 @@ const movMapped = {
 beforeEach(() => {
   vi.clearAllMocks()
   Object.values(b).forEach(fn => (fn as ReturnType<typeof vi.fn>).mockReturnValue(b))
+  b.range.mockResolvedValue({ data: [], error: null })
 })
 
 // ── listarMovimentos ──────────────────────────────────────────────────────────
-// chain sem filtros: from().select().order()   ← order() é terminal
-// chain com filtros: ...order().eq() / .gte() / .lt() / .ilike()
+// sem limit/offset lê por páginas: from().select().order().order()...range()  ← range() é terminal
+// filtros (eq/gte/lt/ilike) vão antes do range()
 
 describe('listarMovimentos', () => {
   it('retorna movimentos mapeados para o domínio', async () => {
-    b.order.mockResolvedValue({ data: [movRow], error: null })
+    b.range.mockResolvedValue({ data: [movRow], error: null })
 
     const result = await listarMovimentos()
 
@@ -83,14 +84,14 @@ describe('listarMovimentos', () => {
   })
 
   it('converte created_at para Date', async () => {
-    b.order.mockResolvedValue({ data: [movRow], error: null })
+    b.range.mockResolvedValue({ data: [movRow], error: null })
     const [m] = await listarMovimentos()
     expect(m.date).toBeInstanceOf(Date)
     expect(m.date.getFullYear()).toBe(2026)
   })
 
   it('mapeia destino_obra null para undefined', async () => {
-    b.order.mockResolvedValue({
+    b.range.mockResolvedValue({
       data: [{ ...movRow, destino_obra: null }],
       error: null,
     })
@@ -99,7 +100,7 @@ describe('listarMovimentos', () => {
   })
 
   it('aplica filtro por produto_id', async () => {
-    b.eq.mockResolvedValue({ data: [movRow], error: null })
+    b.range.mockResolvedValue({ data: [movRow], error: null })
 
     await listarMovimentos({ produtoId: 'uuid-prod-1' })
 
@@ -107,7 +108,7 @@ describe('listarMovimentos', () => {
   })
 
   it('aplica filtro por tipo', async () => {
-    b.eq.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
 
     await listarMovimentos({ tipo: 'entrada' })
 
@@ -115,7 +116,7 @@ describe('listarMovimentos', () => {
   })
 
   it('aplica dataInicio com gte', async () => {
-    b.gte.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
     const inicio = new Date('2026-08-01')
 
     await listarMovimentos({ dataInicio: inicio })
@@ -124,7 +125,7 @@ describe('listarMovimentos', () => {
   })
 
   it('aplica dataFim com lt no dia seguinte (inclusivo)', async () => {
-    b.lt.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
     const fim = new Date('2026-08-31')
 
     await listarMovimentos({ dataFim: fim })
@@ -137,7 +138,7 @@ describe('listarMovimentos', () => {
   })
 
   it('aplica filtro de destino com ilike', async () => {
-    b.ilike.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
 
     await listarMovimentos({ destino: 'Cascais' })
 
@@ -145,7 +146,7 @@ describe('listarMovimentos', () => {
   })
 
   it('propaga erro do Supabase', async () => {
-    b.order.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
+    b.range.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
 
     await expect(listarMovimentos()).rejects.toMatchObject({ message: 'BD offline' })
   })

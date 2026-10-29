@@ -19,6 +19,7 @@ const b = vi.hoisted(() => {
     lte:    vi.fn(),
     order:  vi.fn(),
     single: vi.fn(),
+    range:  vi.fn(),
   }
   builder.select.mockReturnValue(builder)
   builder.insert.mockReturnValue(builder)
@@ -63,13 +64,14 @@ beforeEach(() => {
   b.gte.mockReturnValue(b)
   b.lte.mockReturnValue(b)
   b.order.mockReturnValue(b)
+  b.range.mockResolvedValue({ data: [], error: null })
 })
 
 // ── listarAbastecimentos ──────────────────────────────────────────────────────
-// chain base: from().select().order()  — filtros adicionam eq/gte/lte antes do terminal
+// chain base: from().select().order()...range() — lê por páginas; range() é o terminal
 describe('listarAbastecimentos', () => {
   it('mapeia row para FuelEntry com pricePerLiter calculado', async () => {
-    b.order.mockResolvedValue({ data: [abRow], error: null })
+    b.range.mockResolvedValue({ data: [abRow], error: null })
     const [ab] = await listarAbastecimentos()
 
     expect(ab).toMatchObject({
@@ -81,26 +83,24 @@ describe('listarAbastecimentos', () => {
   })
 
   it('pricePerLiter é 0 quando litros é 0 (sem divisão por zero)', async () => {
-    b.order.mockResolvedValue({ data: [{ ...abRow, litros: 0, custo_total: 0 }], error: null })
+    b.range.mockResolvedValue({ data: [{ ...abRow, litros: 0, custo_total: 0 }], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.pricePerLiter).toBe(0)
   })
 
   it('aplica filtro veiculoId', async () => {
-    b.eq.mockResolvedValue({ data: [], error: null })
     await listarAbastecimentos({ veiculoId: 'v-1' })
     expect(b.eq).toHaveBeenCalledWith('veiculo_id', 'v-1')
   })
 
   it('aplica filtros de data dataInicio e dataFim', async () => {
-    b.lte.mockResolvedValue({ data: [], error: null })
     await listarAbastecimentos({ dataInicio: '2026-07-01', dataFim: '2026-07-31' })
     expect(b.gte).toHaveBeenCalledWith('data', '2026-07-01')
     expect(b.lte).toHaveBeenCalledWith('data', '2026-07-31')
   })
 
   it('propaga erro do Supabase', async () => {
-    b.order.mockResolvedValue({ data: null, error: { message: 'timeout' } })
+    b.range.mockResolvedValue({ data: null, error: { message: 'timeout' } })
     await expect(listarAbastecimentos()).rejects.toMatchObject({ message: 'timeout' })
   })
 })
@@ -212,7 +212,7 @@ describe('eliminarAbastecimento', () => {
 // ── mapeamento de domínio ─────────────────────────────────────────────────────
 describe('mapeamento do domínio', () => {
   it('converte datas ISO em objetos Date', async () => {
-    b.order.mockResolvedValue({ data: [abRow], error: null })
+    b.range.mockResolvedValue({ data: [abRow], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.date).toBeInstanceOf(Date)
     expect(ab.createdAt).toBeInstanceOf(Date)
@@ -220,7 +220,7 @@ describe('mapeamento do domínio', () => {
 
   it('resolve campos opcionais para undefined (não null)', async () => {
     const rowSemOpcional = { ...abRow, contador: null, local: null, observacoes: null, obra_id: null, obras: null, foto_url: null }
-    b.order.mockResolvedValue({ data: [rowSemOpcional], error: null })
+    b.range.mockResolvedValue({ data: [rowSemOpcional], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.counter).toBeUndefined()
     expect(ab.photoUrl).toBeUndefined()

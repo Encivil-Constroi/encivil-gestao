@@ -1,4 +1,5 @@
 import { useAsync } from '@/app/lib/useAsync'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { supabase } from '@/integrations/supabase/client'
 import { listarObras } from '@/features/obras/services/obrasService'
 import { certificado } from '@/features/obras/lib/medicao'
@@ -17,15 +18,15 @@ export type ResumoObras = {
 }
 
 async function fetchResumoObras(): Promise<ResumoObras> {
-  const [obras, subs, autosRes, matComb] = await Promise.all([
+  const [obras, subs, autosLidos, matComb] = await Promise.all([
     listarObras(false),
     listarSubempreiteiros(),
-    supabase.from('autos_medicao').select('valor_periodo, valor_glosado, estado'),
+    buscarTodas((de, ate) => supabase.from('autos_medicao').select('valor_periodo, valor_glosado, estado')
+      .order('id').range(de, ate)),
     custosMateriaisCombustivelPorObra(),
   ])
 
-  if (autosRes.error) throw autosRes.error
-  const autos = (autosRes.data ?? []) as unknown as { valor_periodo: number; valor_glosado?: number | null; estado: string }[]
+  const autos = autosLidos as unknown as { valor_periodo: number; valor_glosado?: number | null; estado: string }[]
   const executado = autos
     .filter(a => a.estado === 'validado')
     .reduce((s, a) => s + certificado(Number(a.valor_periodo), Number(a.valor_glosado ?? 0)), 0)

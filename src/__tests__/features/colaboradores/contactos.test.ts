@@ -6,9 +6,11 @@ import {
 const m = vi.hoisted(() => {
   const b = {
     select: vi.fn(), insert: vi.fn(), order: vi.fn(), eq: vi.fn(), limit: vi.fn(),
-    single: vi.fn(), maybeSingle: vi.fn(),
+    single: vi.fn(), maybeSingle: vi.fn(), range: vi.fn(),
   }
-  return { b, rpc: vi.fn(), from: vi.fn() }
+  // A RPC é lida por páginas: rpc().order().range() — range() é terminal
+  const rpcB = { order: vi.fn(), range: vi.fn() }
+  return { b, rpcB, rpc: vi.fn(), from: vi.fn() }
 })
 
 vi.mock('@/integrations/supabase/client', () => ({
@@ -25,6 +27,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   m.from.mockReturnValue(m.b)
   for (const k of ['select', 'insert', 'order', 'eq', 'limit'] as const) m.b[k].mockReturnValue(m.b)
+  m.rpc.mockReturnValue(m.rpcB)
+  m.rpcB.order.mockReturnValue(m.rpcB)
+  m.rpcB.range.mockResolvedValue({ data: [], error: null })
 })
 
 describe('contactos de colaboradores via RPC', () => {
@@ -33,8 +38,8 @@ describe('contactos de colaboradores via RPC', () => {
   })
 
   it('listarColaboradores junta os contactos da RPC por id', async () => {
-    m.b.eq.mockResolvedValue({ data: [row, { ...row, id: 'c2' }], error: null })
-    m.rpc.mockResolvedValue({ data: [contactos], error: null })
+    m.b.range.mockResolvedValue({ data: [row, { ...row, id: 'c2' }], error: null })
+    m.rpcB.range.mockResolvedValue({ data: [contactos], error: null })
     const r = await listarColaboradores()
     expect(m.rpc).toHaveBeenCalledTimes(1)
     expect(m.rpc).toHaveBeenCalledWith('colaboradores_contactos')
@@ -44,30 +49,29 @@ describe('contactos de colaboradores via RPC', () => {
   })
 
   it.each(['PGRST202', '42883'])('BD antiga (%s): lê id, telemovel, email, notas da tabela', async (code) => {
-    m.rpc.mockResolvedValue({ data: null, error: { code, message: 'não existe' } })
-    m.b.eq.mockResolvedValue({ data: [row], error: null })
-    // 2.ª chamada a select() (contactos antigos) é terminal
-    m.b.select.mockReturnValueOnce(m.b).mockResolvedValueOnce({ data: [contactos], error: null })
+    m.rpcB.range.mockResolvedValue({ data: null, error: { code, message: 'não existe' } })
+    // 1.ª página da lista e 1.ª página dos contactos antigos (ordem das chamadas a range())
+    m.b.range.mockResolvedValueOnce({ data: [row], error: null }).mockResolvedValueOnce({ data: [contactos], error: null })
     const r = await listarColaboradores()
     expect(m.b.select).toHaveBeenCalledWith('id, telemovel, email, notas')
     expect(r[0].telemovel).toBe('912345678')
   })
 
   it('outro erro da RPC propaga', async () => {
-    m.b.eq.mockResolvedValue({ data: [row], error: null })
-    m.rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'sem permissão' } })
+    m.b.range.mockResolvedValue({ data: [row], error: null })
+    m.rpcB.range.mockResolvedValue({ data: null, error: { code: '42501', message: 'sem permissão' } })
     await expect(listarColaboradores()).rejects.toMatchObject({ code: '42501' })
   })
 
   it('buscarColaborador junta os contactos', async () => {
     m.b.single.mockResolvedValue({ data: row, error: null })
-    m.rpc.mockResolvedValue({ data: [contactos], error: null })
+    m.rpcB.range.mockResolvedValue({ data: [contactos], error: null })
     expect((await buscarColaborador('c1')).notas).toBe('tem carta')
   })
 
   it('buscarMeuColaborador junta os contactos e devolve null sem ficha', async () => {
     m.b.maybeSingle.mockResolvedValueOnce({ data: row, error: null }).mockResolvedValueOnce({ data: null, error: null })
-    m.rpc.mockResolvedValue({ data: [contactos], error: null })
+    m.rpcB.range.mockResolvedValue({ data: [contactos], error: null })
     expect((await buscarMeuColaborador('u1'))?.email).toBe('joao@x.pt')
     expect(await buscarMeuColaborador('u9')).toBeNull()
   })

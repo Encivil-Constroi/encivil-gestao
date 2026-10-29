@@ -20,6 +20,7 @@ const b = vi.hoisted(() => {
     insert: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    range:  vi.fn(),
   }
   builder.select.mockReturnValue(builder)
   builder.order.mockReturnValue(builder)
@@ -51,6 +52,8 @@ beforeEach(() => {
   b.insert.mockReturnValue(b)
   b.update.mockReturnValue(b)
   b.delete.mockReturnValue(b)
+  // As listas leem por páginas (buscarTodas): .range() é a chamada final
+  b.range.mockResolvedValue({ data: [], error: null })
 })
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -88,7 +91,7 @@ const makeSubRow = (overrides: Record<string, unknown> = {}) => ({
 
 describe('listarSubempreiteiros', () => {
   it('mapeia row para Subcontractor com campos corretos', async () => {
-    b.order.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
+    b.range.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
 
     const subs = await listarSubempreiteiros()
 
@@ -108,27 +111,24 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('filtra por obra quando obraId fornecido', async () => {
-    b.eq
-      .mockReturnValueOnce(b)                              // .eq('ativo', true)
-      .mockResolvedValueOnce({ data: [], error: null })    // .eq('obra_id')
     await listarSubempreiteiros('obra-1')
     expect(b.eq).toHaveBeenCalledWith('obra_id', 'obra-1')
   })
 
   it('exclui contratações arquivadas', async () => {
-    b.order.mockResolvedValueOnce({ data: [], error: null })
+    b.range.mockResolvedValueOnce({ data: [], error: null })
     await listarSubempreiteiros()
     expect(b.eq).toHaveBeenCalledWith('ativo', true)
   })
 
-  it('sem obraId usa .order() como chamada final (sem .eq())', async () => {
-    b.order.mockResolvedValueOnce({ data: [], error: null })
+  it('sem obraId não filtra por obra', async () => {
+    b.range.mockResolvedValueOnce({ data: [], error: null })
     await listarSubempreiteiros()
     expect(b.eq).not.toHaveBeenCalledWith('obra_id', expect.anything())
   })
 
   it('calcula agreedValue para tipo global = valor_global', async () => {
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({ tipo: 'global', valor_global: 80000, subempreiteiro_artigos: [] })],
       error: null,
     })
@@ -137,7 +137,7 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('calcula agreedValue para tipo unitario = soma(preco × qtd)', async () => {
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({
         tipo: 'unitario',
         valor_global: null,
@@ -153,7 +153,7 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('itens extras ficam depois dos normais (sort por isExtra)', async () => {
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({
         tipo: 'unitario',
         subempreiteiro_artigos: [
@@ -169,7 +169,7 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('devolve o item do orçamento (EAP) ligado a cada artigo', async () => {
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({
         tipo: 'unitario',
         subempreiteiro_artigos: [
@@ -185,7 +185,7 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('agreedValue=0 para unitario sem artigos', async () => {
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({ tipo: 'unitario', valor_global: null, subempreiteiro_artigos: [] })],
       error: null,
     })
@@ -194,7 +194,7 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('mapeia campos opcionais null para undefined', async () => {
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({
         contacto_responsavel: null, condicoes: null, validado_em: null, obras: null,
       })],
@@ -208,7 +208,7 @@ describe('listarSubempreiteiros', () => {
   })
 
   it('propaga erro do Supabase', async () => {
-    b.order.mockResolvedValueOnce({ data: null, error: { message: 'RLS block' } })
+    b.range.mockResolvedValueOnce({ data: null, error: { message: 'RLS block' } })
     await expect(listarSubempreiteiros()).rejects.toMatchObject({ message: 'RLS block' })
   })
 })
@@ -233,19 +233,19 @@ describe('buscarSubempreiteiro', () => {
 
 describe('listarSubempreiteirosComExecutado', () => {
   it('devolve array vazio quando não há subempreiteiros', async () => {
-    b.order.mockResolvedValueOnce({ data: [], error: null })
+    b.range.mockResolvedValueOnce({ data: [], error: null })
     const result = await listarSubempreiteirosComExecutado()
     expect(result).toHaveLength(0)
   })
 
   it('soma autos validados por subempreiteiro', async () => {
     // listarSubempreiteiros (sem obraId) → b.order resolve
-    b.order.mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })],
       error: null,
     })
     // 1º eq = filtro ativo (encadeia); 2º eq = autos query (resolve)
-    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({
       data: [
         { subempreiteiro_id: 's1', valor_periodo: 10000, estado: 'validado' },
         { subempreiteiro_id: 's1', valor_periodo: 5000,  estado: 'validado' },
@@ -261,8 +261,8 @@ describe('listarSubempreiteirosComExecutado', () => {
   })
 
   it('o executado é o certificado: valor do período menos glosas', async () => {
-    b.order.mockResolvedValueOnce({ data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })], error: null })
-    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({
+    b.range.mockResolvedValueOnce({ data: [makeSubRow({ id: 's1' }), makeSubRow({ id: 's2' })], error: null })
+    b.range.mockResolvedValueOnce({
       data: [
         { subempreiteiro_id: 's1', valor_periodo: 10000, valor_glosado: 1500, estado: 'validado' },
         { subempreiteiro_id: 's1', valor_periodo: 5000,  valor_glosado: 0,    estado: 'validado' },
@@ -278,31 +278,33 @@ describe('listarSubempreiteirosComExecutado', () => {
   })
 
   it('seleciona valor_glosado e só autos validados', async () => {
-    b.order.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
-    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({ data: [], error: null })
+    b.range.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
+    b.range.mockResolvedValueOnce({ data: [], error: null })
     await listarSubempreiteirosComExecutado()
     expect(b.select).toHaveBeenCalledWith(expect.stringContaining('valor_glosado'))
     expect(b.eq).toHaveBeenCalledWith('estado', 'validado')
   })
 
   it('executed=0 para subempreiteiros sem autos validados', async () => {
-    b.order.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
-    b.eq.mockReturnValueOnce(b).mockResolvedValueOnce({ data: [], error: null })
+    b.range.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
+    b.range.mockResolvedValueOnce({ data: [], error: null })
     const [sub] = await listarSubempreiteirosComExecutado()
     expect(sub.executed).toBe(0)
   })
 
-  it('filtra por obraId (usa .eq no final de listarSubempreiteiros)', async () => {
-    // listarSubempreiteiros(obraId) → order chains + eq resolves for sub list
-    b.eq
-      .mockReturnValueOnce(b)                                          // listarSubempreiteiros .eq('ativo')
-      .mockResolvedValueOnce({ data: [makeSubRow()], error: null })   // listarSubempreiteiros .eq('obra_id')
-      .mockResolvedValueOnce({ data: [], error: null })                // autos .eq('estado')
+  it('filtra por obraId: subempreiteiros da obra e autos só desses', async () => {
+    b.range.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
 
     await listarSubempreiteirosComExecutado('obra-1')
 
     expect(b.eq).toHaveBeenCalledWith('obra_id', 'obra-1')
     expect(b.in).toHaveBeenCalledWith('subempreiteiro_id', ['sub-1'])
+  })
+
+  it('sem obraId lê todos os autos validados (sem lista de ids no URL)', async () => {
+    b.range.mockResolvedValueOnce({ data: [makeSubRow()], error: null })
+    await listarSubempreiteirosComExecutado()
+    expect(b.in).not.toHaveBeenCalled()
   })
 })
 

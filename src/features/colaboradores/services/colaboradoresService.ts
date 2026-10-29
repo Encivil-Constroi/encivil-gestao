@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { colaboradoresDb, type ContactosColaborador } from '../db'
 import type { Colaborador } from '@/app/types'
 
@@ -48,26 +49,28 @@ const RPC_INEXISTENTE = new Set(['PGRST202', '42883'])
 
 // Uma só chamada para todas as fichas visíveis (admin/gestor: todas; outros: a própria).
 // BD antiga (RPC ainda inexistente): as colunas ainda são legíveis na tabela.
+// A RPC também é cortada em 1000 linhas pelo PostgREST: paginada como as tabelas.
 async function obterContactos(): Promise<Map<string, Contactos>> {
-  const { data, error } = await colaboradoresDb.rpc('colaboradores_contactos')
   let linhas: ContactosColaborador[]
-  if (!error) {
-    linhas = data ?? []
-  } else if (RPC_INEXISTENTE.has(error.code)) {
-    const antiga = await colaboradoresDb.from('colaboradores').select('id, telemovel, email, notas')
-    if (antiga.error) throw antiga.error
-    linhas = antiga.data
-  } else {
-    throw error
+  try {
+    linhas = await buscarTodas((de, ate) => colaboradoresDb.rpc('colaboradores_contactos').order('id').range(de, ate))
+  } catch (e) {
+    if (!RPC_INEXISTENTE.has((e as { code?: string }).code ?? '')) throw e
+    linhas = await buscarTodas((de, ate) =>
+      colaboradoresDb.from('colaboradores').select('id, telemovel, email, notas').order('id').range(de, ate))
   }
   return new Map(linhas.map(c => [c.id, c]))
 }
 
 export async function listarColaboradores(apenasAtivos = true): Promise<Colaborador[]> {
-  let query = colaboradoresDb.from('colaboradores').select(SELECT_COLABORADOR).order('nome')
-  if (apenasAtivos) query = query.eq('ativo', true)
-  const [{ data, error }, contactos] = await Promise.all([query, obterContactos()])
-  if (error) throw error
+  const [data, contactos] = await Promise.all([
+    buscarTodas((de, ate) => {
+      let query = colaboradoresDb.from('colaboradores').select(SELECT_COLABORADOR).order('nome').order('id')
+      if (apenasAtivos) query = query.eq('ativo', true)
+      return query.range(de, ate)
+    }),
+    obterContactos(),
+  ])
   return (data as ColaboradorRow[]).map(r => toColaborador(r, contactos.get(r.id)))
 }
 

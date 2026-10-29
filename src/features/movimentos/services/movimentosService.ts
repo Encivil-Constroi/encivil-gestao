@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import type { Movement, MovementType, Unit } from '@/app/types'
 
 type MovimentoRow = {
@@ -47,26 +48,36 @@ export type FiltrosMovimentos = {
 }
 
 export async function listarMovimentos(filtros: FiltrosMovimentos = {}): Promise<Movement[]> {
-  let query = supabase
-    .from('movimentos_stock')
-    .select('*, produtos(nome, unidade)')
-    .order('created_at', { ascending: false })
+  const consulta = () => {
+    let query = supabase
+      .from('movimentos_stock')
+      .select('*, produtos(nome, unidade)')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
 
-  if (filtros.produtoId)  query = query.eq('produto_id', filtros.produtoId)
-  if (filtros.tipo)       query = query.eq('tipo', filtros.tipo)
-  if (filtros.dataInicio) query = query.gte('created_at', filtros.dataInicio.toISOString())
-  if (filtros.dataFim) {
-    const fim = new Date(filtros.dataFim)
-    fim.setDate(fim.getDate() + 1)
-    query = query.lt('created_at', fim.toISOString())
+    if (filtros.produtoId)  query = query.eq('produto_id', filtros.produtoId)
+    if (filtros.tipo)       query = query.eq('tipo', filtros.tipo)
+    if (filtros.dataInicio) query = query.gte('created_at', filtros.dataInicio.toISOString())
+    if (filtros.dataFim) {
+      const fim = new Date(filtros.dataFim)
+      fim.setDate(fim.getDate() + 1)
+      query = query.lt('created_at', fim.toISOString())
+    }
+    if (filtros.destino)    query = query.ilike('destino_obra', `%${filtros.destino}%`)
+    if (filtros.obraId)     query = query.eq('obra_id', filtros.obraId)
+    return query
   }
-  if (filtros.destino)    query = query.ilike('destino_obra', `%${filtros.destino}%`)
-  if (filtros.obraId)     query = query.eq('obra_id', filtros.obraId)
-  if (filtros.limit)  query = query.limit(filtros.limit)
-  if (filtros.offset) query = query.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
 
-  const { data, error } = await query
-  if (error) throw error
+  // Com limit/offset quem chama quer uma página; sem eles, todas (relatórios do ano).
+  if (filtros.limit || filtros.offset) {
+    let query = consulta()
+    if (filtros.limit)  query = query.limit(filtros.limit)
+    if (filtros.offset) query = query.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
+    const { data, error } = await query
+    if (error) throw error
+    return (data as MovimentoRow[]).map(toMovement)
+  }
+  const data = await buscarTodas((de, ate) => consulta().range(de, ate))
   return (data as MovimentoRow[]).map(toMovement)
 }
 

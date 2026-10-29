@@ -1,4 +1,5 @@
 import { armazemDb, type SubtipoMovimento, type MaterialObraRow } from '@/app/lib/armazemDb'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import type { MovementType } from '@/app/types'
 
 // ── Artigos (para escolher no formulário e para a visão geral) ───────────────
@@ -30,8 +31,8 @@ function toArtigo(r: ArtigoRow): ArtigoArmazem {
 }
 
 export async function listarArtigosArmazem(): Promise<ArtigoArmazem[]> {
-  const { data, error } = await armazemDb.from('produtos').select(SELECT_ARTIGO).eq('ativo', true).order('nome')
-  if (error) throw error
+  const data = await buscarTodas((de, ate) =>
+    armazemDb.from('produtos').select(SELECT_ARTIGO).eq('ativo', true).order('nome').order('id').range(de, ate))
   return (data as ArtigoRow[]).map(toArtigo)
 }
 
@@ -163,7 +164,6 @@ export type FiltrosMovArmazem = {
 }
 
 export const POR_PAGINA = 50
-const MAX_EXPORTAR = 5000
 
 // Vírgulas e parênteses partem a sintaxe do .or() do PostgREST
 function limparPesquisa(t: string): string {
@@ -174,6 +174,7 @@ function consultaMovimentos(f: FiltrosMovArmazem, comTotal: boolean) {
   let q = armazemDb.from('movimentos_stock')
     .select(SELECT_MOV, comTotal ? { count: 'exact' } : undefined)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
   if (f.desde)     q = q.gte('created_at', f.desde)
   if (f.ate)       q = q.lt('created_at', f.ate)
   if (f.tipo)      q = q.eq('tipo', f.tipo)
@@ -198,8 +199,7 @@ export async function listarMovimentosArmazem(
 }
 
 export async function exportarMovimentosArmazem(f: FiltrosMovArmazem = {}): Promise<MovimentoArmazem[]> {
-  const { data, error } = await consultaMovimentos(f, false).limit(MAX_EXPORTAR)
-  if (error) throw error
+  const data = await buscarTodas((de, ate) => consultaMovimentos(f, false).range(de, ate))
   return (data as unknown as MovRow[]).map(toMovimento)
 }
 
@@ -212,9 +212,10 @@ export type MaterialObra = {
 }
 
 export async function listarMateriaisPorObra(): Promise<MaterialObra[]> {
-  const { data, error } = await armazemDb.rpc('armazem_materiais_por_obra', { p_obra_id: undefined })
-  if (error) throw error
-  return ((data ?? []) as MaterialObraRow[]).map(r => ({
+  // A ordem vai no pedido (e não só no ORDER BY da função) para a paginação ser estável também na BD antiga.
+  const data = await buscarTodas<MaterialObraRow>((de, ate) => armazemDb.rpc('armazem_materiais_por_obra', { p_obra_id: undefined })
+    .order('obra_nome').order('obra_id').order('produto_nome').order('produto_id').range(de, ate))
+  return data.map(r => ({
     obraId: r.obra_id, obraNome: r.obra_nome, obraEstado: r.obra_estado,
     produtoId: r.produto_id, produtoNome: r.produto_nome, produtoCodigo: r.produto_codigo,
     unidade: r.unidade, fotoPath: r.foto_path,

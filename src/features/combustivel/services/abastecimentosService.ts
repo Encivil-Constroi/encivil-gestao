@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { FuelEntry, CounterUnit } from '@/app/types'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { urlFotoCombustivel } from './fotosService'
 
 type AbastecimentoRow = {
@@ -58,14 +59,16 @@ export type FiltrosAbastecimentos = {
 }
 
 export async function listarAbastecimentos(filtros: FiltrosAbastecimentos = {}): Promise<FuelEntry[]> {
-  let query = supabase.from('comb_abastecimentos').select(SELECT).order('data', { ascending: false })
-  if (filtros.veiculoId)   query = query.eq('veiculo_id', filtros.veiculoId)
-  if (filtros.obraId)      query = query.eq('obra_id', filtros.obraId)
-  if (filtros.dataInicio)  query = query.gte('data', filtros.dataInicio)
-  if (filtros.dataFim)     query = query.lte('data', filtros.dataFim)
-  const { data, error } = await query
-  if (error) throw error
-  return (data as AbastecimentoRow[]).map(toFuelEntry)
+  const rows = await buscarTodas((de, ate) => {
+    let query = supabase.from('comb_abastecimentos').select(SELECT)
+      .order('data', { ascending: false }).order('id', { ascending: false })
+    if (filtros.veiculoId)   query = query.eq('veiculo_id', filtros.veiculoId)
+    if (filtros.obraId)      query = query.eq('obra_id', filtros.obraId)
+    if (filtros.dataInicio)  query = query.gte('data', filtros.dataInicio)
+    if (filtros.dataFim)     query = query.lte('data', filtros.dataFim)
+    return query.range(de, ate)
+  })
+  return (rows as AbastecimentoRow[]).map(toFuelEntry)
 }
 
 export async function buscarAbastecimento(id: string): Promise<FuelEntry> {

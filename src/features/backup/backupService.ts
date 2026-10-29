@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 
 // nomes de tabela dinâmicos — cast necessário pois o tipo gerado não aceita strings arbitrárias
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,12 +116,16 @@ export async function exportarTabela(tabela: string): Promise<unknown[]> {
 }
 
 // BD antiga (RPC inexistente): as colunas ainda são legíveis na tabela.
+// A RPC também é cortada em 1000 linhas pelo PostgREST: lê-se por páginas, ordenada por id.
 async function juntarContactos(linhas: { id: string }[]): Promise<unknown[]> {
-  const { data, error } = await db.rpc('colaboradores_contactos')
   let contactos: { id: string }[]
-  if (!error) contactos = data ?? []
-  else if (RPC_INEXISTENTE.has(error.code)) contactos = (await paginar('colaboradores', COLUNAS_CONTACTOS)) as { id: string }[]
-  else throw new Error(error.message)
+  try {
+    contactos = await buscarTodas<{ id: string }>((de, ate) => db.rpc('colaboradores_contactos').order('id').range(de, ate))
+  } catch (e) {
+    const erro = e as { code?: string; message?: string }
+    if (!RPC_INEXISTENTE.has(erro.code ?? '')) throw new Error(erro.message ?? String(e))
+    contactos = (await paginar('colaboradores', COLUNAS_CONTACTOS)) as { id: string }[]
+  }
   const porId = new Map(contactos.map(c => [c.id, c]))
   return linhas.map(l => ({ ...l, ...porId.get(l.id) }))
 }

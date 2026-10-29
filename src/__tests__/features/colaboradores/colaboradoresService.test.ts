@@ -16,6 +16,7 @@ const b = vi.hoisted(() => {
     order:  vi.fn(),
     eq:     vi.fn(),
     single: vi.fn(),
+    range:  vi.fn(),
   }
   builder.select.mockReturnValue(builder)
   builder.insert.mockReturnValue(builder)
@@ -26,6 +27,8 @@ const b = vi.hoisted(() => {
 })
 
 const rpc = vi.hoisted(() => vi.fn())
+// colaboradores_contactos é lida por páginas: rpc().order().range()
+const rpcB = vi.hoisted(() => ({ order: vi.fn(), range: vi.fn() }))
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: { from: vi.fn().mockReturnValue(b), rpc },
 }))
@@ -52,16 +55,18 @@ beforeEach(() => {
   b.update.mockReturnValue(b)
   b.order.mockReturnValue(b)
   b.eq.mockReturnValue(b)
-  rpc.mockResolvedValue({ data: [], error: null })
+  b.range.mockResolvedValue({ data: [], error: null })
+  rpc.mockReturnValue(rpcB)
+  rpcB.order.mockReturnValue(rpcB)
+  rpcB.range.mockResolvedValue({ data: [], error: null })
 })
 
 // ── listarColaboradores ───────────────────────────────────────────────────────
-// chain: from().select().order().eq()  — eq() é terminal quando apenasAtivos=true
-//        from().select().order()       — order() é terminal quando apenasAtivos=false
+// chain: from().select().order().order()[.eq()].range()  — lê por páginas; range() é terminal
 
 describe('listarColaboradores', () => {
   it('retorna colaboradores mapeados para o domínio', async () => {
-    b.eq.mockResolvedValue({ data: [colaboradorRow], error: null })
+    b.range.mockResolvedValue({ data: [colaboradorRow], error: null })
 
     const result = await listarColaboradores()
 
@@ -78,26 +83,26 @@ describe('listarColaboradores', () => {
   })
 
   it('a listagem nunca traz o NIF (só obterNif, 20261008030000)', async () => {
-    b.eq.mockResolvedValue({ data: [colaboradorRow], error: null })
+    b.range.mockResolvedValue({ data: [colaboradorRow], error: null })
     const [c] = await listarColaboradores()
     expect(c.nif).toBeUndefined()
     expect(b.select.mock.calls[0][0]).not.toMatch(/\bnif\b|\*/)
   })
 
   it('aplica filtro ativo=true por defeito', async () => {
-    b.eq.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
     await listarColaboradores()
     expect(b.eq).toHaveBeenCalledWith('ativo', true)
   })
 
   it('não aplica filtro ativo quando apenasAtivos=false', async () => {
-    b.order.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
     await listarColaboradores(false)
     expect(b.eq).not.toHaveBeenCalledWith('ativo', true)
   })
 
   it('propaga erro do Supabase', async () => {
-    b.eq.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
+    b.range.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
     await expect(listarColaboradores()).rejects.toMatchObject({ message: 'BD offline' })
   })
 })

@@ -1,10 +1,12 @@
 import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { listarObras } from '@/features/obras/services/obrasService'
 import { certificado, retencao } from '@/features/obras/lib/medicao'
 import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
 import {
   contabDb,
+  type Consulta,
   type LinhaDadosLaborais,
   type FaturaExportRow,
   type LinhaMapaAssiduidade,
@@ -30,11 +32,25 @@ function fmtData(v: string | Date | null | undefined): string {
 }
 function num2(v: number): number { return Math.round(v * 100) / 100 }
 
-// ─── 1. Saídas de materiais ────────────────────────────────────────────────────
+// Todas as páginas (o PostgREST corta em 1000), com o erro prefixado pela secção do export.
+async function todas<T>(secao: string, consulta: () => Consulta): Promise<T[]> {
+  try {
+    return await buscarTodas<T>(async (de, ate) => {
+      const { data, error } = await consulta().range(de, ate)
+      return { data: data as T[] | null, error }
+    })
+  } catch (e) {
+    throw new Error(`${secao}: ${(e as { message?: string }).message ?? String(e)}`)
+  }
+}
+
+// ─── 1. Saídas de materiais (menos devoluções de obra) ─────────────────────────
+// Mesmo critério de custos_materiais_por_obra: a devolução desconta no custo da obra.
 
 type MatRow = {
   created_at: string
   tipo: string
+  subtipo: string | null
   quantidade: number
   responsavel: string
   destino_obra: string | null
@@ -43,26 +59,28 @@ type MatRow = {
 }
 
 export async function exportarMateriais(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
-  let query = contabDb
-    .from('movimentos_stock')
-    .select('created_at, tipo, quantidade, responsavel, destino_obra, produtos(nome, codigo, unidade, custo_unitario), obras(nome)')
-    .eq('tipo', 'saida')
-    .order('created_at', { ascending: true })
-
   // created_at é timestamptz: o dia civil é o de Lisboa, não o UTC.
   const { desde, ate } = limitesLisboa(filtros.dataInicio, filtros.dataFim)
-  if (desde)          query = query.gte('created_at', desde)
-  if (ate)            query = query.lt('created_at', ate)
-  if (filtros.obraId) query = query.eq('obra_id', filtros.obraId)
+  const rows = await todas<MatRow>('Materiais', () => {
+    let query = contabDb
+      .from('movimentos_stock')
+      .select('created_at, tipo, subtipo, quantidade, responsavel, destino_obra, produtos(nome, codigo, unidade, custo_unitario), obras(nome)')
+      .or('tipo.eq.saida,subtipo.eq.DEVOLUCAO_OBRA')
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+    if (desde)          query = query.gte('created_at', desde)
+    if (ate)            query = query.lt('created_at', ate)
+    if (filtros.obraId) query = query.eq('obra_id', filtros.obraId)
+    return query
+  })
 
-  const { data, error } = await query
-  if (error) throw new Error(`Materiais: ${error.message}`)
-
-  return ((data as MatRow[] | null) ?? []).map(r => {
+  return rows.map(r => {
     const custo = Number(r.produtos?.custo_unitario ?? 0)
-    const qtd   = Number(r.quantidade)
+    const devolucao = r.tipo !== 'saida'
+    const qtd   = devolucao ? -Number(r.quantidade) : Number(r.quantidade)
     return {
       'Data':              fmtData(r.created_at),
+      'Tipo':              devolucao ? 'Devolução' : 'Saída',
       'Produto':           r.produtos?.nome ?? '',
       'Código':            r.produtos?.codigo ?? '',
       'Quantidade':        qtd,
@@ -89,19 +107,19 @@ type FuelRow = {
 }
 
 export async function exportarCombustivel(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
-  let query = contabDb
-    .from('comb_abastecimentos')
-    .select('data, litros, custo_total, responsavel, local, observacoes, comb_veiculos(nome, codigo), obras(nome)')
-    .order('data', { ascending: true })
+  const rows = await todas<FuelRow>('Combustível', () => {
+    let query = contabDb
+      .from('comb_abastecimentos')
+      .select('data, litros, custo_total, responsavel, local, observacoes, comb_veiculos(nome, codigo), obras(nome)')
+      .order('data', { ascending: true })
+      .order('id', { ascending: true })
+    if (filtros.dataInicio) query = query.gte('data', filtros.dataInicio)
+    if (filtros.dataFim)    query = query.lte('data', filtros.dataFim)
+    if (filtros.obraId)     query = query.eq('obra_id', filtros.obraId)
+    return query
+  })
 
-  if (filtros.dataInicio) query = query.gte('data', filtros.dataInicio)
-  if (filtros.dataFim)    query = query.lte('data', filtros.dataFim)
-  if (filtros.obraId)     query = query.eq('obra_id', filtros.obraId)
-
-  const { data, error } = await query
-  if (error) throw new Error(`Combustível: ${error.message}`)
-
-  return ((data as FuelRow[] | null) ?? []).map(r => {
+  return rows.map(r => {
     const litros = Number(r.litros)
     const custo  = Number(r.custo_total)
     return {
@@ -141,20 +159,18 @@ type AutoRow = {
 }
 
 export async function exportarAutos(filtros: FiltrosExport = {}): Promise<ExportRow[]> {
-  let query = contabDb
-    .from('autos_medicao')
-    .select('numero, data_medicao, valor_periodo, valor_glosado, estado, estado_pagamento, data_pagamento, referencia_pagamento, validado_em, subempreiteiros!inner(nome, percentagem_retencao, obra_id, obras(nome))')
-    .eq('estado', 'validado')
-    .order('data_medicao', { ascending: true })
-
-  if (filtros.dataInicio) query = query.gte('data_medicao', filtros.dataInicio)
-  if (filtros.dataFim)    query = query.lte('data_medicao', filtros.dataFim)
-  if (filtros.obraId)     query = query.eq('subempreiteiros.obra_id', filtros.obraId)
-
-  const { data, error } = await query
-  if (error) throw new Error(`Autos: ${error.message}`)
-
-  const rows = (data as AutoRow[] | null) ?? []
+  const rows = await todas<AutoRow>('Autos', () => {
+    let query = contabDb
+      .from('autos_medicao')
+      .select('numero, data_medicao, valor_periodo, valor_glosado, estado, estado_pagamento, data_pagamento, referencia_pagamento, validado_em, subempreiteiros!inner(nome, percentagem_retencao, obra_id, obras(nome))')
+      .eq('estado', 'validado')
+      .order('data_medicao', { ascending: true })
+      .order('id', { ascending: true })
+    if (filtros.dataInicio) query = query.gte('data_medicao', filtros.dataInicio)
+    if (filtros.dataFim)    query = query.lte('data_medicao', filtros.dataFim)
+    if (filtros.obraId)     query = query.eq('subempreiteiros.obra_id', filtros.obraId)
+    return query
+  })
 
   const ESTADO_PAG: Record<string, string> = {
     por_pagar: 'Por pagar',
@@ -325,26 +341,27 @@ const ESTADO_FATURA: Record<string, string> = {
 }
 
 export async function exportarFaturas(f: FiltrosExport = {}): Promise<ExportRow[]> {
-  let query = contabDb
-    .from('faturas_fornecedor')
-    .select('numero_fatura, fornecedor, nif_fornecedor, data_fatura, data_recepcao, base_tributavel, valor_iva, total_fatura, estado, lancado_em, obras(nome)')
-    .order('data_recepcao', { ascending: true })
+  const rows = await todas<FaturaExportRow>('Faturas', () => {
+    let query = contabDb
+      .from('faturas_fornecedor')
+      .select('numero_fatura, fornecedor, nif_fornecedor, data_fatura, data_recepcao, base_tributavel, valor_iva, total_fatura, estado, lancado_em, obras(nome)')
+      .order('data_recepcao', { ascending: true })
+      .order('id', { ascending: true })
 
-  // Período por data_fatura; sem ela (extração por fazer) cai para data_recepcao.
-  // Ambas são DATE: sem conversão de fuso.
-  if (f.dataInicio || f.dataFim) {
-    const lim = (col: string) => [
-      f.dataInicio ? `${col}.gte.${f.dataInicio}` : null,
-      f.dataFim ? `${col}.lte.${f.dataFim}` : null,
-    ].filter(Boolean).join(',')
-    query = query.or(`and(${lim('data_fatura')}),and(data_fatura.is.null,${lim('data_recepcao')})`)
-  }
-  if (f.obraId)     query = query.eq('obra_id', f.obraId)
+    // Período por data_fatura; sem ela (extração por fazer) cai para data_recepcao.
+    // Ambas são DATE: sem conversão de fuso.
+    if (f.dataInicio || f.dataFim) {
+      const lim = (col: string) => [
+        f.dataInicio ? `${col}.gte.${f.dataInicio}` : null,
+        f.dataFim ? `${col}.lte.${f.dataFim}` : null,
+      ].filter(Boolean).join(',')
+      query = query.or(`and(${lim('data_fatura')}),and(data_fatura.is.null,${lim('data_recepcao')})`)
+    }
+    if (f.obraId)     query = query.eq('obra_id', f.obraId)
+    return query
+  })
 
-  const { data, error } = await query
-  if (error) throw new Error(`Faturas: ${error.message}`)
-
-  return ((data as FaturaExportRow[] | null) ?? []).map(r => ({
+  return rows.map(r => ({
     'Nº Fatura':           r.numero_fatura ?? '',
     'Fornecedor':          r.fornecedor,
     'NIF Fornecedor':      r.nif_fornecedor ?? '',

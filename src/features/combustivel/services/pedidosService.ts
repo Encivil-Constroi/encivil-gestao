@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import {
   combDb,
   type AbastecimentoAnaliseRow, type ContextoRow, type EstadoPedido, type OrigemLeitura, type PedidoRow, type PrecoRow,
@@ -175,12 +176,11 @@ export async function listarViaturasAtivas(): Promise<ViaturaEscolha[]> {
 const SELECT_ANALISE = 'id, veiculo_id, data, litros, custo_total, contador, responsavel, tipo_fonte, tipo_combustivel, solicitante_id, colaborador_id, pedido_id, comb_veiculos(nome, codigo, unidade_contador)'
 
 export async function listarParaAnalise(inicio: string, fim: string): Promise<AbastecimentoAnaliseRow[]> {
-  const { data, error } = await combDb.from('comb_abastecimentos').select(SELECT_ANALISE)
+  const data = await buscarTodas((de, ate) => combDb.from('comb_abastecimentos').select(SELECT_ANALISE)
     .gte('data', inicio).lte('data', fim)
-    .order('data')
-    .limit(10_000)
-  if (error) throw error
-  return (data ?? []).map(r => ({
+    .order('data').order('id')
+    .range(de, ate))
+  return data.map(r => ({
     ...r, litros: Number(r.litros), custo_total: Number(r.custo_total), contador: r.contador == null ? null : Number(r.contador),
   }))
 }

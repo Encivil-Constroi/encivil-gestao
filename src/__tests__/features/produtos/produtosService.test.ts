@@ -11,6 +11,7 @@ const b = vi.hoisted(() => {
     order:  vi.fn(),
     eq:     vi.fn(),
     single: vi.fn(),
+    range:  vi.fn(),
   }
   builder.select.mockReturnValue(builder)
   builder.insert.mockReturnValue(builder)
@@ -50,16 +51,16 @@ beforeEach(() => {
   b.update.mockReturnValue(b)
   b.order.mockReturnValue(b)
   b.eq.mockReturnValue(b)
+  b.range.mockResolvedValue({ data: [], error: null })
 })
 
 // ── listarProdutos ────────────────────────────────────────────────────────────
 // listarProdutos chain:
-//   apenasAtivos=true  → from().select().order().eq()  ← eq() é o terminal (await)
-//   apenasAtivos=false → from().select().order()       ← order() é o terminal (await)
+//   from().select().order().order()[.eq()].range()  ← lê por páginas; range() é o terminal
 
 describe('listarProdutos', () => {
   it('retorna produtos mapeados para o domínio', async () => {
-    b.eq.mockResolvedValue({ data: [produtoRow], error: null })
+    b.range.mockResolvedValue({ data: [produtoRow], error: null })
 
     const produtos = await listarProdutos()
 
@@ -72,32 +73,32 @@ describe('listarProdutos', () => {
   })
 
   it('calcula status=baixo quando stock < mínimo', async () => {
-    b.eq.mockResolvedValue({ data: [{ ...produtoRow, stock_atual: 5 }], error: null })
+    b.range.mockResolvedValue({ data: [{ ...produtoRow, stock_atual: 5 }], error: null })
     const [p] = await listarProdutos()
     expect(p.status).toBe('baixo')
   })
 
   it('calcula status=sem-stock quando stock é zero', async () => {
-    b.eq.mockResolvedValue({ data: [{ ...produtoRow, stock_atual: 0 }], error: null })
+    b.range.mockResolvedValue({ data: [{ ...produtoRow, stock_atual: 0 }], error: null })
     const [p] = await listarProdutos()
     expect(p.status).toBe('sem-stock')
   })
 
   it('aplica filtro ativo=true por defeito', async () => {
-    b.eq.mockResolvedValue({ data: [], error: null })
+    b.range.mockResolvedValue({ data: [], error: null })
     await listarProdutos()
     expect(b.eq).toHaveBeenCalledWith('ativo', true)
   })
 
   it('não aplica filtro ativo quando apenasAtivos=false', async () => {
-    // sem filtro → order() é o terminal
-    b.order.mockResolvedValue({ data: [], error: null })
+    // sem filtro de ativo
+    b.range.mockResolvedValue({ data: [], error: null })
     await listarProdutos(false)
     expect(b.eq).not.toHaveBeenCalled()
   })
 
   it('propaga erro do Supabase', async () => {
-    b.eq.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
+    b.range.mockResolvedValue({ data: null, error: { message: 'BD offline' } })
     await expect(listarProdutos()).rejects.toMatchObject({ message: 'BD offline' })
   })
 })

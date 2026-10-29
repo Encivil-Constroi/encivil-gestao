@@ -13,6 +13,7 @@ export interface Consulta extends PromiseLike<Resultado> {
   lte(coluna: string, valor: string): Consulta
   or(filtro: string): Consulta
   order(coluna: string, opcoes?: { ascending: boolean }): Consulta
+  range(de: number, ate: number): Consulta
 }
 
 export const contabDb = supabase as unknown as { from(tabela: string): Consulta }

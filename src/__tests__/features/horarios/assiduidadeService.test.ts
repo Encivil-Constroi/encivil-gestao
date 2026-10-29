@@ -3,7 +3,7 @@ import { listarAssiduidadeMes, listarAssiduidadeEquipa } from '@/features/horari
 
 const b = vi.hoisted(() => {
   const q: Record<string, ReturnType<typeof vi.fn>> = {}
-  for (const m of ['select', 'eq', 'gte', 'lte', 'order']) q[m] = vi.fn(() => q)
+  for (const m of ['select', 'eq', 'gte', 'lte', 'order', 'range']) q[m] = vi.fn(() => q)
   ;(q as unknown as { then: unknown }).then = (res: (v: unknown) => void) => res({ data: [], error: null })
   return { q, from: vi.fn(() => q) }
 })

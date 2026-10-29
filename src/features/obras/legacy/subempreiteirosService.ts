@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 import { obrasDb } from '../db'
 import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { certificado } from '../lib/medicao'
 import type { TablesInsert, TablesUpdate } from '@/integrations/supabase/types'
 import type { Subcontractor, SubcontractItem, ContractType } from '@/app/types'
@@ -79,13 +80,15 @@ function toSubcontractor(row: SubRow): SubcontractorComArtigos {
 const SELECT = '*, obras(nome), subempreiteiro_artigos(*)'
 
 export async function listarSubempreiteiros(obraId?: string): Promise<SubcontractorComArtigos[]> {
-  let query = obrasDb.from('subempreiteiros')
-    .select(SELECT)
-    .eq('ativo', true)
-    .order('created_at', { ascending: false })
-  if (obraId) query = query.eq('obra_id', obraId)
-  const { data, error } = await query
-  if (error) throw error
+  const data = await buscarTodas((de, ate) => {
+    let query = obrasDb.from('subempreiteiros')
+      .select(SELECT)
+      .eq('ativo', true)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+    if (obraId) query = query.eq('obra_id', obraId)
+    return query.range(de, ate)
+  })
   return (data as unknown as SubRow[]).map(toSubcontractor)
 }
 
@@ -105,13 +108,18 @@ export async function listarSubempreiteirosComExecutado(obraId?: string): Promis
   const subs = await listarSubempreiteiros(obraId)
   if (!subs.length) return []
 
+  // Sem obra: todos os autos validados (a lista de ids de todos os subempreiteiros
+  // não cabe num URL). Com obra: só os dos seus subempreiteiros.
   const ids = subs.map(s => s.id)
-  const { data, error } = await supabase
-    .from('autos_medicao')
-    .select('subempreiteiro_id, valor_periodo, valor_glosado, estado')
-    .in('subempreiteiro_id', ids)
-    .eq('estado', 'validado')
-  if (error) throw error
+  const data = await buscarTodas((de, ate) => {
+    let q = supabase
+      .from('autos_medicao')
+      .select('subempreiteiro_id, valor_periodo, valor_glosado, estado')
+      .eq('estado', 'validado')
+      .order('id')
+    if (obraId) q = q.in('subempreiteiro_id', ids)
+    return q.range(de, ate)
+  })
 
   const exec: Record<string, number> = {}
   ;(data as unknown as { subempreiteiro_id: string; valor_periodo: number; valor_glosado?: number | null }[]).forEach(r => {

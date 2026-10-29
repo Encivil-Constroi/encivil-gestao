@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { listarColaboradores } from '@/features/colaboradores/services/colaboradoresService'
 import { listarAlertasAtivos } from '@/features/alertas/services/alertasService'
 import { listarPainel } from '@/features/obras/services/obrasService'
@@ -24,20 +25,22 @@ const TIPOS_RH = new Set(['EPI_VALIDADE', 'FORMACAO_VALIDADE', 'VALIDADE_DOC'])
 
 // Composição de vários módulos (RH + alertas): vive na camada de páginas, não em `features/`.
 export async function carregarPessoas(ini: string, fim: string): Promise<PessoasResumo> {
-  const [colabs, alertas, assid, faltas] = await Promise.all([
+  const [colabs, alertas, assid, fl] = await Promise.all([
     listarColaboradores(true),
     listarAlertasAtivos(),
-    supabase.from('resumo_assiduidade_dia')
+    buscarTodas((de, ate) => supabase.from('resumo_assiduidade_dia')
       .select('horas_previstas, horas_efetivas, horas_supl_propostas, horas_supl_validadas')
-      .gte('data', ini).lte('data', fim),
-    supabase.from('faltas').select('estado').lte('data_inicio', fim).gte('data_fim', ini),
+      .gte('data', ini).lte('data', fim)
+      .order('data').order('colaborador_id')
+      .range(de, ate)),
+    buscarTodas((de, ate) => supabase.from('faltas').select('estado')
+      .lte('data_inicio', fim).gte('data_fim', ini)
+      .order('id')
+      .range(de, ate)),
   ])
-  if (assid.error) throw assid.error
-  if (faltas.error) throw faltas.error
 
   const soma = (k: 'horas_previstas' | 'horas_efetivas' | 'horas_supl_propostas' | 'horas_supl_validadas') =>
-    (assid.data ?? []).reduce((s, r) => s + Number(r[k] ?? 0), 0)
-  const fl = faltas.data ?? []
+    assid.reduce((s, r) => s + Number(r[k] ?? 0), 0)
 
   return {
     colaboradoresAtivos: colabs.length,
@@ -45,7 +48,7 @@ export async function carregarPessoas(ini: string, fim: string): Promise<Pessoas
     horasEfetivas: soma('horas_efetivas'),
     horasSuplPropostas: soma('horas_supl_propostas'),
     horasSuplValidadas: soma('horas_supl_validadas'),
-    diasRegistados: (assid.data ?? []).length,
+    diasRegistados: assid.length,
     faltas: {
       total: fl.length,
       injustificadas: fl.filter(f => f.estado === 'INJUSTIFICADA').length,

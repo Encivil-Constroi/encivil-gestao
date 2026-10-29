@@ -16,7 +16,9 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     rpc: (fn: string, args: Record<string, unknown> = {}) => {
       m.rpc.push({ fn, args })
-      return m.responder ? m.responder(fn, args) : Promise.resolve(m.resposta)
+      const p = m.responder ? m.responder(fn, args) : Promise.resolve(m.resposta)
+      // listarMateriaisPorObra lê por páginas: rpc().order()…range()
+      return Object.assign(p, { order: () => p, range: () => p })
     },
     auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: m.sessaoId } } } }) },
   },

@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { armazemDb, type ArmazemDatabase, type SubtipoMovimento } from '@/app/lib/armazemDb'
 import type { MovementType, Product, ProductCategory, Unit } from '@/app/types'
 import { calcStatus } from '@/app/lib/stockUtils'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 
 type Tabelas = ArmazemDatabase['public']['Tables']
 type ProdutoRow = Tabelas['produtos']['Row']
@@ -34,11 +35,12 @@ function toProduct(row: ProdutoRow): ProdutoArmazem {
 }
 
 export async function listarProdutos(apenasAtivos = true): Promise<ProdutoArmazem[]> {
-  let query = armazemDb.from('produtos').select('*').order('nome')
-  if (apenasAtivos) query = query.eq('ativo', true)
-  const { data, error } = await query
-  if (error) throw error
-  return (data ?? []).map(toProduct)
+  const data = await buscarTodas((de, ate) => {
+    let query = armazemDb.from('produtos').select('*').order('nome').order('id')
+    if (apenasAtivos) query = query.eq('ativo', true)
+    return query.range(de, ate)
+  })
+  return data.map(toProduct)
 }
 
 export async function buscarProduto(id: string): Promise<ProdutoArmazem> {

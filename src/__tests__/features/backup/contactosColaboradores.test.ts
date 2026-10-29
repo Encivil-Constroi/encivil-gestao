@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
-const m = vi.hoisted(() => ({ select: vi.fn(), rpc: vi.fn() }))
+const m = vi.hoisted(() => ({ select: vi.fn(), rpc: vi.fn(), resposta: vi.fn() }))
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: () => ({
@@ -12,7 +12,8 @@ vi.mock('@/integrations/supabase/client', () => ({
         return { range: () => Promise.resolve({ data: linhas, error: null }) }
       },
     }),
-    rpc: m.rpc,
+    // colaboradores_contactos lida por páginas: rpc().order().range()
+    rpc: (fn: string) => { m.rpc(fn); return { order: () => ({ range: () => m.resposta() }) } },
   },
 }))
 
@@ -26,14 +27,14 @@ describe('backup de colaboradores: contactos por RPC', () => {
   })
 
   it('junta os contactos da RPC por id', async () => {
-    m.rpc.mockResolvedValue({ data: [{ id: 'c1', telemovel: '912', email: 'a@x.pt', notas: 'n' }], error: null })
+    m.resposta.mockResolvedValue({ data: [{ id: 'c1', telemovel: '912', email: 'a@x.pt', notas: 'n' }], error: null })
     const r = await exportarTabela('colaboradores')
     expect(m.rpc).toHaveBeenCalledWith('colaboradores_contactos')
     expect(r).toEqual([{ id: 'c1', nome: 'Ana', telemovel: '912', email: 'a@x.pt', notas: 'n' }])
   })
 
   it('BD antiga (PGRST202): lê os contactos da tabela', async () => {
-    m.rpc.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'x' } })
+    m.resposta.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'x' } })
     const r = await exportarTabela('colaboradores')
     expect(m.select).toHaveBeenCalledWith('id, telemovel, email, notas')
     expect(r).toEqual([{ id: 'c1', nome: 'Ana', telemovel: '9', email: 'a@x.pt', notas: 'antiga' }])

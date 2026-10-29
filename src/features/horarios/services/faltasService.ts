@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import type { Falta, TipoFalta, EstadoFalta, FaltaPeriodo } from '@/app/types'
 import type { Database } from '@/integrations/supabase/types'
 
@@ -53,10 +54,12 @@ export async function listarTiposFalta(): Promise<TipoFalta[]> {
 }
 
 export async function listarFaltas(colaboradorId?: string): Promise<Falta[]> {
-  let q = supabase.from('faltas').select(SELECT_FALTA).order('data_inicio', { ascending: false })
-  if (colaboradorId) q = q.eq('colaborador_id', colaboradorId)
-  const { data, error } = await q
-  if (error) throw error
+  const data = await buscarTodas((de, ate) => {
+    let q = supabase.from('faltas').select(SELECT_FALTA)
+      .order('data_inicio', { ascending: false }).order('id', { ascending: false })
+    if (colaboradorId) q = q.eq('colaborador_id', colaboradorId)
+    return q.range(de, ate)
+  })
   return (data as (FaltaRow & { tipos_falta: { designacao: string } | null; colaboradores: { nome: string } | null })[])
     .map(toFalta)
 }

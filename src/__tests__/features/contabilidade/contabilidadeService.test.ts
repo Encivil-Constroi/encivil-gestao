@@ -52,6 +52,7 @@ const builder = {
   or:     vi.fn().mockReturnThis(),
   order:  vi.fn().mockReturnThis(),
   filter: vi.fn().mockReturnThis(),
+  range:  vi.fn().mockReturnThis(),
   // Torna este objecto "awaitable": o await chama .then()
   then(
     onfulfilled: (v: { data: unknown[] | null; error: { message: string } | null }) => unknown,
@@ -77,6 +78,7 @@ beforeEach(() => {
   builder.or    .mockReturnThis()
   builder.order .mockReturnThis()
   builder.filter.mockReturnThis()
+  builder.range .mockReturnThis()
   fromMock.mockReturnValue(builder)
 
   // Repõe os dados simulados
