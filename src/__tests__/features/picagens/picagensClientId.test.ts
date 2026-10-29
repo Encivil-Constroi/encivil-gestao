@@ -58,3 +58,20 @@ describe('picagens: client_id', () => {
     }
   })
 })
+
+describe('picagens: rpc chamada com this do cliente', () => {
+  it('registarPicagemGeofence chama supabase.rpc como método (this preservado)', async () => {
+    const { supabase } = await import('@/integrations/supabase/client')
+    const cliente = supabase as unknown as { rpc: unknown }
+    const original = cliente.rpc
+    cliente.rpc = function (this: unknown, name: string, params: unknown) {
+      if (this !== supabase) throw new TypeError("Cannot read properties of undefined (reading 'rest')")
+      return b.rpc(name, params)
+    }
+    b.rpc.mockResolvedValue({ data: { id: 'p', resultado: 'AUTORIZADA', distancia_m: 1 }, error: null })
+    try {
+      const r = await registarPicagemGeofence({ ...item, lat: 1, lon: 2, precisaoM: 3 })
+      expect(r.id).toBe('p')
+    } finally { cliente.rpc = original }
+  })
+})

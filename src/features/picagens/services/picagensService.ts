@@ -185,7 +185,7 @@ type GeofenceRpcData = { id: string; resultado: string; distancia_m: number | nu
 type RpcFn = (name: 'registar_picagem_geofence', params: GeofenceRpcParams) => Promise<{ data: GeofenceRpcData | null; error: { message: string; code?: string } | null }>
 
 export async function registarPicagemGeofence(input: GeofencePicagemInput): Promise<GeofenceRpcResult> {
-  const rpc = supabase.rpc as unknown as RpcFn
+  const rpc = supabase.rpc.bind(supabase) as unknown as RpcFn
   const params: GeofenceRpcParams = {
     p_colaborador_id: input.colaboradorId,
     p_obra_id:        input.obraId,
