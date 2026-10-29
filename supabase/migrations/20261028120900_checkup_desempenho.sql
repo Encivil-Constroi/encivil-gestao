@@ -1,3 +1,6 @@
+-- Falha rápido em vez de ficar à espera de locks de tráfego em produção.
+SET lock_timeout = '5s';
+
 -- ================================================================
 -- Checkup 2026-10-28 — lote BD-9: desempenho medido na carga (Task 7)
 --   1. Índice movimentos_stock (tipo, created_at DESC): as contagens de entradas/saídas
@@ -56,6 +59,8 @@ BEGIN
   RAISE NOTICE 'BD-9: % policies reescritas', n;
 END;
 $$;
+
+RESET lock_timeout;
 
 -- ROLLBACK
 -- (desfaz só a forma: o resultado das policies é o mesmo nos dois sentidos)

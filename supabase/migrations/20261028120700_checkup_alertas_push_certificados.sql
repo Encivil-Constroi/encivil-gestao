@@ -1,3 +1,6 @@
+-- Falha rápido em vez de ficar à espera de locks de tráfego em produção.
+SET lock_timeout = '5s';
+
 -- ================================================================
 -- Checkup 2026-10-28 — lote BD-7: alertas, push e certificados
 --   A4-08  alertas_detalhados: os alertas de EPI e de formação apontam para a
@@ -146,6 +149,8 @@ CREATE POLICY "certificados_select" ON storage.objects
   FOR SELECT TO authenticated
   USING (bucket_id = 'certificados' AND public.auth_role() IN ('admin', 'gestor'));
 -- Sem UPDATE/DELETE: um certificado carregado não se substitui nem apaga pelo site.
+
+RESET lock_timeout;
 
 -- ROLLBACK
 -- DROP POLICY IF EXISTS "certificados_select" ON storage.objects;

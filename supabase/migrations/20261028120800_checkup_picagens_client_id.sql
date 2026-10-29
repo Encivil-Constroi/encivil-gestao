@@ -1,3 +1,6 @@
+-- Falha rápido em vez de ficar à espera de locks de tráfego em produção.
+SET lock_timeout = '5s';
+
 -- ================================================================
 -- Checkup 2026-10-28 — lote BD-8: picagens idempotentes (reenvio da fila offline)
 --   FE-2 / A5-07  Uma picagem cuja resposta se perde (rede) volta à fila e é reenviada:
@@ -193,6 +196,8 @@ $$;
 
 REVOKE ALL     ON FUNCTION public.registar_picagem_geofence(uuid, uuid, text, double precision, double precision, integer, timestamp with time zone, uuid) FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.registar_picagem_geofence(uuid, uuid, text, double precision, double precision, integer, timestamp with time zone, uuid) TO authenticated;
+
+RESET lock_timeout;
 
 -- ROLLBACK
 -- (o site novo, sem a coluna/parâmetro, volta a enviar sem client_id — fallback do FE-2b)

@@ -1,3 +1,6 @@
+-- Falha rápido em vez de ficar à espera de locks de tráfego em produção.
+SET lock_timeout = '5s';
+
 -- ================================================================
 -- ENCIVIL — Checkup 2026-10-28, lote BD-5: custos e stock
 --
@@ -202,6 +205,8 @@ REVOKE UPDATE, DELETE, TRUNCATE ON public.movimentos_stock FROM authenticated, a
 DROP TRIGGER IF EXISTS movimentos_stock_sem_truncate ON public.movimentos_stock;
 CREATE TRIGGER movimentos_stock_sem_truncate BEFORE TRUNCATE ON public.movimentos_stock
   FOR EACH STATEMENT EXECUTE FUNCTION public._movimentos_stock_imutavel();
+
+RESET lock_timeout;
 
 -- ROLLBACK
 -- DROP TRIGGER IF EXISTS movimentos_stock_sem_truncate ON public.movimentos_stock;
