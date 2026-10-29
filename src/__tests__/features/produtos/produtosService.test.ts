@@ -60,7 +60,7 @@ beforeEach(() => {
 
 describe('listarProdutos', () => {
   it('retorna produtos mapeados para o domínio', async () => {
-    b.range.mockResolvedValue({ data: [produtoRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [produtoRow], error: null }).mockResolvedValue({ data: [], error: null })
 
     const produtos = await listarProdutos()
 
@@ -73,13 +73,13 @@ describe('listarProdutos', () => {
   })
 
   it('calcula status=baixo quando stock < mínimo', async () => {
-    b.range.mockResolvedValue({ data: [{ ...produtoRow, stock_atual: 5 }], error: null })
+    b.range.mockResolvedValueOnce({ data: [{ ...produtoRow, stock_atual: 5 }], error: null }).mockResolvedValue({ data: [], error: null })
     const [p] = await listarProdutos()
     expect(p.status).toBe('baixo')
   })
 
   it('calcula status=sem-stock quando stock é zero', async () => {
-    b.range.mockResolvedValue({ data: [{ ...produtoRow, stock_atual: 0 }], error: null })
+    b.range.mockResolvedValueOnce({ data: [{ ...produtoRow, stock_atual: 0 }], error: null }).mockResolvedValue({ data: [], error: null })
     const [p] = await listarProdutos()
     expect(p.status).toBe('sem-stock')
   })

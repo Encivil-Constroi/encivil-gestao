@@ -75,7 +75,7 @@ beforeEach(() => {
 
 describe('listarMovimentos', () => {
   it('retorna movimentos mapeados para o domínio', async () => {
-    b.range.mockResolvedValue({ data: [movRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [movRow], error: null }).mockResolvedValue({ data: [], error: null })
 
     const result = await listarMovimentos()
 
@@ -84,23 +84,23 @@ describe('listarMovimentos', () => {
   })
 
   it('converte created_at para Date', async () => {
-    b.range.mockResolvedValue({ data: [movRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [movRow], error: null }).mockResolvedValue({ data: [], error: null })
     const [m] = await listarMovimentos()
     expect(m.date).toBeInstanceOf(Date)
     expect(m.date.getFullYear()).toBe(2026)
   })
 
   it('mapeia destino_obra null para undefined', async () => {
-    b.range.mockResolvedValue({
+    b.range.mockResolvedValueOnce({
       data: [{ ...movRow, destino_obra: null }],
       error: null,
-    })
+    }).mockResolvedValue({ data: [], error: null })
     const [m] = await listarMovimentos()
     expect(m.destination).toBeUndefined()
   })
 
   it('aplica filtro por produto_id', async () => {
-    b.range.mockResolvedValue({ data: [movRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [movRow], error: null }).mockResolvedValue({ data: [], error: null })
 
     await listarMovimentos({ produtoId: 'uuid-prod-1' })
 

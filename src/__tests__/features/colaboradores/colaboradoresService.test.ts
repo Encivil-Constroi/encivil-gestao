@@ -66,7 +66,7 @@ beforeEach(() => {
 
 describe('listarColaboradores', () => {
   it('retorna colaboradores mapeados para o domínio', async () => {
-    b.range.mockResolvedValue({ data: [colaboradorRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [colaboradorRow], error: null }).mockResolvedValue({ data: [], error: null })
 
     const result = await listarColaboradores()
 
@@ -83,7 +83,7 @@ describe('listarColaboradores', () => {
   })
 
   it('a listagem nunca traz o NIF (só obterNif, 20261008030000)', async () => {
-    b.range.mockResolvedValue({ data: [colaboradorRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [colaboradorRow], error: null }).mockResolvedValue({ data: [], error: null })
     const [c] = await listarColaboradores()
     expect(c.nif).toBeUndefined()
     expect(b.select.mock.calls[0][0]).not.toMatch(/\bnif\b|\*/)

@@ -18,7 +18,8 @@ vi.mock('@/integrations/supabase/client', () => ({
       m.rpc.push({ fn, args })
       const p = m.responder ? m.responder(fn, args) : Promise.resolve(m.resposta)
       // listarMateriaisPorObra lê por páginas: rpc().order()…range()
-      return Object.assign(p, { order: () => p, range: () => p })
+      // só a 1.ª página traz dados: a paginação pára numa página vazia
+      return Object.assign(p, { order: () => p, range: (de: number) => de > 0 ? Promise.resolve({ data: [], error: null }) : p })
     },
     auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: m.sessaoId } } } }) },
   },

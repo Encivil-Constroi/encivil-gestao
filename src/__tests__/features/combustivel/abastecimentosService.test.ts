@@ -71,7 +71,7 @@ beforeEach(() => {
 // chain base: from().select().order()...range() — lê por páginas; range() é o terminal
 describe('listarAbastecimentos', () => {
   it('mapeia row para FuelEntry com pricePerLiter calculado', async () => {
-    b.range.mockResolvedValue({ data: [abRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [abRow], error: null }).mockResolvedValue({ data: [], error: null })
     const [ab] = await listarAbastecimentos()
 
     expect(ab).toMatchObject({
@@ -83,7 +83,7 @@ describe('listarAbastecimentos', () => {
   })
 
   it('pricePerLiter é 0 quando litros é 0 (sem divisão por zero)', async () => {
-    b.range.mockResolvedValue({ data: [{ ...abRow, litros: 0, custo_total: 0 }], error: null })
+    b.range.mockResolvedValueOnce({ data: [{ ...abRow, litros: 0, custo_total: 0 }], error: null }).mockResolvedValue({ data: [], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.pricePerLiter).toBe(0)
   })
@@ -212,7 +212,7 @@ describe('eliminarAbastecimento', () => {
 // ── mapeamento de domínio ─────────────────────────────────────────────────────
 describe('mapeamento do domínio', () => {
   it('converte datas ISO em objetos Date', async () => {
-    b.range.mockResolvedValue({ data: [abRow], error: null })
+    b.range.mockResolvedValueOnce({ data: [abRow], error: null }).mockResolvedValue({ data: [], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.date).toBeInstanceOf(Date)
     expect(ab.createdAt).toBeInstanceOf(Date)
@@ -220,7 +220,7 @@ describe('mapeamento do domínio', () => {
 
   it('resolve campos opcionais para undefined (não null)', async () => {
     const rowSemOpcional = { ...abRow, contador: null, local: null, observacoes: null, obra_id: null, obras: null, foto_url: null }
-    b.range.mockResolvedValue({ data: [rowSemOpcional], error: null })
+    b.range.mockResolvedValueOnce({ data: [rowSemOpcional], error: null }).mockResolvedValue({ data: [], error: null })
     const [ab] = await listarAbastecimentos()
     expect(ab.counter).toBeUndefined()
     expect(ab.photoUrl).toBeUndefined()

@@ -39,6 +39,7 @@ import { rpcSemTipos } from '@/app/lib/rpcSemTipos'
 //  2. é "thenable"  — `.then(resolve)` é chamado pelo `await`
 
 let mockData: unknown[] | null = []
+let deAtual = 0
 let mockError: { message: string } | null = null
 
 const fromMock = vi.hoisted(() => vi.fn())
@@ -52,13 +53,16 @@ const builder = {
   or:     vi.fn().mockReturnThis(),
   order:  vi.fn().mockReturnThis(),
   filter: vi.fn().mockReturnThis(),
-  range:  vi.fn().mockReturnThis(),
+  range:  vi.fn((de: number) => { deAtual = de; return builder }),
   // Torna este objecto "awaitable": o await chama .then()
   then(
     onfulfilled: (v: { data: unknown[] | null; error: { message: string } | null }) => unknown,
     onrejected?: (e: unknown) => unknown,
   ) {
-    return Promise.resolve({ data: mockData, error: mockError }).then(onfulfilled, onrejected)
+    // só a 1.ª página traz dados: a paginação pára numa página vazia
+    const pagina = deAtual > 0 ? [] : mockData
+    deAtual = 0
+    return Promise.resolve({ data: pagina, error: mockError }).then(onfulfilled, onrejected)
   },
 }
 
@@ -78,7 +82,7 @@ beforeEach(() => {
   builder.or    .mockReturnThis()
   builder.order .mockReturnThis()
   builder.filter.mockReturnThis()
-  builder.range .mockReturnThis()
+  builder.range .mockImplementation((de: number) => { deAtual = de; return builder })
   fromMock.mockReturnValue(builder)
 
   // Repõe os dados simulados
