@@ -130,23 +130,23 @@ async function juntarContactos(linhas: { id: string }[]): Promise<unknown[]> {
   return linhas.map(l => ({ ...l, ...porId.get(l.id) }))
 }
 
-async function paginar(tabela: string, colunas: string): Promise<unknown[]> {
-  const PAGE = 1000
-  const all: unknown[] = []
-  let from = 0
+// Chave de ordenação das tabelas sem coluna id (a chave primária): sem ordem total, as páginas repetem ou saltam linhas
+export const ORDEM_BACKUP: Record<string, readonly string[]> = {
+  comb_aprovadores: ['user_id'],
+  comb_precos: ['tipo_combustivel'],
+  custo_hora_colaborador: ['colaborador_id', 'valido_de'],
+  feriados_excecoes: ['data'],
+  frota_alerta_destinatarios: ['user_id'],
+  horario_colaborador: ['colaborador_id', 'valido_de'],
+  colaboradores_dados_laborais: ['colaborador_id'],
+}
 
-  while (true) {
-    const { data, error } = await db
-      .from(tabela)
-      .select(colunas)
-      .range(from, from + PAGE - 1)
-
-    if (error) throw new Error(error.message)
-    if (!data?.length) break
-    all.push(...data)
-    if (data.length < PAGE) break  // última página — menos que PAGE resultados
-    from += PAGE
-  }
-
-  return all
+export async function paginar(tabela: string, colunas: string): Promise<unknown[]> {
+  const ordem = ORDEM_BACKUP[tabela] ?? ['id']
+  return buscarTodas<unknown>((de, ate) => {
+    let q = db.from(tabela).select(colunas)
+    for (const c of ordem) q = q.order(c)
+    return q.range(de, ate).then((r: { data: unknown[] | null; error: { message: string } | null }) =>
+      r.error ? { data: null, error: new Error(r.error.message) } : r)
+  })
 }

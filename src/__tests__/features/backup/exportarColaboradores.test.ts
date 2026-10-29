@@ -3,7 +3,7 @@ import { vi, describe, it, expect } from 'vitest'
 const select = vi.hoisted(() => vi.fn())
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    from: vi.fn(() => ({ select: (c: string) => { select(c); return { range: () => Promise.resolve({ data: [], error: null }) } } })),
+    from: vi.fn(() => ({ select: (c: string) => { select(c); return { order: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) } } })),
     rpc: vi.fn(() => ({ order: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) })),
   },
 }))

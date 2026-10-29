@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { buscarTodas } from '@/app/lib/buscarTodas'
 import { TABELAS_ELIMINACAO_LEGADA, inicioDiaLisboa, somarDias, type LogRow } from '@/app/lib/auditoria/descrever'
 
 export { limitesPeriodo } from '@/app/lib/auditoria/descrever'
@@ -58,20 +59,28 @@ export async function listarAuditoria(f: FiltrosAuditoria, pagina: number): Prom
   return { rows: (data ?? []) as LogRow[], total: count ?? 0 }
 }
 
-export async function exportarAuditoria(f: FiltrosAuditoria): Promise<LogRow[]> {
+function consultaExport(f: FiltrosAuditoria) {
   let query = supabase
     .from('audit_log')
     .select(SELECT)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
   if (f.atorId) query = query.eq('actor_id', f.atorId)
   const filtro = filtroAction(f)
   if (filtro && 'like' in filtro) query = query.like('action', filtro.like)
   else if (filtro) query = query.or(filtro.or)
   if (f.desde) query = query.gte('created_at', instanteDesde(f.desde))
   if (f.ate) query = query.lt('created_at', instanteAte(f.ate))
-  const { data, error } = await query.range(0, LIMITE_EXPORT - 1)
-  if (error) throw error
-  return (data ?? []) as LogRow[]
+  return query
+}
+
+// O PostgREST corta cada resposta em 1000 linhas: pagina-se até ao limite da exportação
+export async function exportarAuditoria(f: FiltrosAuditoria): Promise<LogRow[]> {
+  const linhas = await buscarTodas<LogRow>((de, ate) =>
+    de >= LIMITE_EXPORT
+      ? Promise.resolve({ data: [], error: null })
+      : consultaExport(f).range(de, Math.min(ate, LIMITE_EXPORT - 1)) as unknown as PromiseLike<{ data: LogRow[] | null; error: unknown }>)
+  return linhas.slice(0, LIMITE_EXPORT)
 }
 
 export async function listarPerfisNomes(): Promise<{ id: string; nome: string }[]> {
