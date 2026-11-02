@@ -6,7 +6,7 @@ import { Button } from '@/app/components/ui/button'
 import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
 import { SeparadoresNav } from '@/app/components/SeparadoresNav'
 
-export type Separador = { para: string; rotulo: string; Icone: typeof Droplets; fim?: boolean }
+export type Separador = { para: string; rotulo: string; Icone: typeof Droplets; fim?: boolean; contagem?: number }
 
 // Separadores do módulo por papel (a segurança real está na RLS e nas RPCs)
 export function separadoresDoPapel(p: { isMotorista: boolean; isAdmin: boolean; podeCombustivel: boolean; podeAprovar: boolean }): Separador[] {
@@ -35,7 +35,7 @@ export function AbastecimentoLayout() {
 
 
   const itens = separadores.map(s => (
-    s.para === '/abastecimento' && aguardam > 0 ? { ...s, rotulo: `${s.rotulo} (${aguardam})` } : s))
+    s.para === '/abastecimento' && aguardam > 0 ? { ...s, contagem: aguardam } : s))
 
   return (
     <div className={`${LARGURA_PAGINA} space-y-4 pb-24`}>
