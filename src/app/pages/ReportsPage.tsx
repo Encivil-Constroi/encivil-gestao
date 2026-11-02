@@ -23,6 +23,8 @@ import { listarVeiculos } from '@/features/combustivel/services/veiculosService'
 import { useRole } from '@/features/auth/useRole'
 import { getUnitLabel, getToolCategoryLabel } from '../data/mockData'
 import { fmtEuro, fmtNumber } from '../lib/format'
+import { Button } from '../components/ui/button'
+import { PageHeader, LARGURA_PAGINA } from '../components/PageHeader'
 import { PRINT, CabecalhoImpresso, RodapeImpresso, estiloPaginaImpressa } from '../components/print'
 import { ToolStatusBadge } from '../components/ToolStatusBadge'
 import { getPeriodConfig, diaLisboa, type Period } from '../lib/relatorios/periodo'
@@ -1164,80 +1166,67 @@ export function ReportsPage() {
   const { label: periodLabel, prevLabel } = getPeriodConfig(period)
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className={`${LARGURA_PAGINA} space-y-6 pb-8`}>
 
-      {/* ── Banner ───────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-xl p-5 md:p-6 text-card-foreground shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-muted rounded-lg p-2.5 shrink-0">
-              <img src="/icone_oficial.png" alt="ENCIVIL" className="w-10 h-10 object-contain grayscale mix-blend-multiply dark:invert dark:mix-blend-screen" draggable={false} />
-            </div>
-            <div>
-              <h1 className="text-lg md:text-xl font-bold leading-tight">Relatório Executivo</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">
-                {abas.find(a => a.id === reportType)?.label ?? ''} · ENCIVIL
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* ── Cabeçalho (o logótipo só existe no bloco de impressão) ── */}
+      <PageHeader
+        titulo="Relatório executivo"
+        descricao={(
+          <>
+            {abas.find(a => a.id === reportType)?.label ?? ''} · {
+              reportType === 'stock'
+                ? `${periodLabel} · comparado com ${prevLabel}`
+                : reportType === 'ferramentas'
+                ? `${getPeriodConfig(toolsPeriod).label} · comparado com ${getPeriodConfig(toolsPeriod).prevLabel}`
+                : reportType === 'pessoas'
+                ? `${periodLabel} · assiduidade, faltas e validades`
+                : reportType === 'combustivel'
+                ? 'Consumo acumulado por viatura'
+                : 'Situação atual · mesmos números das fichas de cada módulo'}
+          </>
+        )}
+        acoes={(
+          <>
             {(reportType === 'stock' || reportType === 'pessoas') && (
-              <select
-                aria-label="Período"
-                value={period}
-                onChange={e => setPeriod(e.target.value as Period)}
-                className="px-3 py-2 bg-input-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+              <select aria-label="Período" value={period} onChange={e => setPeriod(e.target.value as Period)} className="h-10 md:h-9 px-3 bg-input-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="hoje"   className="text-foreground bg-card">Hoje</option>
-                <option value="semana" className="text-foreground bg-card">Esta Semana</option>
-                <option value="mes"    className="text-foreground bg-card">Este Mês</option>
-                <option value="ano"    className="text-foreground bg-card">Este Ano</option>
+                <option value="semana" className="text-foreground bg-card">Esta semana</option>
+                <option value="mes"    className="text-foreground bg-card">Este mês</option>
+                <option value="ano"    className="text-foreground bg-card">Este ano</option>
               </select>
             )}
             {reportType === 'ferramentas' && (
-              <select
-                value={toolsPeriod}
-                onChange={e => setToolsPeriod(e.target.value as Period)}
-                className="px-3 py-2 bg-input-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+              <select aria-label="Período" value={toolsPeriod} onChange={e => setToolsPeriod(e.target.value as Period)} className="h-10 md:h-9 px-3 bg-input-background border border-input rounded-lg text-foreground text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="hoje"   className="text-foreground bg-card">Hoje</option>
-                <option value="semana" className="text-foreground bg-card">Esta Semana</option>
-                <option value="mes"    className="text-foreground bg-card">Este Mês</option>
-                <option value="ano"    className="text-foreground bg-card">Este Ano</option>
+                <option value="semana" className="text-foreground bg-card">Esta semana</option>
+                <option value="mes"    className="text-foreground bg-card">Este mês</option>
+                <option value="ano"    className="text-foreground bg-card">Este ano</option>
               </select>
             )}
-            <button
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/obras/relatorios"><FileText aria-hidden="true" />Relatórios diários das obras</Link>
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => void partilharSemanalWhatsApp()}
               disabled={sharingWA}
-              className="flex items-center gap-2 px-3 py-2 bg-[#25D366] hover:bg-[#20BD5C] text-[#04090F] rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
               title="Partilhar resumo semanal no WhatsApp"
             >
-              <Share2 className={`w-4 h-4 ${sharingWA ? 'animate-pulse' : ''}`} />
+              <Share2 className={sharingWA ? 'animate-pulse' : ''} aria-hidden="true" />
               <span className="hidden sm:inline">{sharingWA ? 'A preparar…' : 'WhatsApp'}</span>
-            </button>
+            </Button>
             {(reportType === 'stock' || reportType === 'ferramentas' || reportType === 'combustivel') && (
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => reportType === 'stock' ? setShowPrint(true) : reportType === 'ferramentas' ? setShowToolsPrint(true) : setShowCombPrint(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border rounded-lg text-sm font-medium transition-colors"
               >
-                <Printer className="w-4 h-4" />
+                <Printer aria-hidden="true" />
                 <span className="hidden sm:inline">Exportar PDF</span>
-              </button>
+              </Button>
             )}
-          </div>
-        </div>
-        <p className="text-muted-foreground text-xs mt-3">
-          {reportType === 'stock'
-            ? `${periodLabel} · comparado com ${prevLabel}`
-            : reportType === 'ferramentas'
-            ? `${getPeriodConfig(toolsPeriod).label} · comparado com ${getPeriodConfig(toolsPeriod).prevLabel}`
-            : reportType === 'pessoas'
-            ? `${periodLabel} · assiduidade, faltas e validades`
-            : reportType === 'combustivel'
-            ? 'Consumo acumulado por viatura'
-            : 'Situação atual · mesmos números das fichas de cada módulo'}
-        </p>
-      </div>
+          </>
+        )}
+      />
 
       {/* ── Switcher Stock / Ferramentas / Obras ──────────── */}
       <div role="tablist" aria-label="Tipo de relatório" className="flex flex-wrap gap-2 bg-card rounded-2xl border border-border p-1.5 w-fit max-w-full">
@@ -1255,12 +1244,6 @@ export function ReportsPage() {
           </button>
         ))}
       </div>
-
-      <Link to="/obras/relatorios" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40 transition-colors">
-        <span className="rounded-xl bg-primary/10 p-2 text-primary"><FileText className="w-5 h-5" aria-hidden="true" /></span>
-        <span className="flex-1"><strong className="block text-sm">Relatórios diários das obras</strong><span className="text-xs text-muted-foreground">Consulte presenças, trabalhos, fotografias e ocorrências por dia.</span></span>
-        <span className="text-sm font-medium text-primary">Abrir</span>
-      </Link>
 
       {reportType === 'visao' && podeFinanceiro && <VisaoGeralSection />}
       {reportType === 'obras' && podeFinanceiro && <ObrasSection />}

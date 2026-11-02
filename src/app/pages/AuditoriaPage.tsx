@@ -1,5 +1,9 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, Fragment, type ReactNode } from 'react'
 import { Shield, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { Button } from '../components/ui/button'
+import { PageHeader, LARGURA_PAGINA } from '../components/PageHeader'
+import { FiltroChips } from '../components/FiltroChips'
+import { CampoSelect, CLASSE_CAMPO } from '../components/CampoSelect'
 import { useAsync } from '../lib/useAsync'
 import { exportarXlsx } from '../lib/exportXlsx'
 import { toast } from 'sonner'
@@ -30,13 +34,13 @@ const PERIOD_OPTS: { value: PeriodFilter; label: string }[] = [
   { value: 'datas',  label: 'Entre datas' },
 ]
 
-const SEV_CLS: Record<'high' | 'medium' | 'low', string> = {
-  high:   'bg-destructive/10 text-destructive border-destructive/30',
-  medium: 'bg-warning/10 text-warning border-warning/30',
-  low:    'bg-muted text-muted-foreground border-transparent',
+// Só as severidades que pedem atenção têm selo; "média" é o caso corrente e fica sem ruído
+const SEV_CLS: Record<'high' | 'low', string> = {
+  high: 'bg-destructive/10 text-destructive border-destructive/30',
+  low:  'bg-info/10 text-info border-transparent',
 }
 
-const SEV_LABEL: Record<'high' | 'medium' | 'low', string> = { high: 'Sensível', medium: 'Normal', low: 'Informação' }
+const SEV_LABEL: Record<'high' | 'low', string> = { high: 'Sensível', low: 'Informação' }
 
 const FMT_HORA = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit' })
 const FMT_DATA_HORA = new Intl.DateTimeFormat('pt-PT', {
@@ -58,19 +62,24 @@ type Separador = 'registos' | 'seguranca'
 
 export function AuditoriaPage() {
   const [separador, setSeparador] = useState<Separador>('registos')
-  const tabCls = (ativo: boolean) => `px-4 py-2 text-sm font-medium rounded-xl transition-colors ${ativo ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`
-  return (
-    <div className="space-y-4">
-      <div role="tablist" aria-label="Auditoria" className="flex gap-2 no-print">
-        <button type="button" role="tab" aria-selected={separador === 'registos'} className={tabCls(separador === 'registos')} onClick={() => setSeparador('registos')}>Registos</button>
-        <button type="button" role="tab" aria-selected={separador === 'seguranca'} className={tabCls(separador === 'seguranca')} onClick={() => setSeparador('seguranca')}>Eventos de segurança</button>
-      </div>
-      {separador === 'registos' ? <RegistosAuditoria /> : <EventosSegurancaPainel />}
+  const chips = (
+    <div className="no-print">
+      <FiltroChips ariaLabel="Vista" valor={separador} onChange={setSeparador}
+        opcoes={[{ valor: 'registos', rotulo: 'Registos' }, { valor: 'seguranca', rotulo: 'Eventos de segurança' }]} />
     </div>
   )
+  return separador === 'registos'
+    ? <RegistosAuditoria chips={chips} />
+    : (
+      <div className={`${LARGURA_PAGINA} space-y-4`}>
+        <PageHeader titulo="Auditoria" descricao="Eventos de segurança e acessos." />
+        {chips}
+        <EventosSegurancaPainel />
+      </div>
+    )
 }
 
-function RegistosAuditoria() {
+function RegistosAuditoria({ chips }: { chips: ReactNode }) {
   const [page,      setPage]      = useState(0)
   const [period,    setPeriod]    = useState<PeriodFilter>('todos')
   const [dataDesde, setDataDesde] = useState('')
@@ -160,62 +169,54 @@ function RegistosAuditoria() {
     }
   }
 
-  const selectCls = 'px-3 py-2 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-ring text-sm'
   const labelCls  = 'block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5'
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap no-print">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
-            <Shield className="w-6 h-6 text-primary" />
-            Auditoria
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {loading
-              ? 'A carregar…'
-              : `${totalCount} registo${totalCount !== 1 ? 's' : ''}${totalPages > 1 ? ` · página ${page + 1} de ${totalPages}` : ''}`
-            }
-          </p>
-        </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting || loading || totalCount === 0}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-        >
-          <Download className="w-4 h-4" />
-          {exporting ? 'A exportar…' : 'Excel'}
-        </button>
+    <div className={`${LARGURA_PAGINA} space-y-4`}>
+      <div className="no-print">
+        <PageHeader
+          titulo="Auditoria"
+          descricao={loading
+            ? 'A carregar…'
+            : `${totalCount} registo${totalCount !== 1 ? 's' : ''}${totalPages > 1 ? ` · página ${page + 1} de ${totalPages}` : ''}`}
+          acoes={(
+            <Button variant="outline" onClick={handleExport} disabled={exporting || loading || totalCount === 0}>
+              <Download aria-hidden="true" />
+              {exporting ? 'A exportar…' : 'Excel'}
+            </Button>
+          )}
+        />
       </div>
+      {chips}
 
       <div className="bg-card rounded-2xl border border-border p-4 no-print">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label htmlFor="aud-pessoa" className={labelCls}>Pessoa</label>
-            <select id="aud-pessoa" value={atorId} onChange={e => { setAtorId(e.target.value); setPage(0) }} className={`${selectCls} w-full`}>
+            <CampoSelect id="aud-pessoa" value={atorId} onChange={e => { setAtorId(e.target.value); setPage(0) }}>
               <option value="">Todas as pessoas</option>
               {(profiles ?? []).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            </CampoSelect>
           </div>
           <div>
             <label htmlFor="aud-modulo" className={labelCls}>Módulo</label>
-            <select id="aud-modulo" value={tabela} onChange={e => { setTabela(e.target.value); setPage(0) }} className={`${selectCls} w-full`}>
+            <CampoSelect id="aud-modulo" value={tabela} onChange={e => { setTabela(e.target.value); setPage(0) }}>
               <option value="">Todas</option>
               {TABELAS_FILTRO.map(t => <option key={t} value={t}>{labelTabela(t)}</option>)}
-            </select>
+            </CampoSelect>
           </div>
           <div>
             <label htmlFor="aud-tipo" className={labelCls}>Tipo</label>
-            <select id="aud-tipo" value={operacao} onChange={e => { setOperacao(e.target.value); setPage(0) }} className={`${selectCls} w-full`}>
+            <CampoSelect id="aud-tipo" value={operacao} onChange={e => { setOperacao(e.target.value); setPage(0) }}>
               <option value="">Todos</option>
               {Object.entries(OPERACAO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
+            </CampoSelect>
           </div>
           <div>
             <label htmlFor="aud-periodo" className={labelCls}>Período</label>
-            <select id="aud-periodo" value={period} onChange={e => { setPeriod(e.target.value as PeriodFilter); setPage(0) }} className={`${selectCls} w-full`}>
+            <CampoSelect id="aud-periodo" value={period} onChange={e => { setPeriod(e.target.value as PeriodFilter); setPage(0) }}>
               {PERIOD_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            </CampoSelect>
           </div>
         </div>
         {(period === 'datas' || hasFilter) && (
@@ -224,11 +225,11 @@ function RegistosAuditoria() {
               <>
                 <div>
                   <label htmlFor="aud-desde" className={labelCls}>De</label>
-                  <input id="aud-desde" type="date" value={dataDesde} onChange={e => { setDataDesde(e.target.value); setPage(0) }} className={selectCls} />
+                  <input id="aud-desde" type="date" value={dataDesde} onChange={e => { setDataDesde(e.target.value); setPage(0) }} className={CLASSE_CAMPO} />
                 </div>
                 <div>
                   <label htmlFor="aud-ate" className={labelCls}>Até</label>
-                  <input id="aud-ate" type="date" value={dataAte} onChange={e => { setDataAte(e.target.value); setPage(0) }} className={selectCls} />
+                  <input id="aud-ate" type="date" value={dataAte} onChange={e => { setDataAte(e.target.value); setPage(0) }} className={CLASSE_CAMPO} />
                 </div>
               </>
             )}
@@ -278,18 +279,16 @@ function RegistosAuditoria() {
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-foreground break-words">{frase}</p>
-                            <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-lg border text-xs font-semibold ${SEV_CLS[sev]}`}>
-                              {SEV_LABEL[sev]}
-                            </span>
+                            {sev !== 'medium' && (
+                              <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-lg border text-xs font-semibold ${SEV_CLS[sev]}`}>
+                                {SEV_LABEL[sev]}
+                              </span>
+                            )}
                           </div>
                           {campos.length > 0 && (
-                            <button
-                              onClick={() => toggleExpand(row.id)}
-                              aria-expanded={isOpen}
-                              className="px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg border border-border transition-colors shrink-0"
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => toggleExpand(row.id)} aria-expanded={isOpen} className="shrink-0">
                               {isOpen ? 'Fechar detalhes' : 'Ver detalhes'}
-                            </button>
+                            </Button>
                           )}
                         </div>
                         {isOpen && campos.length > 0 && (

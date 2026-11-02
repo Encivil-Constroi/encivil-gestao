@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
 import { useMeuColaborador } from '@/features/colaboradores/hooks/useColaboradores'
 import { useContextoAbastecimento, usePodeAprovar } from '@/features/combustivel/hooks/usePedidos'
+import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
 import { atalhosDoInicio, rotuloDoPapel, saudacao, secoesDoInicio, type Atalho, type CapacidadesInicio } from './secoes'
 import { VeiculoWidget } from './widgets/VeiculoWidget'
 import { ArmazemWidget, FrotaWidget, CombustivelWidget, ObrasWidget, ConsultaWidget } from './widgets/ModulosWidgets'
@@ -35,11 +36,8 @@ export function PainelPessoalPage() {
   const detalhe = [rotuloDoPapel(r.role), colaborador?.cargo, colaborador?.obraNome].filter(Boolean).join(' · ')
 
   return (
-    <div className="space-y-5 max-w-5xl">
-      <div>
-        <h1 className="text-xl md:text-2xl font-semibold">{saudacao(new Date().getHours())}{nome ? `, ${nome.split(' ')[0]}` : ''}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{detalhe}</p>
-      </div>
+    <div className={`${LARGURA_PAGINA} space-y-5`}>
+      <PageHeader titulo={`${saudacao(new Date().getHours())}${nome ? `, ${nome.split(' ')[0]}` : ''}`} descricao={detalhe || undefined} />
 
       {atalhos.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 enc-fade-up">

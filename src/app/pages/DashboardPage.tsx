@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { ArrowDownCircle, ArrowUpCircle, Fuel, Building2, Wallet, Banknote, ShieldAlert, RefreshCw } from 'lucide-react'
 import { useAsync, invalidateCache } from '../lib/useAsync'
-import { fmtEuro } from '../lib/format'
+import { fmtEuro, fmtDataExtensa } from '../lib/format'
+import { Button } from '../components/ui/button'
+import { PageHeader, LARGURA_PAGINA } from '../components/PageHeader'
 import { analiseObras } from '../lib/relatorios/obrasAnalise'
 import { construirAtencao } from '../lib/relatorios/atencao'
 import { construirDecisoes, obrasEmRisco, saudacao } from '../lib/dashboard/resumo'
@@ -60,40 +62,38 @@ export function DashboardPage() {
   const aCarregar = loading && !data
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold">{saudacao(hoje)}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5 capitalize">
-            {hoje.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Lisbon' })} · ENCIVIL Gestão
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground">
-          {data && <span className="hidden sm:inline">Atualizado às {data.atualizadoEm.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' })}</span>}
-          <button onClick={atualizar} disabled={loading} aria-label="Atualizar dashboard" className="p-2 rounded-lg border border-border hover:bg-accent disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
+    <div className={`${LARGURA_PAGINA} space-y-5`}>
+      <PageHeader
+        titulo={saudacao(hoje)}
+        descricao={`${fmtDataExtensa(hoje)} · ENCIVIL Gestão`}
+        acoes={(
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {data && <span className="hidden sm:inline">Atualizado às {data.atualizadoEm.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' })}</span>}
+            <Button variant="outline" size="icon" onClick={atualizar} disabled={loading} aria-label="Atualizar dashboard">
+              <RefreshCw className={loading ? 'animate-spin' : ''} aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+      />
 
       <div className={`grid gap-3 enc-fade-up ${podePedirCombustivel ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        <Link to="/armazem/movimento/saida" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-4 text-xs sm:text-sm text-center bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm">
-          <ArrowUpCircle className="w-5 h-5 shrink-0" /><span>Registar Saída</span>
-        </Link>
-        <Link to="/armazem/movimento/entrada" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-4 text-xs sm:text-sm text-center bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm">
-          <ArrowDownCircle className="w-5 h-5 shrink-0" /><span>Registar Entrada</span>
-        </Link>
+        <Button asChild variant="outline" size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
+          <Link to="/armazem/movimento/saida"><ArrowUpCircle className="text-destructive" aria-hidden="true" /><span>Registar saída</span></Link>
+        </Button>
+        <Button asChild variant="outline" size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
+          <Link to="/armazem/movimento/entrada"><ArrowDownCircle className="text-success" aria-hidden="true" /><span>Registar entrada</span></Link>
+        </Button>
         {podePedirCombustivel && (
-          <Link to="/abastecimento/pedir" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-4 text-xs sm:text-sm text-center bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all font-medium shadow-sm">
-            <Fuel className="w-5 h-5 shrink-0" /><span>Pedir combustível</span>
-          </Link>
+          <Button asChild size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
+            <Link to="/abastecimento/pedir"><Fuel aria-hidden="true" /><span>Pedir combustível</span></Link>
+          </Button>
         )}
       </div>
 
       {error && !data && (
         <div className="rounded-xl border border-destructive/40 bg-card p-4 flex items-center gap-3" role="alert">
           <p className="text-sm flex-1">{error}</p>
-          <button onClick={reload} className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-accent">Tentar de novo</button>
+          <Button variant="outline" size="sm" onClick={reload}>Tentar de novo</Button>
         </div>
       )}
       {r && <AvisoIncompleto modulos={r.falhas} onRetry={atualizar} />}

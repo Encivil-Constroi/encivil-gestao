@@ -14,7 +14,7 @@ vi.mock('sonner', () => ({ toast: { error: m.toastError, success: m.toastSuccess
 vi.mock('react-router', () => ({
   useParams: () => ({ id: 'f1' }),
   useNavigate: () => vi.fn(),
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  Link: ({ children, ...p }: { children: React.ReactNode }) => <a href="#" {...p}>{children}</a>,
 }))
 vi.mock('@/features/faturas/services/faturasService', () => ({
   buscarFatura: m.buscar,
@@ -83,5 +83,22 @@ describe('ClassificarFaturaPage', () => {
     const selects = screen.getAllByRole('combobox')
     fireEvent.change(selects[0], { target: { value: 'OBRA' } })
     expect(btn).toBeDisabled()
+  })
+})
+
+describe("ClassificarFaturaPage — cabeçalho (lote D)", () => {
+  it("fornecedor é o título de nível 1 e o estado aparece em português", async () => {
+    m.buscar.mockResolvedValue({ ...faturaCom([linhaOk]), estado: "EXTRAIDA" })
+    render(<ClassificarFaturaPage />)
+    expect(await screen.findByRole("heading", { level: 1, name: "Cimpor" })).toBeInTheDocument()
+    expect(screen.getByText("Extraída")).toBeInTheDocument()
+    expect(screen.queryByText("EXTRAIDA")).toBeNull()
+  })
+
+  it("link de voltar tem nome acessível e alvo de 40px", async () => {
+    m.buscar.mockResolvedValue(faturaCom([linhaOk]))
+    render(<ClassificarFaturaPage />)
+    const voltar = await screen.findByRole("link", { name: "Voltar às faturas" })
+    expect(voltar.className).toContain("size-10")
   })
 })

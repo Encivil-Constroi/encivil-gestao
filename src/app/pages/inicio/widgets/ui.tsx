@@ -13,7 +13,7 @@ export function Secao({ titulo, icone: Icone, para, paraRotulo = 'Abrir', childr
           <Icone className="w-4 h-4 text-primary shrink-0" aria-hidden="true" /> <span className="truncate">{titulo}</span>
         </h2>
         {para && (
-          <Link to={para} className="text-sm text-primary hover:underline inline-flex items-center gap-0.5 shrink-0">
+          <Link to={para} className="text-sm text-primary inline-flex items-center gap-0.5 shrink-0 min-h-10 px-2 -mr-2 rounded-lg hover:bg-accent">
             {paraRotulo} <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </Link>
         )}

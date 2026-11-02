@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { useAsync }   from '@/app/lib/useAsync'
 import { useFormGuard } from '@/app/lib/useFormGuard'
 import { useMutation } from '@/app/lib/useMutation'
-import type { LinhaFatura, DestinoLinha } from '@/app/types'
+import type { LinhaFatura, DestinoLinha, EstadoFatura } from '@/app/types'
 import { DadosFiscaisForm } from './DadosFiscaisForm'
 import {
   buscarFatura,
@@ -41,6 +41,8 @@ const DESTINO_META: Record<DestinoLinha, { label: string; icon: typeof Package; 
   SERVICO:     { label: 'Serviço',     icon: Wrench,      cls: 'text-muted-foreground' },
   DESCONHECIDO:{ label: 'Desconhecido',icon: CircleHelp,  cls: 'text-muted-foreground'              },
 }
+
+const ESTADO_ROTULO: Record<EstadoFatura, string> = { RECEBIDA: 'Recebida', EXTRAIDA: 'Extraída', CLASSIFICADA: 'Classificada', LANCADA: 'Lançada' }
 
 // ── Estado local de cada linha editável ──────────────────────────────────────
 
@@ -79,7 +81,7 @@ function LinhaRow({ linha, state, produtos, onChange, readonly }: {
       <div className="flex items-start justify-between gap-2 mb-2.5">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{linha.descricao}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {linha.quantidade != null && `${linha.quantidade} ${linha.unidade ?? ''}`}
             {linha.totalLinha != null && (
               <span className="ml-2 font-medium text-foreground">
@@ -90,7 +92,7 @@ function LinhaRow({ linha, state, produtos, onChange, readonly }: {
         </div>
         <div className="shrink-0 flex items-center gap-1.5">
           {linha.lancado && <CheckCircle className="w-4 h-4 text-success" />}
-          <span className={`text-[10px] font-medium ${conf.cls}`}>{conf.label}</span>
+          <span className={`text-xs font-medium ${conf.cls}`}>{conf.label}</span>
         </div>
       </div>
 
@@ -102,7 +104,7 @@ function LinhaRow({ linha, state, produtos, onChange, readonly }: {
             <select
               value={state.destino}
               onChange={e => onChange({ destino: e.target.value as DestinoLinha })}
-              className="appearance-none pl-7 pr-6 py-1.5 text-xs border border-input rounded-lg bg-input-background focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              className="appearance-none pl-7 pr-6 py-1.5 text-sm border border-input rounded-lg bg-input-background focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
               {(Object.keys(DESTINO_META) as DestinoLinha[]).map(d => (
                 <option key={d} value={d}>{DESTINO_META[d].label}</option>
@@ -117,7 +119,7 @@ function LinhaRow({ linha, state, produtos, onChange, readonly }: {
             <select
               value={state.artigoId}
               onChange={e => onChange({ artigoId: e.target.value })}
-              className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-input rounded-lg bg-input-background focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 min-w-0 px-2 py-1.5 text-sm border border-input rounded-lg bg-input-background focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">— Selecionar artigo —</option>
               {produtos.map(p => (
@@ -130,7 +132,7 @@ function LinhaRow({ linha, state, produtos, onChange, readonly }: {
 
       {/* Artigo selecionado (só leitura quando lançado) */}
       {readonly && state.artigoId && (
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {DESTINO_META[state.destino].label}
           {state.artigoId && ` · ${produtos.find(p => p.id === state.artigoId)?.nome ?? state.artigoId}`}
         </p>
@@ -431,14 +433,14 @@ export function ClassificarFaturaPage() {
       {/* Cabeçalho */}
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 border-b border-border bg-background shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Link to="/faturas" className="p-1.5 rounded-lg hover:bg-accent transition-colors shrink-0">
-            <ArrowLeft className="w-4 h-4" />
+          <Link to="/faturas" aria-label="Voltar às faturas" className="size-10 inline-flex items-center justify-center rounded-lg hover:bg-accent transition-colors shrink-0">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           </Link>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="font-semibold truncate text-sm md:text-base">{fatura.fornecedor}</p>
-              <span className={`hidden sm:inline text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${estadoMeta}`}>
-                {fatura.estado}
+              <h1 className="font-semibold truncate text-base md:text-lg">{fatura.fornecedor}</h1>
+              <span className={`hidden sm:inline text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${estadoMeta}`}>
+                {ESTADO_ROTULO[fatura.estado]}
               </span>
             </div>
             <p className="text-xs text-muted-foreground truncate">
@@ -466,7 +468,7 @@ export function ClassificarFaturaPage() {
           >
             Linhas
             {linhaStates.filter(s => s.destino === 'DESCONHECIDO').length > 0 && (
-              <span className="w-4 h-4 bg-warning text-warning-foreground rounded-full text-[10px] flex items-center justify-center leading-none">
+              <span className="size-5 bg-warning text-warning-foreground rounded-full text-xs flex items-center justify-center leading-none">
                 {linhaStates.filter(s => s.destino === 'DESCONHECIDO').length}
               </span>
             )}
