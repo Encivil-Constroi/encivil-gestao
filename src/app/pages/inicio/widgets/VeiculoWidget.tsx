@@ -67,7 +67,7 @@ export function VeiculoWidget({ contexto, loading, error, reload, podePedir }: {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <h3 className="text-sm font-medium">Os meus pedidos</h3>
-              {podePedir && <Link to="/abastecimento" className="text-xs text-primary hover:underline">Ver todos</Link>}
+              {podePedir && <Link to="/abastecimento" className="text-xs text-primary hover:underline max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">Ver todos</Link>}
             </div>
             {pedidos.length === 0 ? <Vazio>Ainda não fez pedidos de combustível.</Vazio> : (
               <ul className="divide-y divide-border">

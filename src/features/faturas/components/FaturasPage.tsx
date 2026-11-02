@@ -377,7 +377,7 @@ export function FaturasPage() {
           <button
             key={f.value}
             onClick={() => setEstadoFilter(f.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-10 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               estadoFilter === f.value
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-accent text-foreground hover:bg-accent/70'

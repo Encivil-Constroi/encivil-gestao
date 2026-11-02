@@ -56,7 +56,7 @@ function CartaoObra({ g, podeArmazem }: { g: ObraComArmazem; podeArmazem: boolea
             </ul>
           )}
           {g.materiais.length > MAX_MATERIAIS && (
-            <button type="button" onClick={() => setTodos(t => !t)} className="mt-2 text-xs font-semibold text-primary hover:underline">
+            <button type="button" onClick={() => setTodos(t => !t)} className="mt-2 text-xs font-semibold text-primary hover:underline max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">
               {todos ? 'Ver menos' : `Ver todos (${g.materiais.length})`}
             </button>
           )}

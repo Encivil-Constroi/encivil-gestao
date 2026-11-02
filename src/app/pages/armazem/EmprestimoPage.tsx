@@ -160,7 +160,7 @@ export function EmprestimoPage() {
               <label htmlFor="emp-obra" className="block text-sm font-medium">
                 {outroDestino ? 'Outro destino' : 'Obra'} <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
               </label>
-              <button type="button" onClick={() => setOutroDestino(v => !v)} className="text-xs font-medium text-primary hover:underline">
+              <button type="button" onClick={() => setOutroDestino(v => !v)} className="text-xs font-medium text-primary hover:underline max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">
                 {outroDestino ? 'Escolher obra' : 'Outro destino'}
               </button>
             </div>

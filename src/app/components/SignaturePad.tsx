@@ -146,7 +146,7 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
           <button
             type="button"
             onClick={handleClear}
-            className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive transition-colors"
+            className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive transition-colors max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2"
           >
             <Eraser className="w-3.5 h-3.5" /> Limpar
           </button>

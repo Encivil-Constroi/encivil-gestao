@@ -48,6 +48,7 @@ export function PushSetup() {
         duration: 10_000,
         action: { label: 'Ativar', onClick: () => { pedirNotificacoes().catch(e => captureError(e, { origem: 'push-pedir' })) } },
         cancel: { label: 'Agora não', onClick: () => {} },
+        classNames: { actionButton: 'max-md:min-h-10! max-md:px-4!', cancelButton: 'max-md:min-h-10! max-md:px-4!' },
       })
     }
     t = setTimeout(mostrar, 5_000)

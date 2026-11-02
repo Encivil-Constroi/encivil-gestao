@@ -261,7 +261,7 @@ export function ValidacaoPicagensPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setData(d => addDays(d, -1))}
-              className="p-2 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+              className="p-2 max-md:p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -274,7 +274,7 @@ export function ValidacaoPicagensPage() {
             <button
               onClick={() => setData(d => addDays(d, 1))}
               disabled={data >= todayISO()}
-              className="p-2 border border-border rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-40"
+              className="p-2 max-md:p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-40"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

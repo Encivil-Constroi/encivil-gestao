@@ -256,7 +256,7 @@ export function FichaViaturaPage() {
       </Seccao>
 
       <Seccao titulo="Entregas e devoluções" icone={<KeyRound className="w-4 h-4 text-primary" aria-hidden="true" />}
-        acao={<Link to={`/frota/entregas?viatura=${viatura.id}`} className="text-sm text-primary font-medium">Ver todas</Link>}>
+        acao={<Link to={`/frota/entregas?viatura=${viatura.id}`} className="text-sm text-primary font-medium max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">Ver todas</Link>}>
         {ultimaEntrega ? (
           <p className="text-sm">
             <span className="text-muted-foreground">Último registo: </span>

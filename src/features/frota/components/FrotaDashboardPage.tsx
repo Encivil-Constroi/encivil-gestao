@@ -104,7 +104,7 @@ export function FrotaDashboardPage() {
 
       <Seccao titulo="Quem tem o quê" icone={<User className="w-4 h-4 text-primary" aria-hidden="true" />}
         acao={emUso.length > LIMITE_EM_USO
-          ? <Link to="/frota/viaturas?estado=EM_USO" className="text-sm text-primary font-medium">Ver todas ({emUso.length})</Link> : undefined}>
+          ? <Link to="/frota/viaturas?estado=EM_USO" className="text-sm text-primary font-medium max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">Ver todas ({emUso.length})</Link> : undefined}>
         {emUso.length === 0 ? <Vazio>Nenhuma viatura em uso neste momento.</Vazio> : (
           <ul className="divide-y divide-border">
             {emUso.slice(0, LIMITE_EM_USO).map(v => (
@@ -127,7 +127,7 @@ export function FrotaDashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Seccao titulo="Últimas entregas e devoluções" icone={<KeyRound className="w-4 h-4 text-primary" aria-hidden="true" />}
-          acao={<Link to="/frota/entregas" className="text-sm text-primary font-medium">Ver todas</Link>}>
+          acao={<Link to="/frota/entregas" className="text-sm text-primary font-medium max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">Ver todas</Link>}>
           {entregas.length === 0 ? <Vazio>Ainda sem entregas.</Vazio> : (
             <ul className="divide-y divide-border">
               {entregas.map(e => (
@@ -148,7 +148,7 @@ export function FrotaDashboardPage() {
         </Seccao>
 
         <Seccao titulo="Últimas manutenções" icone={<Wrench className="w-4 h-4 text-primary" aria-hidden="true" />}
-          acao={<Link to="/frota/manutencao" className="text-sm text-primary font-medium">Ver todas</Link>}>
+          acao={<Link to="/frota/manutencao" className="text-sm text-primary font-medium max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">Ver todas</Link>}>
           {manutencoes.length === 0 ? <Vazio>Ainda sem manutenções.</Vazio> : (
             <ul className="divide-y divide-border">
               {manutencoes.map(m => (

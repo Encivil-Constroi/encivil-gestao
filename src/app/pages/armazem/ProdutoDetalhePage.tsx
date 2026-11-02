@@ -186,7 +186,7 @@ export function ProdutoDetalhePage() {
               {aCarregarMov ? 'A carregar…' : `${movimentos.length} movimento${movimentos.length !== 1 ? 's' : ''} (últimos 50)`}
             </p>
           </div>
-          <Link to={`/armazem/movimentos?produto=${product.id}`} className="text-xs text-primary hover:underline whitespace-nowrap mt-0.5">
+          <Link to={`/armazem/movimentos?produto=${product.id}`} className="text-xs text-primary hover:underline whitespace-nowrap mt-0.5 max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">
             Ver todos →
           </Link>
         </div>

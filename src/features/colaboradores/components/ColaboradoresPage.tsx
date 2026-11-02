@@ -140,14 +140,14 @@ export function ColaboradoresPage({ onNovo }: { onNovo: () => void }) {
             <>
               <button
                 onClick={() => openEdit(c)}
-                className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                className="p-2 max-md:p-3 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 aria-label="Editar"
               >
                 <Pencil className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setArchiveId(c.id)}
-                className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                className="p-2 max-md:p-3 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
                 aria-label="Arquivar"
               >
                 <Archive className="w-4 h-4" />
@@ -156,7 +156,7 @@ export function ColaboradoresPage({ onNovo }: { onNovo: () => void }) {
           ) : (
             <button
               onClick={() => setRestoreId(c.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-10 text-xs font-semibold text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Restaurar
             </button>

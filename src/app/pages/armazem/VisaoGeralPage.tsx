@@ -38,7 +38,7 @@ function Cartao({ titulo, para, vazio, children }: { titulo: string; para?: stri
     <section className="bg-card rounded-2xl border border-border p-4" aria-label={titulo}>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold">{titulo}</h3>
-        {para && <Link to={para} className="text-xs font-semibold text-primary hover:underline">Ver todos</Link>}
+        {para && <Link to={para} className="text-xs font-semibold text-primary hover:underline max-md:inline-flex max-md:items-center max-md:min-h-10 max-md:-my-2.5 max-md:px-2 max-md:-mx-2">Ver todos</Link>}
       </div>
       {vazioAgora ? <p className="text-sm text-muted-foreground py-2">{vazio}</p> : <ul className="divide-y divide-border">{children}</ul>}
     </section>
