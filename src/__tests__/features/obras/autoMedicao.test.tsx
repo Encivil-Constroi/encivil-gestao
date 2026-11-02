@@ -166,6 +166,19 @@ describe('AutoDetailPage — rascunho', () => {
     expect(screen.getByRole('list', { name: 'O que falta' })).toHaveTextContent('excede a prevista')
   })
 
+  it('o motivo do bloqueio vem logo a seguir ao botão desativado, ligado por aria-describedby', () => {
+    estado.auto = fazerAuto({ periodValue: 400, lines: [linha({ quantity: 40 })] })
+    estado.linhasDb = [{ id: 'l1', auto_id: 'auto1', artigo_id: 'a1', quantidade: 40, qtd_pedida: null, justificacao: null }]
+    renderDetalhe()
+    const botao = screen.getByRole('button', { name: /Submeter para verificação/ })
+    expect(botao).toBeDisabled()
+    expect(botao).toHaveAttribute('aria-describedby', 'motivos-submissao')
+    const motivos = document.getElementById('motivos-submissao')!
+    expect(motivos).toHaveTextContent('excede a prevista')
+    expect(botao.compareDocumentPosition(motivos) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getAllByRole('list', { name: 'O que falta' })).toHaveLength(1)
+  })
+
   it('leitura não vê ações e percebe quem pode submeter', () => {
     estado.role = 'leitura'
     renderDetalhe()

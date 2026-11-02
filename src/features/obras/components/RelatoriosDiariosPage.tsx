@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router'
 import { usePainelObras } from '../hooks/useObras'
 import { useRelatoriosDiarios } from '../hooks/useRelatoriosDiarios'
 import { ListaRelatorios } from './relatorios/ListaRelatorios'
-import { Seccao, inputCls } from './ui'
+import { CampoSelect, CLASSE_CAMPO } from '@/app/components/CampoSelect'
+import { Seccao } from './ui'
 
 export function RelatoriosDiariosPage() {
   const [params, setParams] = useSearchParams()
@@ -23,14 +24,14 @@ export function RelatoriosDiariosPage() {
     setParams(novos)
   }
   return <div className="space-y-4">
-    <div><h2 className="text-xl font-semibold">Relatórios diários</h2><p className="text-sm text-muted-foreground">Acompanhe os dias de obra, a equipa e as ocorrências.</p></div>
-    <Seccao titulo="Filtros"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <label className="text-sm">Obra<select aria-label="Obra" className={inputCls} value={obraId} onChange={e => atualizar('obra', e.target.value)}><option value="">Todas as obras</option>{obras.map(o => <option key={o.obra_id} value={o.obra_id}>{o.nome}</option>)}</select></label>
-      <label className="text-sm">Desde<input aria-label="Desde" type="date" className={inputCls} value={filtros.desde || ''} onChange={e => atualizar('desde', e.target.value)} /></label>
-      <label className="text-sm">Até<input aria-label="Até" type="date" className={inputCls} value={filtros.ate || ''} onChange={e => atualizar('ate', e.target.value)} /></label>
-      <label className="text-sm">Estado<select aria-label="Estado" className={inputCls} value={estado || ''} onChange={e => atualizar('estado', e.target.value)}><option value="">Todos</option><option value="rascunho">Rascunhos</option><option value="submetido">Submetidos</option></select></label>
-      <label className="text-sm">Autor<select aria-label="Autor" className={inputCls} value={autor} onChange={e => setAutor(e.target.value)}><option value="">Todos</option>{autores.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}</select></label>
-      <label className="flex items-center gap-2 text-sm pt-4"><input type="checkbox" checked={filtros.soOcorrencias} onChange={e => atualizar('ocorrencias', e.target.checked ? '1' : '')} />Só com ocorrências</label>
+    <div><h2 className="text-base font-semibold">Relatórios diários</h2><p className="text-sm text-muted-foreground">Acompanhe os dias de obra, a equipa e as ocorrências.</p></div>
+    <Seccao titulo="Filtros"><div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <label className="grid gap-1.5 text-sm font-medium">Obra<CampoSelect aria-label="Obra" value={obraId} onChange={e => atualizar('obra', e.target.value)}><option value="">Todas as obras</option>{obras.map(o => <option key={o.obra_id} value={o.obra_id}>{o.nome}</option>)}</CampoSelect></label>
+      <label className="grid gap-1.5 text-sm font-medium">Desde<input aria-label="Desde" type="date" className={CLASSE_CAMPO} value={filtros.desde || ''} onChange={e => atualizar('desde', e.target.value)} /></label>
+      <label className="grid gap-1.5 text-sm font-medium">Até<input aria-label="Até" type="date" className={CLASSE_CAMPO} value={filtros.ate || ''} onChange={e => atualizar('ate', e.target.value)} /></label>
+      <label className="grid gap-1.5 text-sm font-medium">Estado<CampoSelect aria-label="Estado" value={estado || ''} onChange={e => atualizar('estado', e.target.value)}><option value="">Todos</option><option value="rascunho">Rascunhos</option><option value="submetido">Submetidos</option></CampoSelect></label>
+      <label className="grid gap-1.5 text-sm font-medium">Autor<CampoSelect aria-label="Autor" value={autor} onChange={e => setAutor(e.target.value)}><option value="">Todos</option>{autores.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}</CampoSelect></label>
+      <label className="flex items-center gap-2 text-sm col-span-2 md:col-span-1 md:self-end md:min-h-11"><input type="checkbox" checked={filtros.soOcorrencias} onChange={e => atualizar('ocorrencias', e.target.checked ? '1' : '')} />Só com ocorrências</label>
     </div></Seccao>
     {error && <div role="alert" className="text-sm text-destructive">{error} <button type="button" onClick={reload} className="underline">Tentar de novo</button></div>}
     {loading ? <p className="text-sm text-muted-foreground">A carregar relatórios…</p> : <ListaRelatorios relatorios={visiveis} />}

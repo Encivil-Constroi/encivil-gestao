@@ -33,10 +33,10 @@ describe('permissões de escrita do livro de obra e das guias', () => {
   it.each(['admin', 'gestor', 'armazem', 'medicoes'])('%s vê Novo Registo e Emitir Guia', role => {
     m.role = role
     ver(<LivroObraPage />)
-    expect(screen.getByText('Novo Registo')).toBeTruthy()
+    expect(screen.getByText('Novo registo')).toBeTruthy()
     cleanup()
     ver(<GuiasTransportePage />)
-    expect(screen.getByText('Emitir Guia')).toBeTruthy()
+    expect(screen.getByText('Emitir guia')).toBeTruthy()
     expect(screen.getByText('Entregue')).toBeTruthy()
     expect(screen.getByText('Anular')).toBeTruthy()
   })
@@ -44,11 +44,11 @@ describe('permissões de escrita do livro de obra e das guias', () => {
   it.each(['leitura', 'mecanico', 'motorista', null])('%s não vê botões de escrita', role => {
     m.role = role
     ver(<LivroObraPage />)
-    expect(screen.queryByText('Novo Registo')).toBeNull()
+    expect(screen.queryByText('Novo registo')).toBeNull()
     expect(screen.getByText('Teste')).toBeTruthy()
     cleanup()
     ver(<GuiasTransportePage />)
-    expect(screen.queryByText('Emitir Guia')).toBeNull()
+    expect(screen.queryByText('Emitir guia')).toBeNull()
     expect(screen.queryByText('Entregue')).toBeNull()
     expect(screen.queryByText('Anular')).toBeNull()
     expect(screen.getByText('GT-0001')).toBeTruthy()

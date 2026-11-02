@@ -1,11 +1,13 @@
 import { useState, useCallback, memo } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams } from 'react-router'
 import type { ElementType } from 'react'
 import {
-  ArrowLeft, Plus, Printer, X, Loader2, Truck,
+  Plus, Printer, X, Loader2, Truck,
   CheckCircle2, XCircle, Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
+import { Button } from '@/app/components/ui/button'
 import { useObra } from '@/features/obras/hooks/useObras'
 import { useGuias, useCriarGuia, useActualizarEstadoGuia } from '../hooks/useCriarGuia'
 import { GuiaPrintView } from './GuiaPrintView'
@@ -277,28 +279,9 @@ export function GuiasTransportePage() {
   }
 
   return (
-    <div className="space-y-4 pb-8">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Link to={`/obras/${id}`} className="p-1.5 rounded-lg hover:bg-accent transition-colors shrink-0">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="min-w-0">
-            <h1 className="text-lg md:text-xl font-semibold truncate">{obra.name}</h1>
-            <p className="text-xs text-muted-foreground">Guias de Transporte</p>
-          </div>
-        </div>
-        {podeEscrever && (
-          <button
-            onClick={() => setShowEmitir(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-medium hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Emitir Guia</span>
-          </button>
-        )}
-      </div>
+    <div className={`${LARGURA_PAGINA} space-y-4 pb-8`}>
+      <PageHeader titulo={obra.name} descricao="Guias de transporte" voltar={`/obras/${id}`}
+        acoes={podeEscrever ? <Button onClick={() => setShowEmitir(true)}><Plus aria-hidden="true" />Emitir guia</Button> : undefined} />
 
       {error && (
         <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive">

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ChevronLeft, Pencil, Trash2, Calendar, FileDown, Send, Undo2, ShieldCheck, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/app/components/ui/button';
+import { LARGURA_PAGINA } from '@/app/components/PageHeader';
 import { fmtEuro, fmtNumber } from '@/app/lib/format';
 import { useRole } from '@/features/auth/useRole';
 import { AutoEvidenciasView } from './AutoEvidenciasView';
@@ -151,10 +153,12 @@ export function AutoDetailPage() {
     }
   };
 
+  // Com o botão "Submeter" visível, os motivos do bloqueio vêm logo abaixo dele e não repetidos no cartão de estado
+  const motivosSubmissao = workflow === 'rascunho' && podeMedir && errosSubmissao.length > 0;
   const erroAcao = aviso ?? erroSubmeter ?? erroDevolver ?? erroAprovar;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-28">
+    <div className={`${LARGURA_PAGINA} space-y-4 pb-28`}>
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
           <ChevronLeft className="w-5 h-5" aria-hidden="true" />
@@ -177,7 +181,7 @@ export function AutoDetailPage() {
         </div>
       </div>
 
-      <AutoPassos passo={passoAtual(workflow, temFatura, pago)} proximo={proximo} />
+      <AutoPassos passo={passoAtual(workflow, temFatura, pago)} proximo={motivosSubmissao ? { ...proximo, acao: null } : proximo} />
 
       <section aria-label="Valores do auto" className="bg-card rounded-2xl border border-border divide-y divide-border">
         <div className="px-5 py-3 flex justify-between text-sm"><span className="text-muted-foreground">Valor medido</span><span className="font-semibold">{fmtEuro(auto.periodValue)}</span></div>
@@ -200,10 +204,15 @@ export function AutoDetailPage() {
       <section aria-label="Ações" className="space-y-3">
         {workflow === 'rascunho' && podeMedir && (
           <>
-            <button onClick={() => void handleSubmeter()} disabled={aSubmeter || errosSubmissao.length > 0}
-              className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-              <Send className="w-4 h-4" aria-hidden="true" /> {aSubmeter ? 'A submeter…' : 'Submeter para verificação'}
-            </button>
+            <Button size="lg" className="w-full" onClick={() => void handleSubmeter()} disabled={aSubmeter || errosSubmissao.length > 0}
+              aria-describedby={motivosSubmissao ? 'motivos-submissao' : undefined}>
+              <Send aria-hidden="true" /> {aSubmeter ? 'A submeter…' : 'Submeter para verificação'}
+            </Button>
+            {motivosSubmissao && (
+              <div id="motivos-submissao" role="status"><ul aria-label="O que falta" className="text-sm text-destructive space-y-1">
+                {errosSubmissao.map(e => <li key={e}>{e}</li>)}
+              </ul></div>
+            )}
             <div className="flex gap-3">
               <button onClick={() => navigate(`/obras/auto/${auto.id}/editar`)} className="flex-1 py-3 bg-secondary/20 rounded-xl font-medium flex items-center justify-center gap-2">
                 <Pencil className="w-4 h-4" aria-hidden="true" /> Editar
@@ -260,7 +269,7 @@ export function AutoDetailPage() {
 
       {baseLines.length > 0 && (
         <section aria-label="Medições" className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border bg-muted/30"><h2 className="font-semibold text-sm">Medições</h2></div>
+          <div className="px-5 py-3.5 border-b border-border bg-muted/30"><h2 className="font-semibold text-base">Medições</h2></div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/40">
@@ -293,7 +302,7 @@ export function AutoDetailPage() {
       {extraLines.length > 0 && (
         <section aria-label="Trabalhos a mais" className="bg-card rounded-2xl border border-warning/30 overflow-hidden">
           <div className="px-5 py-3.5 border-b border-warning/30 bg-warning/5">
-            <h2 className="font-semibold text-sm text-warning">Trabalhos a mais</h2>
+            <h2 className="font-semibold text-base text-warning">Trabalhos a mais</h2>
             <p className="text-xs text-muted-foreground">Só o administrador aprova autos com trabalhos a mais.</p>
           </div>
           <ul className="divide-y divide-border">
@@ -332,7 +341,7 @@ export function AutoDetailPage() {
 
       {auto.notes && (
         <div className="bg-card rounded-2xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-2">Observações</h2>
+          <h2 className="font-semibold text-base mb-2">Observações</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{auto.notes}</p>
         </div>
       )}

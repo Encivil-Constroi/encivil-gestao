@@ -4,6 +4,7 @@ import { Pencil, MoreHorizontal, PieChart, BookOpen, Truck, BarChart2, MapPin, U
 import { useRole } from '@/features/auth/useRole'
 import { useVisaoObra } from '../hooks/useObras'
 import type { ObraResumoRow } from '../db'
+import { LARGURA_PAGINA } from '@/app/components/PageHeader'
 import { Cabecalho, EstadoBadge, SaudeBadge, botaoSecundario } from './ui'
 import type { SecaoProps } from './ficha/tipos'
 import { Resumo } from './ficha/Resumo'
@@ -50,10 +51,10 @@ export function ObraFichaPage() {
     return () => document.removeEventListener('mousedown', fora)
   }, [menuAberto])
 
-  if (loading && !o) return <div className="max-w-5xl mx-auto p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+  if (loading && !o) return <div className={`${LARGURA_PAGINA} p-8 text-center text-sm text-muted-foreground`}>A carregar…</div>
   if (error || !o || !id) {
     return (
-      <div className="max-w-5xl mx-auto py-10 text-center space-y-3">
+      <div className={`${LARGURA_PAGINA} py-10 text-center space-y-3`}>
         <p className="text-sm text-muted-foreground">{error ?? 'Obra não encontrada.'}</p>
         <div className="flex gap-2 justify-center">
           <button onClick={reload} className={botaoSecundario}>Tentar de novo</button>
@@ -73,7 +74,7 @@ export function ObraFichaPage() {
   const itemMenu = 'flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-accent transition-colors text-left'
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 pb-24">
+    <div className={`${LARGURA_PAGINA} space-y-4 pb-24`}>
       <Cabecalho
         titulo={o.nome}
         subtitulo={
@@ -118,13 +119,13 @@ export function ObraFichaPage() {
         }
       />
 
-      <nav className="flex border-b border-border overflow-x-auto -mx-1 px-1" aria-label="Secções da obra">
+      <nav className="flex border-b border-border overflow-x-auto" aria-label="Secções da obra">
         {SECOES.map(s => {
           const ativa = s === atual
           const n = s.contagem?.(o)
           return (
             <button key={s.chave} type="button" onClick={() => escolher(s.chave)} aria-current={ativa ? 'page' : undefined}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 min-h-10 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${
                 ativa ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
               {s.rotulo}
               {n != null && n > 0 && <span className="text-[11px] font-semibold px-1.5 rounded-full bg-muted text-muted-foreground">{n}</span>}

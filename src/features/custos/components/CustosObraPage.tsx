@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams } from 'react-router'
 import {
-  ArrowLeft, Package, Users, Fuel, FileText, HardHat,
+  Package, Users, Fuel, FileText, HardHat,
   TrendingUp, TrendingDown, Minus, Download, Pencil, X, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
+import { Button } from '@/app/components/ui/button'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
 import { useObra } from '@/features/obras/hooks/useObras'
 import { useCustoConsolidado, useActualizarOrcamentos } from '../useCustoObra'
@@ -185,36 +187,12 @@ export function CustosObraPage() {
   }
 
   return (
-    <div className="space-y-4 pb-8">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Link to={`/obras/${id}`} className="p-1.5 rounded-lg hover:bg-accent transition-colors shrink-0">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="min-w-0">
-            <h1 className="text-lg md:text-xl font-semibold truncate">{obra.name}</h1>
-            <p className="text-xs text-muted-foreground">Custeio Consolidado</p>
-          </div>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <button
-            onClick={() => setShowOrc(true)}
-            className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-xs font-medium hover:bg-accent transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Orçamentos</span>
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={!custo}
-            className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-xs font-medium hover:bg-accent transition-colors disabled:opacity-40"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">CSV</span>
-          </button>
-        </div>
-      </div>
+    <div className={`${LARGURA_PAGINA} space-y-4 pb-8`}>
+      <PageHeader titulo={obra.name} descricao="Custeio consolidado" voltar={`/obras/${id}`}
+        acoes={<>
+          <Button variant="outline" onClick={() => setShowOrc(true)}><Pencil aria-hidden="true" />Orçamentos</Button>
+          <Button variant="outline" onClick={handleExport} disabled={!custo}><Download aria-hidden="true" />CSV</Button>
+        </>} />
 
       {/* Selector de período */}
       <div className="flex gap-1.5">

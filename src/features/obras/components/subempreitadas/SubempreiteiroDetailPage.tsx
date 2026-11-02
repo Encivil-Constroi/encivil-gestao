@@ -6,6 +6,7 @@ import {
   Banknote, TrendingDown, AlertTriangle, X, TriangleAlert, Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LARGURA_PAGINA } from '@/app/components/PageHeader';
 import { fmtEuro, fmtNumber } from '@/app/lib/format';
 import { useRole } from '@/features/auth/useRole';
 import {
@@ -124,7 +125,7 @@ export function SubempreiteiroDetailPage() {
   const inputCls = 'w-full px-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm';
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-28">
+    <div className={`${LARGURA_PAGINA} space-y-4 pb-28`}>
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
@@ -228,7 +229,7 @@ export function SubempreiteiroDetailPage() {
       {isValidado && sub.retencaoPercentagem > 0 && (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="px-5 py-3.5 border-b border-border bg-warning/5 flex items-center justify-between">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
+            <h2 className="font-semibold text-base flex items-center gap-2">
               <TrendingDown className="w-4 h-4 text-warning" />
               Retenção de Garantia ({fmtNumber(sub.retencaoPercentagem)}%)
             </h2>
@@ -353,7 +354,7 @@ export function SubempreiteiroDetailPage() {
       {/* Autos de Medição */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
-          <h2 className="font-semibold text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4" /> Autos de Medição</h2>
+          <h2 className="font-semibold text-base flex items-center gap-2"><ClipboardList className="w-4 h-4" /> Autos de Medição</h2>
           {isValidado && podeSubempreitadas && (
             <button
               onClick={() => navigate(`/obras/subempreitada/${sub.id}/auto/novo`)}
@@ -427,7 +428,7 @@ export function SubempreiteiroDetailPage() {
       {sub.type === 'unitario' && sub.items && sub.items.length > 0 && (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="px-5 py-3.5 border-b border-border bg-muted/30">
-            <h2 className="font-semibold text-sm">Artigos ({sub.items.length})</h2>
+            <h2 className="font-semibold text-base">Artigos ({sub.items.length})</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -460,7 +461,7 @@ export function SubempreiteiroDetailPage() {
       {/* Condições */}
       {sub.conditions && (
         <div className="bg-card rounded-2xl border border-border p-4">
-          <h2 className="font-semibold text-sm mb-2">Condições Acordadas</h2>
+          <h2 className="font-semibold text-base mb-2">Condições Acordadas</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{sub.conditions}</p>
         </div>
       )}

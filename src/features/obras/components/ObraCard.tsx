@@ -23,13 +23,14 @@ export function ObraCard({ obra: o }: { obra: ObraResumoRow }) {
   const pOrc = percentagemOrcamento(Number(o.custo_total), o.orcamento)
   const estOrc = estadoOrcamento(Number(o.custo_total), o.orcamento)
   const prazo = estadoPrazo(o.data_prevista_fim)
+  const semProgresso = o.progresso_pct == null && o.progresso_esperado_pct == null
 
   return (
     <Link to={`/obras/${o.obra_id}`} aria-label={`Abrir obra ${o.nome}`}
       className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-3 hover:border-primary/40 hover:shadow-sm active:scale-[0.99] transition-all">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-semibold truncate">{o.nome}</p>
+          <p className="font-semibold line-clamp-2">{o.nome}</p>
           {(o.cliente || o.localizacao || o.morada) && (
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 min-w-0">
               <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -37,19 +38,23 @@ export function ObraCard({ obra: o }: { obra: ObraResumoRow }) {
             </p>
           )}
         </div>
-        <SaudeBadge saude={o.saude} />
       </div>
+      <div><SaudeBadge saude={o.saude} /></div>
 
-      <div className="flex items-center gap-4">
-        <ProgressoAnel pct={o.progresso_pct} esperado={o.progresso_esperado_pct} saude={o.saude} />
-        <div className="min-w-0 flex-1 space-y-1 text-sm">
-          <p className="text-xs text-muted-foreground">
-            {o.progresso_esperado_pct != null ? `Previsto: ${Math.round(o.progresso_esperado_pct)}%` : 'Sem previsto (falta data de início ou fim)'}
-          </p>
-          {desvio && <p className="text-xs font-medium">{desvio}</p>}
-          <p className="text-[11px] text-muted-foreground">{ROTULO_FONTE[o.progresso_fonte]}</p>
+      {semProgresso ? (
+        <p className="text-xs text-muted-foreground">Sem plano de progresso</p>
+      ) : (
+        <div className="flex items-center gap-4">
+          <ProgressoAnel pct={o.progresso_pct} esperado={o.progresso_esperado_pct} saude={o.saude} />
+          <div className="min-w-0 flex-1 space-y-1 text-sm">
+            <p className="text-xs text-muted-foreground">
+              {o.progresso_esperado_pct != null ? `Previsto: ${Math.round(o.progresso_esperado_pct)}%` : 'Sem previsto (falta data de início ou fim)'}
+            </p>
+            {desvio && <p className="text-xs font-medium">{desvio}</p>}
+            <p className="text-[11px] text-muted-foreground">{ROTULO_FONTE[o.progresso_fonte]}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2 text-xs">
