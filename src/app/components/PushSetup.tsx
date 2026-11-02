@@ -37,9 +37,9 @@ export function PushSetup() {
     let tentativas = 0
     let t: ReturnType<typeof setTimeout>
     const mostrar = () => {
-      if (document.querySelector('[aria-modal="true"]') && tentativas < 2) {
-        tentativas++
-        t = setTimeout(mostrar, 5_000)
+      // O Radix não usa aria-modal: reconhece-se o diálogo pelo role. Esgotadas as tentativas, desiste nesta sessão.
+      if (document.querySelector('[aria-modal="true"], [role="dialog"], [role="alertdialog"]')) {
+        if (tentativas < 2) { tentativas++; t = setTimeout(mostrar, 5_000) }
         return
       }
       toast(textoPedidoPush(role), {

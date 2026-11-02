@@ -35,4 +35,25 @@ describe('PushSetup', () => {
     vi.advanceTimersByTime(5_000)
     expect(toastMock).toHaveBeenCalledTimes(1)
   })
+
+  it('adia com um diálogo Radix aberto (role=dialog, sem aria-modal)', () => {
+    const d = document.createElement('div')
+    d.setAttribute('role', 'dialog')
+    document.body.appendChild(d)
+    render(<PushSetup />)
+    vi.advanceTimersByTime(5_000)
+    expect(toastMock).not.toHaveBeenCalled()
+    d.remove()
+    vi.advanceTimersByTime(5_000)
+    expect(toastMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('nunca aparece por cima de um diálogo: esgotadas as tentativas, desiste', () => {
+    const d = document.createElement('div')
+    d.setAttribute('role', 'alertdialog')
+    document.body.appendChild(d)
+    render(<PushSetup />)
+    vi.advanceTimersByTime(60_000)
+    expect(toastMock).not.toHaveBeenCalled()
+  })
 })
