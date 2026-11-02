@@ -47,16 +47,6 @@ describe('Lote D — Dashboard', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeTruthy()
   })
 
-  it('ações rápidas só têm duas famílias: principal e contorno (sem fundos verde/vermelho cheios)', async () => {
-    m.dados = dadosBase()
-    render(<MemoryRouter><DashboardPage /></MemoryRouter>)
-    const saida = await screen.findByRole('link', { name: /Registar saída/i })
-    const entrada = screen.getByRole('link', { name: /Registar entrada/i })
-    for (const l of [saida, entrada]) {
-      expect(l.className).not.toMatch(/bg-(success|destructive)(?![/\w-])/)
-    }
-    expect(saida.className).toContain('border')
-  })
 })
 
 describe('Lote D — widgets/ui', () => {

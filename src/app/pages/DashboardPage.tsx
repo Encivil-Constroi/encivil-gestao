@@ -25,7 +25,7 @@ const NOMES = {
 
 export function DashboardPage() {
   const { data, loading, error, reload } = useAsync(carregarDashboard, [], { cacheKey: CACHE_KEY, cacheTtl: 30_000, errorMsg: 'Erro ao carregar o dashboard' })
-  const { role } = useRole()
+  const { role, podeArmazem: podeMovimentos } = useRole()
   const podePedirCombustivel = role != null && role !== 'leitura'
 
   const r = useMemo(() => {
@@ -76,15 +76,19 @@ export function DashboardPage() {
         )}
       />
 
-      <div className={`grid gap-3 enc-fade-up ${podePedirCombustivel ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        <Button asChild variant="outline" size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
-          <Link to="/armazem/movimento/saida"><ArrowUpCircle className="text-destructive" aria-hidden="true" /><span>Registar saída</span></Link>
-        </Button>
-        <Button asChild variant="outline" size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
-          <Link to="/armazem/movimento/entrada"><ArrowDownCircle className="text-success" aria-hidden="true" /><span>Registar entrada</span></Link>
-        </Button>
+      <div className={`grid gap-3 enc-fade-up ${podeMovimentos && podePedirCombustivel ? 'grid-cols-3' : podeMovimentos ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {podeMovimentos && (
+          <>
+            <Button asChild size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Link to="/armazem/movimento/saida"><ArrowUpCircle aria-hidden="true" /><span>Registar saída</span></Link>
+            </Button>
+            <Button asChild size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm bg-success text-success-foreground hover:bg-success/90">
+              <Link to="/armazem/movimento/entrada"><ArrowDownCircle aria-hidden="true" /><span>Registar entrada</span></Link>
+            </Button>
+          </>
+        )}
         {podePedirCombustivel && (
-          <Button asChild size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
+          <Button asChild variant={podeMovimentos ? 'outline' : 'default'} size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
             <Link to="/abastecimento/pedir"><Fuel aria-hidden="true" /><span>Pedir combustível</span></Link>
           </Button>
         )}
