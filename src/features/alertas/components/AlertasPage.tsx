@@ -100,8 +100,8 @@ function AlertaCard({
   )
 }
 
-const TABS: { valor: Tab; rotulo: string }[] = [
-  { valor: 'ATIVO',       rotulo: 'Ativos' },
+const TABS: { valor: Tab; rotulo: string; tom?: 'destructive' }[] = [
+  { valor: 'ATIVO',       rotulo: 'Ativos', tom: 'destructive' },
   { valor: 'RECONHECIDO', rotulo: 'Reconhecidos' },
   { valor: 'RESOLVIDO',   rotulo: 'Resolvidos' },
   { valor: 'TODOS',       rotulo: 'Todos' },
