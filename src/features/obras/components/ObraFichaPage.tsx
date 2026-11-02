@@ -5,6 +5,7 @@ import { useRole } from '@/features/auth/useRole'
 import { useVisaoObra } from '../hooks/useObras'
 import type { ObraResumoRow } from '../db'
 import { LARGURA_PAGINA } from '@/app/components/PageHeader'
+import { useSombraScroll, SombrasScroll } from '@/app/components/useSombraScroll'
 import { Cabecalho, EstadoBadge, SaudeBadge, botaoSecundario } from './ui'
 import type { SecaoProps } from './ficha/tipos'
 import { Resumo } from './ficha/Resumo'
@@ -34,6 +35,29 @@ export const SECOES: Secao[] = [
   { chave: 'fotos', rotulo: 'Fotos', Componente: Fotos, contagem: o => o.fotos_n },
   { chave: 'atividade', rotulo: 'Atividade', Componente: Atividade },
 ]
+
+function SeccoesNav({ atual, o, escolher }: { atual: (typeof SECOES)[number]; o: ObraResumoRow; escolher: (chave: string) => void }) {
+  const sombra = useSombraScroll<HTMLElement>()
+  return (
+    <div className="relative border-b border-border">
+      <nav ref={sombra.ref} onScroll={sombra.onScroll} className="flex overflow-x-auto [scrollbar-width:none]" aria-label="Secções da obra">
+        {SECOES.map(s => {
+          const ativa = s === atual
+          const n = s.contagem?.(o)
+          return (
+            <button key={s.chave} type="button" onClick={() => escolher(s.chave)} aria-current={ativa ? 'page' : undefined}
+              className={`flex items-center gap-1.5 px-3.5 min-h-10 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${
+                ativa ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+              {s.rotulo}
+              {n != null && n > 0 && <span className="text-[11px] font-semibold px-1.5 rounded-full bg-muted text-muted-foreground">{n}</span>}
+            </button>
+          )
+        })}
+      </nav>
+      <SombrasScroll esquerda={sombra.esquerda} direita={sombra.direita} />
+    </div>
+  )
+}
 
 export function ObraFichaPage() {
   const { id } = useParams()
@@ -119,20 +143,7 @@ export function ObraFichaPage() {
         }
       />
 
-      <nav className="flex border-b border-border overflow-x-auto" aria-label="Secções da obra">
-        {SECOES.map(s => {
-          const ativa = s === atual
-          const n = s.contagem?.(o)
-          return (
-            <button key={s.chave} type="button" onClick={() => escolher(s.chave)} aria-current={ativa ? 'page' : undefined}
-              className={`flex items-center gap-1.5 px-3.5 min-h-10 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${
-                ativa ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-              {s.rotulo}
-              {n != null && n > 0 && <span className="text-[11px] font-semibold px-1.5 rounded-full bg-muted text-muted-foreground">{n}</span>}
-            </button>
-          )
-        })}
-      </nav>
+      <SeccoesNav atual={atual} o={o} escolher={escolher} />
 
       <Conteudo obraId={id} />
     </div>
