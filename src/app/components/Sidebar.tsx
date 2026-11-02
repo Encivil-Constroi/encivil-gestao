@@ -173,7 +173,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             />
           </div>
           <div>
-            <h1 className="text-sidebar-foreground text-base font-semibold leading-tight">ENCIVIL</h1>
+            <p className="text-sidebar-foreground text-base font-semibold leading-tight">ENCIVIL</p>
             <p className="text-xs text-muted-foreground leading-tight">Gestão</p>
           </div>
         </div>

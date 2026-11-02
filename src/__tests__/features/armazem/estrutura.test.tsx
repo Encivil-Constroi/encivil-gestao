@@ -48,6 +48,15 @@ describe('menu: um só item Armazém', () => {
   })
 })
 
+describe('menu lateral', () => {
+  it('não tem heading: o h1 de cada ecrã é o do cabeçalho da página', () => {
+    m.papel = 'admin'
+    const { container } = render(<MemoryRouter><Sidebar /></MemoryRouter>)
+    expect(container.querySelector('h1')).toBeNull()
+    expect(screen.getAllByText('ENCIVIL').length).toBeGreaterThan(0)
+  })
+})
+
 describe('layout do armazém', () => {
   const abrir = (url: string) => render(
     <MemoryRouter initialEntries={[url]}>
