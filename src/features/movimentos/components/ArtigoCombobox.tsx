@@ -3,6 +3,7 @@ import { Search, ChevronDown } from 'lucide-react'
 import { getUnitLabel } from '@/app/data/mockData'
 import type { ArtigoArmazem } from '../services/armazemService'
 import { MiniFoto } from './MiniFoto'
+import { CLASSE_CAMPO } from '@/app/components/CampoSelect'
 
 export function ArtigoCombobox({ artigos, valor, onChange, carregando }: {
   artigos: ArtigoArmazem[]; valor: string; onChange: (id: string) => void; carregando?: boolean
@@ -28,7 +29,7 @@ export function ArtigoCombobox({ artigos, valor, onChange, carregando }: {
     <div ref={raiz} className="relative">
       <button type="button" disabled={carregando} aria-haspopup="listbox" aria-expanded={aberto}
         onClick={() => setAberto(o => !o)}
-        className="w-full flex items-center gap-3 px-3 py-2.5 bg-input-background border border-input rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60">
+        className={`${CLASSE_CAMPO} flex items-center gap-3 text-left`}>
         {sel && <MiniFoto caminho={sel.fotoPath} alt="" tamanho="md" />}
         <span className="flex-1 min-w-0">
           {carregando ? <span className="text-muted-foreground">A carregar…</span>
