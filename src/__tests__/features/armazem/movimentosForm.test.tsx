@@ -139,6 +139,22 @@ describe('entrada', () => {
   })
 })
 
+describe('voltar', () => {
+  const href = () => screen.getByRole('link', { name: 'Voltar' }).getAttribute('href')
+  it('com ?produto volta à ficha do artigo', () => {
+    abrir('entrada', '/armazem/movimento/entrada?produto=p1')
+    expect(href()).toBe('/armazem/produto/p1')
+  })
+  it('com ?obra volta às obras do armazém', () => {
+    abrir('saida', '/armazem/movimento/saida?obra=o1')
+    expect(href()).toBe('/armazem/obras')
+  })
+  it('sem origem volta ao armazém', () => {
+    abrir('saida', '/armazem/movimento/saida')
+    expect(href()).toBe('/armazem')
+  })
+})
+
 describe('saída', () => {
   it('bloqueia quantidade acima do stock com mensagem clara', async () => {
     abrir('saida', '/armazem/movimento/saida')

@@ -105,7 +105,7 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
 
   return (
     <form ref={refForm} onSubmit={submeter} className={`${LARGURA_FORMULARIO} space-y-5 pb-28`} noValidate>
-      <PageHeader voltar="/armazem" titulo={entrada ? 'Nova entrada' : 'Nova saída'}
+      <PageHeader voltar={params.get('produto') ? `/armazem/produto/${params.get('produto')}` : params.get('obra') ? '/armazem/obras' : '/armazem'} titulo={entrada ? 'Nova entrada' : 'Nova saída'}
         descricao={entrada ? 'Material que entra no armazém' : 'Material que sai do armazém'} />
 
       <fieldset>
