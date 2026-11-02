@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router'
 import { X, Pencil, User } from 'lucide-react'
+import { primeiraMaiuscula } from '@/app/lib/format'
 import { useDiaDaViatura } from '../../hooks/useManutencao'
 import { diferencas, formatarDataHora, formatarLeitura, nomeDoDia, tituloManutencao, totalCusto } from '../../lib/manutencao'
 import type { ItemCatalogoRow } from '../../db'
@@ -34,7 +35,7 @@ export function DetalheDia({ veiculoId, nomeViatura, data, catalogo, podeEditar,
         <div className="sticky top-0 bg-background/95 backdrop-blur-sm flex items-start gap-3 p-4 border-b border-border">
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold truncate">{nomeViatura}</h2>
-            <p className="text-sm text-muted-foreground capitalize">{nomeDoDia(data)}</p>
+            <p className="text-sm text-muted-foreground">{primeiraMaiuscula(nomeDoDia(data))}</p>
           </div>
           <button onClick={aoFechar} aria-label="Fechar" className="p-2 hover:bg-accent rounded-lg shrink-0">
             <X className="w-5 h-5" aria-hidden="true" />

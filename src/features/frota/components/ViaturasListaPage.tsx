@@ -9,25 +9,16 @@ import {
   type ClasseViatura,
 } from '../lib/viaturas'
 import type { EstadoOperacional, ResumoViaturaRow } from '../db'
+import { FiltroChips, type OpcaoFiltro } from '@/app/components/FiltroChips'
+import { CampoSelect } from '@/app/components/CampoSelect'
 import { BadgeEstadoViatura, IconeTipoViatura, PastilhaDocumento, PastilhaPrazo } from './estado'
 import { inputCls, botaoPrimario, botaoSecundario } from './ui'
 
-const PASTILHAS: { valor: EstadoOperacional | null; rotulo: string }[] = [
-  { valor: null, rotulo: 'Todos' },
-  { valor: 'LIVRE', rotulo: 'Livres' },
-  { valor: 'EM_USO', rotulo: 'Em uso' },
-  { valor: 'OFICINA', rotulo: 'Oficina' },
-]
-
-const CLASSES: { valor: ClasseViatura | null; rotulo: string }[] = [
-  { valor: null, rotulo: 'Todas' },
+const CLASSES: { valor: 'TODAS' | ClasseViatura; rotulo: string }[] = [
+  { valor: 'TODAS', rotulo: 'Todas' },
   { valor: 'VIATURA', rotulo: 'Viaturas' },
   { valor: 'MAQUINA', rotulo: 'Máquinas' },
 ]
-
-const pastilha = (ativa: boolean) =>
-  `px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap border transition-colors ${
-    ativa ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:text-foreground'}`
 
 function CartaoViatura({ v, podeEntregar }: { v: ResumoViaturaRow; podeEntregar: boolean }) {
   return (
@@ -134,32 +125,25 @@ export function ViaturasListaPage() {
           className={`${inputCls} pl-11`} />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Estado">
-        {PASTILHAS.map(p => (
-          <button key={p.rotulo} type="button" onClick={() => mudar('estado', p.valor)}
-            aria-pressed={estado === p.valor} className={pastilha(estado === p.valor)}>
-            {p.rotulo} <span className="opacity-70">{contagens[p.valor ?? 'TODOS']}</span>
-          </button>
-        ))}
-      </div>
+      <FiltroChips ariaLabel="Estado" valor={estado ?? 'TODOS'}
+        onChange={v => mudar('estado', v === 'TODOS' ? null : v)}
+        opcoes={[
+          { valor: 'TODOS', rotulo: 'Todos', contagem: contagens.TODOS },
+          { valor: 'LIVRE', rotulo: 'Livres', contagem: contagens.LIVRE },
+          { valor: 'EM_USO', rotulo: 'Em uso', contagem: contagens.EM_USO },
+          { valor: 'OFICINA', rotulo: 'Oficina', contagem: contagens.OFICINA },
+        ] satisfies OpcaoFiltro<EstadoOperacional | 'TODOS'>[]} />
 
       <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex gap-1.5" role="group" aria-label="Tipo">
-          {CLASSES.map(c => (
-            <button key={c.rotulo} type="button" onClick={() => mudar('tipo', c.valor)}
-              aria-pressed={classe === c.valor}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                classe === c.valor ? 'bg-secondary/30 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-              {c.rotulo}
-            </button>
-          ))}
-        </div>
+        <FiltroChips ariaLabel="Tipo" valor={classe ?? 'TODAS'} opcoes={CLASSES}
+          onChange={v => mudar('tipo', v === 'TODAS' ? null : v)} />
         {obras.length > 0 && (
-          <select value={obraId ?? ''} onChange={e => mudar('obra', e.target.value || null)} aria-label="Filtrar por obra"
-            className="ml-auto px-3 py-2 bg-input-background border border-input rounded-xl text-sm max-w-[60%]">
-            <option value="">Todas as obras</option>
-            {obras.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
-          </select>
+          <div className="w-full sm:w-64 sm:ml-auto">
+            <CampoSelect value={obraId ?? ''} onChange={e => mudar('obra', e.target.value || null)} aria-label="Filtrar por obra">
+              <option value="">Todas as obras</option>
+              {obras.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+            </CampoSelect>
+          </div>
         )}
       </div>
 

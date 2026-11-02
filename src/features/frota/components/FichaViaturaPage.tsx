@@ -6,6 +6,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRole } from '@/features/auth/useRole'
+import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
+import { FiltroChips } from '@/app/components/FiltroChips'
 import { formatarData, diasAte, textoFaltamDias } from '@/app/lib/prazoFrota'
 import { useFichaViatura, useCatalogo, useLinhaTempo, useDefinirEstadoViatura } from '../hooks/useFrota'
 import { prazosDaViatura, textoIntervalo, type Severidade } from '../lib/frota'
@@ -16,7 +18,7 @@ import {
 import { urlFotoDocumento } from '../lib/fotosFrota'
 import { urlFotoChecklist } from '../services/frotaService'
 import type { LinhaTempoRow } from '../db'
-import { Cabecalho, BadgeSeveridade, BadgeEstado, Seccao, Vazio, botaoPrimario, botaoSecundario } from './ui'
+import { BadgeSeveridade, BadgeEstado, Seccao, Vazio, botaoPrimario, botaoSecundario } from './ui'
 import { BadgeEstadoViatura, BadgeDocumento, IconeTipoViatura } from './estado'
 import { VisorDocumento } from './VisorDocumento'
 
@@ -122,8 +124,8 @@ export function FichaViaturaPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 pb-24">
-      <Cabecalho titulo={rotuloViatura(viatura)} subtitulo={marcaModelo(detalhe)}
+    <div className={`${LARGURA_PAGINA} space-y-4 pb-24`}>
+      <PageHeader titulo={rotuloViatura(viatura)} descricao={marcaModelo(detalhe)} voltar="/frota/viaturas"
         acoes={
           <>
             {podeEditar && (
@@ -265,15 +267,8 @@ export function FichaViaturaPage() {
       </Seccao>
 
       <Seccao titulo="Linha do tempo" icone={<History className="w-4 h-4 text-primary" aria-hidden="true" />}>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrar eventos">
-          {FILTROS_TEMPO.map(f => (
-            <button key={f.valor} type="button" onClick={() => { setFiltro(f.valor); setMostrarTudo(false) }} aria-pressed={filtro === f.valor}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-colors ${
-                filtro === f.valor ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}>
-              {f.rotulo}
-            </button>
-          ))}
-        </div>
+        <FiltroChips ariaLabel="Filtrar eventos" valor={filtro} opcoes={FILTROS_TEMPO}
+          onChange={v => { setFiltro(v); setMostrarTudo(false) }} />
         {aCarregarTempo && eventos.length === 0 ? <Vazio>A carregar…</Vazio>
           : visiveis.length === 0 ? <Vazio>Sem eventos.</Vazio> : (
           <ol className="space-y-3">

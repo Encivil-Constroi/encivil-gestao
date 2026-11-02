@@ -1,10 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Fuel, Building2, ChevronLeft, ChevronRight, Calendar, Download, Plus } from 'lucide-react'
+import { Fuel, Building2, ChevronLeft, ChevronRight, Download, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmptyState } from '@/app/components/EmptyState'
 import { SkeletonList } from '@/app/components/Skeletons'
-import { fmtEuro, fmtNumber } from '@/app/lib/format'
+import { Button } from '@/app/components/ui/button'
+import { FiltroChips } from '@/app/components/FiltroChips'
+import { CampoSelect } from '@/app/components/CampoSelect'
+import { fmtEuro, fmtNumber, fmtMesAno, primeiraMaiuscula } from '@/app/lib/format'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
 import { dataISOLocal, hojeLisboa } from '@/app/lib/dataLisboa'
 import { urlHttps } from '@/app/lib/urlSegura'
@@ -13,10 +16,6 @@ import { useAbastecimentos, useVeiculos } from '../../hooks/useCombustivel'
 import type { FuelEntry } from '@/app/types'
 
 type PeriodoTipo = 'mes' | 'tudo'
-
-function mesLabel(d: Date) {
-  return d.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
-}
 
 function primeiroDiaMes(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -150,47 +149,34 @@ export function HistoricoAbastecimentos() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 flex-1 min-w-0">
-          <button onClick={() => setPeriodoTipo('tudo')} aria-pressed={periodoTipo === 'tudo'}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0 ${
-              periodoTipo === 'tudo' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}>
-            <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-            Tudo
-          </button>
-          <div className={`flex items-center gap-1 flex-1 min-w-0 transition-opacity ${periodoTipo !== 'mes' ? 'opacity-40' : ''}`}>
-            <button aria-label="Mês anterior"
-              onClick={() => { setPeriodoTipo('mes'); setMesRef(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)) }}
-              className="p-1.5 hover:bg-accent rounded-lg transition-colors">
-              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-            </button>
-            <button onClick={() => setPeriodoTipo('mes')} aria-pressed={periodoTipo === 'mes'}
-              className={`flex-1 min-w-0 text-center text-sm font-semibold capitalize truncate px-1 py-2 rounded-lg transition-colors ${
-                periodoTipo === 'mes' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}>
-              {mesLabel(mesRef)}
-            </button>
-            <button aria-label="Mês seguinte"
-              onClick={() => { setPeriodoTipo('mes'); setMesRef(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)) }}
-              disabled={mesRef >= primeiroDiaMes(new Date())}
-              className="p-1.5 hover:bg-accent rounded-lg transition-colors disabled:opacity-30">
-              <ChevronRight className="w-4 h-4" aria-hidden="true" />
-            </button>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Button variant="outline" size="icon" aria-label="Mês anterior"
+            onClick={() => { setPeriodoTipo('mes'); setMesRef(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)) }}>
+            <ChevronLeft aria-hidden="true" />
+          </Button>
+          <FiltroChips ariaLabel="Período" valor={periodoTipo} onChange={setPeriodoTipo}
+            opcoes={[{ valor: 'mes', rotulo: fmtMesAno(mesRef) }, { valor: 'tudo', rotulo: 'Tudo' }]} />
+          <Button variant="outline" size="icon" aria-label="Mês seguinte"
+            onClick={() => { setPeriodoTipo('mes'); setMesRef(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)) }}
+            disabled={mesRef >= primeiroDiaMes(new Date())}>
+            <ChevronRight aria-hidden="true" />
+          </Button>
         </div>
 
-        <select value={veiculoFiltro} onChange={e => setVeiculoFiltro(e.target.value)} aria-label="Viatura"
-          className="bg-card border border-border rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 sm:w-48">
-          <option value="">Todas as viaturas</option>
-          {vehicles.map(v => (
-            <option key={v.id} value={v.id}>{v.name} {v.code ? `(${v.code})` : ''}</option>
-          ))}
-        </select>
+        <div className="sm:w-56">
+          <CampoSelect value={veiculoFiltro} onChange={e => setVeiculoFiltro(e.target.value)} aria-label="Viatura">
+            <option value="">Todas as viaturas</option>
+            {vehicles.map(v => (
+              <option key={v.id} value={v.id}>{v.name} {v.code ? `(${v.code})` : ''}</option>
+            ))}
+          </CampoSelect>
+        </div>
 
-        <button onClick={exportar} disabled={exporting || loading || entries.length === 0} title="Exportar para Excel"
-          className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-          <Download className="w-4 h-4" aria-hidden="true" />
-          <span className="hidden sm:inline">{exporting ? 'A exportar…' : 'Excel'}</span>
-        </button>
+        <Button variant="outline" onClick={exportar} disabled={exporting || loading || entries.length === 0} title="Exportar para Excel">
+          <Download aria-hidden="true" />
+          <span>{exporting ? 'A exportar…' : 'Excel'}</span>
+        </Button>
       </div>
 
       {!loading && entries.length > 0 && (
@@ -210,17 +196,26 @@ export function HistoricoAbastecimentos() {
         </div>
       )}
 
+      <div data-linha-titulo className="flex items-center justify-between gap-2 pt-1">
+        <h2 className="text-sm font-semibold">Registos</h2>
+        {isAdmin && (
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/abastecimento/registo/novo"><Plus aria-hidden="true" />Lançar registo manual</Link>
+          </Button>
+        )}
+      </div>
+
       {loading ? (
         <SkeletonList rows={5} cols={4} />
       ) : entries.length === 0 ? (
         <EmptyState icon={Fuel} title="Sem abastecimentos"
-          description={periodoTipo === 'mes' ? `Nenhum abastecimento em ${mesLabel(mesRef)}.` : 'Nenhum abastecimento registado.'} />
+          description={periodoTipo === 'mes' ? `Nenhum abastecimento em ${fmtMesAno(mesRef).toLowerCase()}.` : 'Nenhum abastecimento registado.'} />
       ) : (
         <div className="space-y-4">
           {porDia.map(([dia, doDia]) => (
-            <section key={dia} aria-label={diaLabel(dia)}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1 capitalize">
-                {diaLabel(dia)}
+            <section key={dia} aria-label={primeiraMaiuscula(diaLabel(dia))}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                {primeiraMaiuscula(diaLabel(dia))}
                 <span className="ml-2 font-normal normal-case">
                   · {fmtEuro(doDia.reduce((s, e) => s + e.totalCost, 0))}
                   {' '}· {fmtNumber(doDia.reduce((s, e) => s + e.liters, 0))} L
@@ -231,15 +226,6 @@ export function HistoricoAbastecimentos() {
               </div>
             </section>
           ))}
-        </div>
-      )}
-
-      {isAdmin && (
-        <div className="flex justify-end pt-1">
-          <Link to="/abastecimento/registo/novo"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Lançar registo manual
-          </Link>
         </div>
       )}
     </div>

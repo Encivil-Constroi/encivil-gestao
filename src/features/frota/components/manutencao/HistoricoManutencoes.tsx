@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Download, Search, Pencil, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
+import { primeiraMaiuscula } from '@/app/lib/format'
 import { formatarData } from '@/app/lib/prazoFrota'
 import { useHistoricoManutencoes } from '../../hooks/useManutencao'
 import { LIMITE_HISTORICO } from '../../services/manutencaoService'
@@ -117,7 +118,7 @@ export function HistoricoManutencoes({ viaturas, catalogo, podeEditar }: {
       {dias.map(d => (
         <section key={d.data} aria-label={formatarData(d.data)} className="space-y-2">
           <div className="flex items-baseline gap-2 px-1">
-            <h3 className="text-sm font-semibold capitalize flex-1">{nomeDoDia(d.data)}</h3>
+            <h3 className="text-sm font-semibold flex-1">{primeiraMaiuscula(nomeDoDia(d.data))}</h3>
             <span className="text-xs text-muted-foreground">{d.linhas.length} · {formatarEuros(d.custo)}</span>
           </div>
           <ul className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
