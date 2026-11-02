@@ -19,10 +19,13 @@ export function useSombraScroll<T extends HTMLElement>() {
     if (!el) return
     el.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
     medir()
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(medir)
-    ro.observe(el)
-    return () => ro.disconnect()
+    // Itens que entram/saem ou mudam de largura depois de montado alteram o scrollWidth sem o contentor mudar.
+    const mo = typeof MutationObserver === 'undefined' ? null : new MutationObserver(medir)
+    mo?.observe(el, { childList: true, subtree: true, characterData: true })
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(medir)
+    ro?.observe(el)
+    for (const filho of Array.from(el.children)) ro?.observe(filho)
+    return () => { mo?.disconnect(); ro?.disconnect() }
   }, [medir])
 
   return { ref, onScroll: medir, ...estado }
