@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import {
-  CheckSquare, ChevronDown, ChevronLeft, ChevronRight,
+  UserSearch, ChevronLeft, ChevronRight,
   LogIn, LogOut, Coffee, Play,
   CheckCircle2, XCircle, Hourglass, Clock3, Pencil, X
 } from 'lucide-react'
+import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
+import { CampoSelect, CLASSE_CAMPO } from '@/app/components/CampoSelect'
+import { EmptyState } from '@/app/components/EmptyState'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useObras } from '@/features/obras/hooks/useObras'
 import { usePicagensObra } from '../hooks/usePicagensDia'
@@ -230,36 +233,26 @@ export function ValidacaoPicagensPage() {
   const pendentes = picagens.filter(p => p.resultado === 'PENDENTE_VALIDACAO').length
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 p-2.5 rounded-xl">
-          <CheckSquare className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold">Validação de Picagens</h1>
-          <p className="text-sm text-muted-foreground">
-            {pendentes > 0
-              ? `${pendentes} picagem${pendentes !== 1 ? 's' : ''} pendente${pendentes !== 1 ? 's' : ''}`
-              : 'Tudo validado'}
-          </p>
-        </div>
-      </div>
+    <div className={`${LARGURA_PAGINA} space-y-4`}>
+      <PageHeader
+        titulo="Validação de picagens"
+        descricao={obraId
+          ? (pendentes > 0
+            ? `${pendentes} picagem${pendentes !== 1 ? 's' : ''} pendente${pendentes !== 1 ? 's' : ''}`
+            : 'Tudo validado')
+          : undefined}
+      />
 
       {/* Filters */}
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">Obra</label>
-          <div className="relative">
-            <select
+          <CampoSelect
               value={obraId}
-              onChange={e => setObraId(e.target.value)}
-              className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-2.5 text-sm pr-8"
-            >
+              onChange={e => setObraId(e.target.value)}>
               <option value="">— Selecionar obra —</option>
               {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          </div>
+            </CampoSelect>
         </div>
 
         {/* Date navigation */}
@@ -276,7 +269,7 @@ export function ValidacaoPicagensPage() {
               type="date"
               value={data}
               onChange={e => setData(e.target.value)}
-              className="flex-1 border border-input rounded-lg px-3 py-2 text-sm bg-background"
+              className={`${CLASSE_CAMPO} flex-1 w-auto`}
             />
             <button
               onClick={() => setData(d => addDays(d, 1))}
@@ -291,9 +284,7 @@ export function ValidacaoPicagensPage() {
 
       {/* Picagens grouped by colaborador */}
       {!obraId && (
-        <p className="text-center text-sm text-muted-foreground py-12">
-          Seleciona uma obra para ver as picagens do dia.
-        </p>
+        <EmptyState compacto icon={UserSearch} title="Selecione uma obra" description="As picagens do dia aparecem aqui." />
       )}
 
       {obraId && grupos.size === 0 && (

@@ -3,6 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertTria
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useAssiduidadeMes, useValidarSupplementar } from '../hooks/useAssiduidade'
 import type { ResumoAssiduidade } from '@/app/types'
+import { primeiraMaiuscula } from '@/app/lib/format'
 
 function fmt(h: number | undefined): string {
   if (h === undefined) return '—'
@@ -37,7 +38,7 @@ function LinhaResumo({
     <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
       <td className="py-2 px-3 text-sm">
         <span className="font-medium">{diaNum}</span>
-        <span className="text-muted-foreground text-xs ml-1 capitalize">{diaSemana}</span>
+        <span className="text-muted-foreground text-xs ml-1">{primeiraMaiuscula(diaSemana)}</span>
       </td>
       <td className="py-2 px-3 text-sm text-right">{fmt(r.horasPrevistas)}</td>
       <td className="py-2 px-3 text-sm text-right">{fmt(r.horasEfetivas)}</td>
@@ -145,7 +146,7 @@ export function AssiduidadePage() {
             <button onClick={() => navMes(-1)} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-sm font-medium capitalize min-w-32 text-center">{nomeMes}</span>
+            <span className="text-sm font-medium min-w-32 text-center">{primeiraMaiuscula(nomeMes)}</span>
             <button onClick={() => navMes(1)} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>

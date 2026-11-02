@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Bell, AlertTriangle, ShieldAlert, CheckCircle, Eye, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/app/components/ui/button'
+import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
+import { FiltroChips } from '@/app/components/FiltroChips'
 import { useTodosAlertas, useReconhecerAlerta, useResolverAlerta, useAvaliarAlertas } from '../hooks/useAlertas'
 import { labelTipo } from '../services/alertasService'
 import type { Alerta, AlertaEstado } from '@/app/types'
@@ -97,11 +100,11 @@ function AlertaCard({
   )
 }
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'ATIVO',       label: 'Ativos' },
-  { id: 'RECONHECIDO', label: 'Reconhecidos' },
-  { id: 'RESOLVIDO',   label: 'Resolvidos' },
-  { id: 'TODOS',       label: 'Todos' },
+const TABS: { valor: Tab; rotulo: string }[] = [
+  { valor: 'ATIVO',       rotulo: 'Ativos' },
+  { valor: 'RECONHECIDO', rotulo: 'Reconhecidos' },
+  { valor: 'RESOLVIDO',   rotulo: 'Resolvidos' },
+  { valor: 'TODOS',       rotulo: 'Todos' },
 ]
 
 export function AlertasPage() {
@@ -145,53 +148,24 @@ export function AlertasPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
-            <Bell className="w-6 h-6 text-primary" /> Alertas
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manutenção preventiva e vencimentos
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={handleAvaliar}
-            disabled={avalLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
-          >
-            <RefreshCw className={`w-4 h-4 ${avalLoading ? 'animate-spin' : ''}`} />
+    <div className={`${LARGURA_PAGINA} space-y-4`}>
+      <PageHeader
+        titulo="Alertas"
+        descricao="Manutenção preventiva e vencimentos"
+        acoes={isAdmin && (
+          <Button variant="outline" onClick={handleAvaliar} disabled={avalLoading}>
+            <RefreshCw className={avalLoading ? 'animate-spin' : ''} aria-hidden="true" />
             Avaliar agora
-          </button>
+          </Button>
         )}
-      </div>
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-muted/50 rounded-lg p-1 w-fit">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors relative ${
-              tab === t.id
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {t.label}
-            {counts[t.id] > 0 && (
-              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                t.id === 'ATIVO' && counts[t.id] > 0
-                  ? 'bg-destructive/10 text-destructive'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {counts[t.id]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <FiltroChips
+        ariaLabel="Estado dos alertas"
+        valor={tab}
+        onChange={setTab}
+        opcoes={TABS.map(t => ({ ...t, contagem: counts[t.valor] }))}
+      />
 
       {/* List */}
       {loading ? (

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Clock, Plus, Edit2, Archive, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Edit2, Archive, ChevronDown, ChevronRight } from 'lucide-react'
 import { useHorarios, useGuardarHorario, useArquivarHorario } from '../hooks/useHorarios'
 import type { Horario } from '@/app/types'
 
@@ -156,15 +156,10 @@ export function HorariosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2.5 rounded-xl">
-            <Clock className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">Horários de Trabalho</h1>
-            <p className="text-sm text-muted-foreground">{horarios.length} horário{horarios.length !== 1 ? 's' : ''}</p>
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Horários de trabalho</h2>
+          <p className="text-sm text-muted-foreground">{horarios.length} horário{horarios.length !== 1 ? 's' : ''}</p>
         </div>
         {modo === 'lista' && (
           <button onClick={() => setModo('novo')}

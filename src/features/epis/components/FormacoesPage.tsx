@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { hojeLisboa } from '@/app/lib/dataLisboa'
-import { GraduationCap, Plus, ChevronDown, CheckCircle2, AlertCircle, Clock, Infinity as IconInfinity } from 'lucide-react'
+import { GraduationCap, Plus, CheckCircle2, AlertCircle, Clock, Infinity as IconInfinity, UserSearch } from 'lucide-react'
+import { CampoSelect } from '@/app/components/CampoSelect'
+import { EmptyState } from '@/app/components/EmptyState'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useFormacoesColaborador, useTiposFormacao } from '../hooks/useFormacoesColaborador'
 import { useRegistarFormacao, useUploadCertificado } from '../hooks/useRegistarFormacao'
@@ -102,22 +104,17 @@ export function NovaFormacaoForm({ colaboradorId, onClose }: { colaboradorId: st
       <p className="text-sm font-semibold">Registar Formação</p>
       <div>
         <label className="text-xs font-medium text-muted-foreground block mb-1">Tipo de Formação</label>
-        <div className="relative">
-          <select
+        <CampoSelect
             value={tipoId}
             onChange={e => setTipoId(e.target.value)}
-            required
-            className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-2.5 text-sm pr-8"
-          >
+            required>
             <option value="">— Selecionar —</option>
             {tipos.map(t => (
               <option key={t.id} value={t.id}>
                 {t.designacao}{t.validadeAnos ? ` (${t.validadeAnos}a)` : ' (vitalícia)'}
               </option>
             ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+          </CampoSelect>
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground block mb-1">Data de conclusão</label>
@@ -198,17 +195,12 @@ export function FormacoesPage() {
 
       <div className="bg-card border border-border rounded-xl p-4">
         <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">Colaborador</label>
-        <div className="relative">
-          <select
+        <CampoSelect
             value={colaboradorId}
-            onChange={e => { setColaboradorId(e.target.value); setMostrarForm(false) }}
-            className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-2.5 text-sm pr-8"
-          >
+            onChange={e => { setColaboradorId(e.target.value); setMostrarForm(false) }}>
             <option value="">— Selecionar colaborador —</option>
             {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.numeroMecan})</option>)}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+          </CampoSelect>
       </div>
 
       {mostrarForm && colaboradorId && (
@@ -216,7 +208,7 @@ export function FormacoesPage() {
       )}
 
       {!colaboradorId && (
-        <p className="text-center text-sm text-muted-foreground py-12">Seleciona um colaborador para ver as formações.</p>
+        <EmptyState compacto icon={UserSearch} title="Escolha um colaborador" description="As formações aparecem aqui." />
       )}
 
       {colaboradorId && !loading && formacoes.length === 0 && (

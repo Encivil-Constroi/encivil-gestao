@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Fingerprint, WifiOff, ChevronDown, Clock, LogIn, LogOut, Coffee, Play, CheckCircle2, AlertCircle, Hourglass, ExternalLink, Navigation, NavigationOff } from 'lucide-react'
+import { Fingerprint, WifiOff, Clock, LogIn, LogOut, Coffee, Play, CheckCircle2, AlertCircle, Hourglass, ExternalLink, Navigation, NavigationOff } from 'lucide-react'
 import { Link } from 'react-router'
+import { CampoSelect } from '@/app/components/CampoSelect'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
 import { useObras } from '@/features/obras/hooks/useObras'
@@ -204,19 +205,14 @@ export function PicagemPage() {
                 <span className="ml-auto text-xs text-muted-foreground">conta própria</span>
               </div>
             ) : (
-              <div className="relative">
-                <select
+              <CampoSelect
                   value={colaboradorId}
-                  onChange={e => { setColaboradorEscolhido(e.target.value); lsSet('enc_pic_colab', e.target.value) }}
-                  className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-3 text-sm pr-8 min-h-[48px]"
-                >
+                  onChange={e => { setColaboradorEscolhido(e.target.value); lsSet('enc_pic_colab', e.target.value) }}>
                   <option value="">— Selecionar colaborador —</option>
                   {colaboradores.map(c => (
                     <option key={c.id} value={c.id}>{c.nome} ({c.numeroMecan})</option>
                   ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              </div>
+                </CampoSelect>
             )}
           </div>
 
@@ -224,21 +220,16 @@ export function PicagemPage() {
             <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
               Obra
             </label>
-            <div className="relative">
-              <select
+            <CampoSelect
                 value={obraId}
-                onChange={e => { setObraId(e.target.value); lsSet('enc_pic_obra', e.target.value) }}
-                className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-3 text-sm pr-8 min-h-[48px]"
-              >
+                onChange={e => { setObraId(e.target.value); lsSet('enc_pic_obra', e.target.value) }}>
                 <option value="">— Selecionar obra —</option>
                 {obras.map(o => (
                   <option key={o.id} value={o.id}>
                     {o.name}{o.geofenceTipo ? ' 📍' : ''}
                   </option>
                 ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            </div>
+              </CampoSelect>
           </div>
         </div>
       )}
@@ -251,7 +242,7 @@ export function PicagemPage() {
           disabled={!ready || picando}
           className={`
             w-full min-h-[120px] rounded-2xl font-bold text-xl flex flex-col items-center justify-center gap-3
-            transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
+            transition-all active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:cursor-not-allowed
             ${primary === 'ENTRADA'
               ? 'bg-success hover:bg-success/90 text-success-foreground shadow-sm'
               : primary === 'SAIDA'
@@ -282,13 +273,17 @@ export function PicagemPage() {
           <button
             onClick={() => handlePicar('PAUSA_INI')}
             disabled={!ready || picando}
-            className="w-full min-h-[60px] rounded-xl font-medium text-sm flex items-center justify-center gap-2 border border-border bg-card hover:bg-muted/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full min-h-[60px] rounded-xl font-medium text-sm flex items-center justify-center gap-2 border border-border bg-card hover:bg-muted/50 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
           >
             <Coffee className="w-5 h-5 text-muted-foreground" />
             Início de Pausa
           </button>
         )}
       </div>
+
+      {!ready && !loadingAtual && (
+        <p className="text-sm text-muted-foreground text-center">Escolha o colaborador e a obra para picar.</p>
+      )}
 
       {/* Pending indicator */}
       {pendingCount > 0 && (
@@ -356,7 +351,7 @@ export function PicagemPage() {
 
       {!loadingAtual && !colaboradorId && !user && (
         <p className="text-center text-sm text-muted-foreground py-8">
-          Seleciona um colaborador para começar.
+          Selecione um colaborador para começar.
         </p>
       )}
     </div>

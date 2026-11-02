@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { hojeLisboa } from '@/app/lib/dataLisboa'
-import { Shield, Plus, RotateCcw, ChevronDown, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { Shield, Plus, RotateCcw, CheckCircle2, AlertCircle, Clock, UserSearch } from 'lucide-react'
+import { CampoSelect } from '@/app/components/CampoSelect'
+import { EmptyState } from '@/app/components/EmptyState'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { useEpisColaborador, useTiposEpi } from '../hooks/useEpisColaborador'
 import { useAtribuirEpi, useDevolverEpi } from '../hooks/useAtribuirEpi'
@@ -87,18 +89,13 @@ function NovaAtribuicaoForm({ colaboradorId, onClose }: { colaboradorId: string;
       <p className="text-sm font-semibold">Atribuir EPI</p>
       <div>
         <label className="text-xs font-medium text-muted-foreground block mb-1">Tipo de EPI</label>
-        <div className="relative">
-          <select
+        <CampoSelect
             value={tipoId}
             onChange={e => setTipoId(e.target.value)}
-            required
-            className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-2.5 text-sm pr-8"
-          >
+            required>
             <option value="">— Selecionar —</option>
             {tipos.map(t => <option key={t.id} value={t.id}>{t.designacao}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+          </CampoSelect>
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground block mb-1">Data de entrega</label>
@@ -166,17 +163,12 @@ export function EpisPage() {
       {/* Seletor de colaborador */}
       <div className="bg-card border border-border rounded-xl p-4">
         <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">Colaborador</label>
-        <div className="relative">
-          <select
+        <CampoSelect
             value={colaboradorId}
-            onChange={e => { setColaboradorId(e.target.value); setMostrarForm(false) }}
-            className="w-full appearance-none bg-background border border-input rounded-lg px-3 py-2.5 text-sm pr-8"
-          >
+            onChange={e => { setColaboradorId(e.target.value); setMostrarForm(false) }}>
             <option value="">— Selecionar colaborador —</option>
             {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.numeroMecan})</option>)}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+          </CampoSelect>
       </div>
 
       {/* Formulário de atribuição */}
@@ -185,7 +177,7 @@ export function EpisPage() {
       )}
 
       {!colaboradorId && (
-        <p className="text-center text-sm text-muted-foreground py-12">Seleciona um colaborador para ver os EPIs.</p>
+        <EmptyState compacto icon={UserSearch} title="Escolha um colaborador" description="Os EPIs aparecem aqui." />
       )}
 
       {colaboradorId && !loading && epis.length === 0 && (
