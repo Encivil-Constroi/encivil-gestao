@@ -32,14 +32,25 @@ export function PushSetup() {
       return
     }
 
-    // Por pedir → toast não intrusivo depois de 5 s (o botão é o gesto que o iPhone exige)
-    const t = setTimeout(() => {
+    // Por pedir → toast não intrusivo depois de 5 s (o botão é o gesto que o iPhone exige).
+    // Com um diálogo modal aberto (ex.: pesquisa global) adia, para não aparecer por cima.
+    let tentativas = 0
+    let t: ReturnType<typeof setTimeout>
+    const mostrar = () => {
+      if (document.querySelector('[aria-modal="true"]') && tentativas < 2) {
+        tentativas++
+        t = setTimeout(mostrar, 5_000)
+        return
+      }
       toast(textoPedidoPush(role), {
+        id: 'convite-push',
+        position: 'bottom-center',
         duration: 10_000,
         action: { label: 'Ativar', onClick: () => { pedirNotificacoes().catch(e => captureError(e, { origem: 'push-pedir' })) } },
         cancel: { label: 'Agora não', onClick: () => {} },
       })
-    }, 5_000)
+    }
+    t = setTimeout(mostrar, 5_000)
     return () => clearTimeout(t)
   }, [role])
 

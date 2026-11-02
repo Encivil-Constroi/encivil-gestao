@@ -44,7 +44,7 @@ createRoot(document.getElementById("root")!).render(
   <ThemeProvider>
     <ErrorBoundary>
       <App />
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" mobileOffset={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }} />
       <PWAInstallHint />
       <UpdatePrompt />
     </ErrorBoundary>

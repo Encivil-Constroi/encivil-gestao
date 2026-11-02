@@ -34,15 +34,15 @@ export function MobileBottomNav() {
     return (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex items-center justify-around h-16">
+        <div className="flex items-center h-16">
           {itens.map(item => {
             const Icon = item.icon;
             const isActive = item.ativo(location.pathname);
             return (
-              <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center h-full min-w-[48px]">
+              <Link key={item.path} to={item.path} className="flex flex-1 flex-col items-center justify-center h-full min-w-[48px]">
                 <div className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
                   <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <span className="text-[11px] font-medium">{item.label}</span>
                 </div>
               </Link>
             );
@@ -55,21 +55,20 @@ export function MobileBottomNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-      <div className="flex items-center justify-around h-16">
+      <div className="flex items-center h-16">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || (item.path !== '/' && !item.primary && location.pathname.startsWith(`${item.path}/`) && !location.pathname.startsWith('/armazem/movimento'));
 
           if (item.primary) {
             if (!canRegisterMovement) {
-              // Placeholder that preserves layout balance
-              return <div key={item.path} className="w-14" />;
+              return null;
             }
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex flex-col items-center justify-center -mt-5"
+                className="flex flex-1 flex-col items-center justify-center -mt-5"
               >
                 <div className={`
                   w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all
@@ -85,13 +84,13 @@ export function MobileBottomNav() {
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-col items-center justify-center h-full min-w-[48px] transition-colors"
+              className="flex flex-1 flex-col items-center justify-center h-full min-w-[48px] transition-colors"
             >
               <div className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
                 isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
               }`}>
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.path === '/' && !isAdmin ? 'Início' : item.label}</span>
+                <span className="text-[11px] font-medium">{item.path === '/' && !isAdmin ? 'Início' : item.label}</span>
               </div>
             </Link>
           );

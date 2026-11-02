@@ -13,6 +13,9 @@ import { GlobalSearch } from './GlobalSearch'
 const ROLE_LABELS: Record<string, string> = {
   admin:   'Administrador',
   gestor:  'Encarregado',
+  armazem: 'Armazém',
+  medicoes: 'Medições',
+  leitura: 'Leitura',
   mecanico: 'Mecânico',
   motorista: 'Motorista',
 }
@@ -78,7 +81,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
         <div className="flex items-center gap-3 md:hidden">
           <button
             onClick={onMenuOpen}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
+            className="inline-flex items-center justify-center size-10 hover:bg-accent rounded-lg transition-colors"
             aria-label="Abrir menu"
           >
             <Menu className="w-5 h-5 text-foreground" />
@@ -114,7 +117,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
           {/* Pesquisa global */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-sm text-muted-foreground"
+            className="flex items-center gap-2 px-3 h-10 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-sm text-muted-foreground"
             aria-label="Pesquisar"
           >
             <Search className="w-4 h-4 shrink-0" />
@@ -127,7 +130,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
           {/* Tema claro/escuro */}
           <button
             onClick={toggleTheme}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
+            className="inline-flex items-center justify-center size-10 hover:bg-accent rounded-lg transition-colors"
             title={resolvedTheme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
             aria-label={resolvedTheme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
           >
@@ -141,7 +144,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
           <div ref={notifRef} className="relative">
             <button
               onClick={() => setNotifOpen(prev => !prev)}
-              className="p-2 hover:bg-accent rounded-lg transition-colors relative"
+              className="inline-flex items-center justify-center size-10 hover:bg-accent rounded-lg transition-colors relative"
               aria-label="Notificações"
             >
               <Bell className="w-5 h-5 text-foreground" />
@@ -165,14 +168,14 @@ export function Header({ onMenuOpen }: HeaderProps) {
           <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-accent rounded-lg">
             <User className="w-5 h-5 text-foreground" />
             <div className="text-sm">
-              <p className="font-medium capitalize">{displayName}</p>
+              <p className="font-medium">{displayName}</p>
               <p className="text-xs text-muted-foreground">{roleLabel}</p>
             </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors"
+            className="inline-flex items-center justify-center size-10 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors"
             title="Terminar sessão"
             aria-label="Terminar sessão"
           >

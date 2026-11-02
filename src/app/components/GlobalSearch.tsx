@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router'
+import { toast } from 'sonner'
 import { Search, Building2, Package, HardHat, Wrench, X, Loader2, ArrowRight } from 'lucide-react'
 import { pesquisarGlobal, type SearchResult, type SearchResultKind } from '@/features/search/globalSearchService'
 
@@ -39,7 +40,7 @@ export function GlobalSearch({ onClose }: Props) {
   const [active,   setActive]  = useState(0)
 
   // Focus input on mount
-  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => { inputRef.current?.focus(); toast.dismiss('convite-push') }, [])
 
   // Debounced search
   useEffect(() => {
@@ -90,6 +91,9 @@ export function GlobalSearch({ onClose }: Props) {
     >
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Pesquisa global"
         className="w-full max-w-[560px] bg-card rounded-2xl shadow-2xl border border-border overflow-hidden"
         onClick={e => e.stopPropagation()}
         onKeyDown={handleKeyDown}
