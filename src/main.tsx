@@ -1,6 +1,6 @@
 import "./integrations/supabase/entradaUrl.ts";
 import { createRoot } from "react-dom/client";
-import { Toaster } from "sonner";
+import { ToasterTema } from "./app/components/ToasterTema.tsx";
 import App from "./app/App.tsx";
 import { ErrorBoundary } from "./app/components/ErrorBoundary.tsx";
 import { PWAInstallHint } from "./app/components/PWAInstallHint.tsx";
@@ -44,7 +44,7 @@ createRoot(document.getElementById("root")!).render(
   <ThemeProvider>
     <ErrorBoundary>
       <App />
-      <Toaster richColors position="top-right" mobileOffset={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }} />
+      <ToasterTema />
       <PWAInstallHint />
       <UpdatePrompt />
     </ErrorBoundary>
