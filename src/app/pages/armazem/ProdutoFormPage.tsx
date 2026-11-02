@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Info, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { FotoInput } from '@/app/components/FotoInput'
+import { fmtQuantidade } from '@/app/lib/format'
 import { useRole } from '@/features/auth/useRole'
 import {
   useAtualizarProduto, useCodigoProdutoPreview, useCriarProduto, useProduto, useProdutoTemMovimentos,
@@ -219,7 +220,7 @@ export function ProdutoFormPage() {
             <div className="flex items-start gap-3 p-3.5 bg-info/5 border border-info/20 rounded-xl">
               <Info className="w-4 h-4 text-info shrink-0 mt-0.5" aria-hidden="true" />
               <p className="text-xs text-info leading-relaxed">
-                <strong>Stock atual: {product?.currentStock}</strong> — o stock só muda com uma entrada, saída ou acerto de inventário.
+                <strong>Stock atual: {fmtQuantidade(product?.currentStock)}</strong> — o stock só muda com uma entrada, saída ou acerto de inventário.
               </p>
             </div>
           ) : null}

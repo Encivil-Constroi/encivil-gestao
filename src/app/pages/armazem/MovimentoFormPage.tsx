@@ -1,7 +1,9 @@
 import { useProtegerFormulario } from '@/app/lib/protegerSaida'
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { AlertTriangle, ArrowRight, ChevronLeft, Info } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Info } from 'lucide-react'
+import { PageHeader, LARGURA_FORMULARIO } from '@/app/components/PageHeader'
+import { CampoSelect, CLASSE_CAMPO } from '@/app/components/CampoSelect'
 import { toast } from 'sonner'
 import type { SubtipoMovimento } from '@/app/lib/armazemDb'
 import { getUnitLabel } from '@/app/data/mockData'
@@ -16,7 +18,7 @@ import {
   SUBTIPOS_ENTRADA, SUBTIPOS_SAIDA, ehSubtipoEntrada, ehSubtipoSaida, lerNumeroPt, stockDepois, tipoDoSubtipo,
 } from '@/features/movimentos/armazemRegras'
 
-const campo = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base'
+const campo = CLASSE_CAMPO
 const rotulo = 'block text-sm font-medium mb-1.5'
 
 export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
@@ -102,16 +104,9 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
   const mostraFatura = subtipo === 'COMPRA' || subtipo === 'VENDA' || subtipo === 'DEVOLUCAO_OBRA'
 
   return (
-    <form ref={refForm} onSubmit={submeter} className="max-w-2xl mx-auto space-y-5 pb-28" noValidate>
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 hover:bg-accent rounded-lg shrink-0">
-          <ChevronLeft className="w-5 h-5" aria-hidden="true" />
-        </button>
-        <div>
-          <h2 className="text-lg font-semibold">{entrada ? 'Nova entrada' : 'Nova saída'}</h2>
-          <p className="text-sm text-muted-foreground">{entrada ? 'Material que entra no armazém' : 'Material que sai do armazém'}</p>
-        </div>
-      </div>
+    <form ref={refForm} onSubmit={submeter} className={`${LARGURA_FORMULARIO} space-y-5 pb-28`} noValidate>
+      <PageHeader voltar="/armazem" titulo={entrada ? 'Nova entrada' : 'Nova saída'}
+        descricao={entrada ? 'Material que entra no armazém' : 'Material que sai do armazém'} />
 
       <fieldset>
         <legend className="text-sm font-semibold mb-2">{entrada ? 'Tipo de entrada' : 'Destino'}</legend>
@@ -155,18 +150,22 @@ export function MovimentoFormPage({ tipo }: { tipo: 'entrada' | 'saida' }) {
         {precisaObra && (
           <div>
             <label className={rotulo} htmlFor="mov-obra">{subtipo === 'OBRA' ? 'Obra em execução' : 'Obra de onde volta'}</label>
-            <select id="mov-obra" value={obraId} onChange={e => setObraId(e.target.value)} className={campo}>
+            <CampoSelect id="mov-obra" value={obraId} onChange={e => setObraId(e.target.value)}>
               <option value="">Escolha a obra</option>
               {obrasEscolha.map(o => <option key={o.id} value={o.id}>{o.name}{o.status !== 'ativa' ? ' (concluída)' : ''}</option>)}
-            </select>
+            </CampoSelect>
             {subtipo === 'OBRA' && obrasEscolha.length === 0 && <p className="text-xs text-warning mt-1.5">Não há obras em execução.</p>}
           </div>
         )}
 
         <div>
           <label className={rotulo} htmlFor="mov-qtd">{ehContagem ? 'Stock contado' : 'Quantidade'}{unidade && <span className="text-muted-foreground font-normal"> ({unidade})</span>}</label>
-          <input id="mov-qtd" type="text" inputMode="decimal" autoComplete="off" value={quantidade}
-            onChange={e => setQuantidade(e.target.value)} placeholder="0" className={`${campo} text-2xl font-bold text-center`} />
+          <div className="relative">
+            <input id="mov-qtd" type="text" inputMode="decimal" autoComplete="off" value={quantidade}
+              onChange={e => setQuantidade(e.target.value)} placeholder="0"
+              className={`${campo} text-2xl md:text-2xl font-bold text-left ${unidade ? 'pr-20' : ''}`} />
+            {unidade && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">{unidade}</span>}
+          </div>
           {/* "1.250" lê-se 1,25: mostrar o que vai ser gravado evita enganos de ponto/vírgula */}
           {qtd !== null && /[.,]/.test(quantidade) && (
             <p className="mt-1.5 text-sm text-center text-muted-foreground tabular-nums" data-testid="qtd-lida">= {fmtNumber(qtd)}{unidade && ` ${unidade}`}</p>

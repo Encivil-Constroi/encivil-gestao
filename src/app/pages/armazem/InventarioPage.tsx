@@ -7,8 +7,12 @@ import {
 import { toast } from 'sonner'
 import { EmptyState } from '@/app/components/EmptyState'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
+import { FiltroChips } from '@/app/components/FiltroChips'
+import { CampoSelect, CLASSE_CAMPO } from '@/app/components/CampoSelect'
+import { Button } from '@/app/components/ui/button'
 import { getCategoryLabel, getUnitLabel } from '@/app/data/mockData'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
+import { fmtQuantidade } from '@/app/lib/format'
 import { useRole } from '@/features/auth/useRole'
 import { useProdutos, useProdutosArquivados, useRestaurarProduto } from '@/features/produtos/hooks/useProdutos'
 import type { ProdutoArmazem } from '@/features/produtos/services/produtosService'
@@ -20,15 +24,14 @@ type Vista = 'grelha' | 'lista'
 
 const VISTA_KEY = 'armazem.inventario.vista'
 
+// Sem preferência guardada, o telemóvel abre em lista: a grelha com fotos ocupa demasiado ecrã
 function lerVista(): Vista {
-  try { return localStorage.getItem(VISTA_KEY) === 'lista' ? 'lista' : 'grelha' } catch { return 'grelha' }
+  let guardada: string | null = null
+  try { guardada = localStorage.getItem(VISTA_KEY) } catch { /* sem armazenamento */ }
+  if (guardada === 'lista' || guardada === 'grelha') return guardada
+  const movel = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
+  return movel ? 'lista' : 'grelha'
 }
-
-const FILTROS_ESTADO: { valor: FiltroEstado; rotulo: string; cor: string }[] = [
-  { valor: 'todos', rotulo: 'Todos', cor: 'text-foreground' },
-  { valor: 'baixo', rotulo: 'Stock baixo', cor: 'text-warning' },
-  { valor: 'sem-stock', rotulo: 'Sem stock', cor: 'text-destructive' },
-]
 
 export function InventarioPage() {
   const navigate = useNavigate()
@@ -95,9 +98,8 @@ export function InventarioPage() {
     }
   }
 
-  const campo = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm'
   const botaoVista = (ativo: boolean) =>
-    `p-2.5 rounded-lg transition-colors ${ativo ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
+    `inline-flex items-center justify-center size-10 md:size-9 rounded-lg transition-colors ${ativo ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
   const filtrosAtivos = pesquisa !== '' || categoria !== 'todas' || estado !== 'todos'
 
   return (
@@ -107,44 +109,35 @@ export function InventarioPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <input type="search" value={pesquisa} onChange={e => setPesquisa(e.target.value)}
-              placeholder="Pesquisar por nome ou código…" aria-label="Pesquisar artigos" className={`${campo} pl-10`} />
+              placeholder="Pesquisar por nome ou código…" aria-label="Pesquisar artigos" className={`${CLASSE_CAMPO} pl-10`} />
           </div>
-          <select value={categoria} onChange={e => setCategoria(e.target.value as 'todas' | ProductCategory)}
-            aria-label="Categoria" className={`${campo} sm:w-52`}>
+          <CampoSelect value={categoria} onChange={e => setCategoria(e.target.value as 'todas' | ProductCategory)}
+            aria-label="Categoria" className="sm:w-52">
             <option value="todas">Todas as categorias</option>
             {CATEGORIAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          </CampoSelect>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {!verArquivados && (
-            <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Estado do stock">
-              {FILTROS_ESTADO.map(f => {
-                const ativo = estado === f.valor
-                return (
-                  <button key={f.valor} type="button" onClick={() => setEstado(f.valor)} aria-pressed={ativo}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
-                      ativo ? 'border-primary bg-primary/10 text-primary' : `border-border hover:bg-accent ${f.cor}`}`}>
-                    {f.rotulo}
-                    <span className="px-1.5 rounded-full bg-muted text-[10px] text-muted-foreground">{contagem[f.valor]}</span>
-                  </button>
-                )
-              })}
-            </div>
+            <FiltroChips ariaLabel="Estado do stock" valor={estado} onChange={setEstado}
+              opcoes={[
+                { valor: 'todos', rotulo: 'Todos', contagem: contagem.todos },
+                { valor: 'baixo', rotulo: 'Stock baixo', contagem: contagem.baixo },
+                { valor: 'sem-stock', rotulo: 'Sem stock', contagem: contagem['sem-stock'] },
+              ]} />
           )}
 
           <div className="flex items-center gap-2 ml-auto">
             {podeArmazem && (
-              <button type="button" onClick={() => setVerArquivados(v => !v)} aria-pressed={verArquivados}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                  verArquivados ? 'border-warning bg-warning/10 text-warning' : 'border-border text-muted-foreground hover:bg-accent'}`}>
-                <Archive className="w-4 h-4" aria-hidden="true" /> Arquivados
-              </button>
+              <Button type="button" variant="outline" onClick={() => setVerArquivados(v => !v)} aria-pressed={verArquivados}
+                className={verArquivados ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground'}>
+                <Archive aria-hidden="true" /> Arquivados
+              </Button>
             )}
-            <button type="button" onClick={() => void exportar()} disabled={filtrados.length === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:bg-accent disabled:opacity-50">
-              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Excel
-            </button>
+            <Button type="button" variant="outline" onClick={() => void exportar()} disabled={filtrados.length === 0}>
+              <FileSpreadsheet aria-hidden="true" /> Excel
+            </Button>
             <div className="flex bg-muted rounded-xl p-1" role="group" aria-label="Vista">
               <button type="button" onClick={() => setVista('grelha')} aria-pressed={vista === 'grelha'} aria-label="Ver em grelha" className={botaoVista(vista === 'grelha')}>
                 <LayoutGrid className="w-4 h-4" aria-hidden="true" />
@@ -162,10 +155,9 @@ export function InventarioPage() {
           {aCarregar ? 'A carregar…' : `${filtrados.length} ${verArquivados ? 'arquivado' : 'artigo'}${filtrados.length !== 1 ? 's' : ''}`}
         </p>
         {podeArmazem && !verArquivados && (
-          <Link to="/armazem/produto/novo"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all">
-            <Plus className="w-4 h-4" aria-hidden="true" /> Novo produto
-          </Link>
+          <Button asChild>
+            <Link to="/armazem/produto/novo"><Plus aria-hidden="true" /> Novo produto</Link>
+          </Button>
         )}
       </div>
 
@@ -190,7 +182,7 @@ export function InventarioPage() {
               <button type="button" onClick={() => navigate(`/armazem/produto/${p.id}`)} aria-label={`Abrir ${p.name}`}
                 className="text-left flex-1 flex flex-col hover:bg-accent/30 transition-colors">
                 <div className="relative">
-                  <FotoProduto fotoPath={p.fotoPath} categoria={p.category} nome={p.name} className="w-full aspect-[4/3]" />
+                  <FotoProduto fotoPath={p.fotoPath} categoria={p.category} nome={p.name} className={p.fotoPath ? 'w-full aspect-[4/3]' : 'w-full h-20'} tamanhoIcone={p.fotoPath ? undefined : 'w-8 h-8'} />
                   {!verArquivados && <span className="absolute top-2 left-2"><EstadoStock estado={p.status} /></span>}
                 </div>
                 <div className="p-3 flex-1 flex flex-col gap-1">
@@ -205,8 +197,8 @@ export function InventarioPage() {
                   )}
                   <div className="mt-auto pt-1.5 space-y-1.5">
                     <p className="text-sm">
-                      <span className={`text-lg font-bold ${ESTADO_STOCK[p.status].texto}`}>{p.currentStock}</span>{' '}
-                      <span className="text-muted-foreground text-xs">{getUnitLabel(p.unit)} · mín. {p.minStock}</span>
+                      <span className={`text-lg font-bold ${ESTADO_STOCK[p.status].texto}`}>{fmtQuantidade(p.currentStock)}</span>{' '}
+                      <span className="text-muted-foreground text-xs">{getUnitLabel(p.unit)} · mín. {fmtQuantidade(p.minStock)}</span>
                     </p>
                     <BarraStock atual={p.currentStock} minimo={p.minStock} estado={p.status} />
                   </div>
@@ -232,7 +224,7 @@ export function InventarioPage() {
                 </div>
                 <div className="text-right shrink-0 space-y-1">
                   <p className={`text-base font-bold ${ESTADO_STOCK[p.status].texto}`}>
-                    {p.currentStock} <span className="text-xs font-normal text-muted-foreground">{getUnitLabel(p.unit)}</span>
+                    {fmtQuantidade(p.currentStock)} <span className="text-xs font-normal text-muted-foreground">{getUnitLabel(p.unit)}</span>
                   </p>
                   {!verArquivados && <EstadoStock estado={p.status} />}
                 </div>

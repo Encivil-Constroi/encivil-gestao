@@ -3,11 +3,13 @@ import { Link, useLocation } from 'react-router'
 import { toast } from 'sonner'
 import {
   Plus, Search, Wrench, ArrowUpRight, Undo2, AlertTriangle, CheckCircle2, Clock, Hammer,
-  ShieldAlert, Archive, History, FileText, RotateCcw,
+  Archive, History, FileText, RotateCcw,
 } from 'lucide-react'
 import { SkeletonList } from '@/app/components/Skeletons'
 import { EmptyState } from '@/app/components/EmptyState'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
+import { FiltroChips } from '@/app/components/FiltroChips'
+import { Button } from '@/app/components/ui/button'
 import { ToolLoanTermPrint } from '@/app/components/ToolLoanTermPrint'
 import { useRole } from '@/features/auth/useRole'
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes'
@@ -78,25 +80,17 @@ export function FerramentasPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="inline-flex p-1 bg-muted rounded-xl" role="tablist" aria-label="Vista das ferramentas">
-          {([
-            ['ferramentas', 'Ferramentas', Wrench],
-            ['emprestimos', 'Empréstimos', History],
-            ...(podeFerramentas ? [['arquivadas', 'Arquivadas', Archive] as const] : []),
-          ] as const).map(([v, rotulo, Icone]) => (
-            <button key={v} role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                vista === v ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-              <Icone className="w-4 h-4" aria-hidden="true" /> {rotulo}
-            </button>
-          ))}
-        </div>
+        <FiltroChips ariaLabel="Vista das ferramentas" valor={vista} onChange={setVista}
+          opcoes={[
+            { valor: 'ferramentas', rotulo: 'Ferramentas' },
+            { valor: 'emprestimos', rotulo: 'Empréstimos' },
+            ...(podeFerramentas ? [{ valor: 'arquivadas' as const, rotulo: 'Arquivadas' }] : []),
+          ]} />
         <div className="flex-1" />
         {podeFerramentas && (
-          <Link to="/armazem/ferramenta/nova"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all">
-            <Plus className="w-4 h-4" aria-hidden="true" /> Nova ferramenta
-          </Link>
+          <Button asChild>
+            <Link to="/armazem/ferramenta/nova"><Plus aria-hidden="true" /> Nova ferramenta</Link>
+          </Button>
         )}
       </div>
 
@@ -123,25 +117,16 @@ export function FerramentasPage() {
                 placeholder="Pesquisar por nome, código ou n.º de série…" aria-label="Pesquisar ferramentas"
                 className="w-full pl-10 pr-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrar por estado">
-              {([
-                ['todas', 'Todas', tools.length],
-                ['disponivel', 'Disponíveis', contagem.disponivel],
-                ['emprestada', 'Emprestadas', contagem.emprestada],
-                ['atraso', 'Em atraso', contagem.atraso],
-                ['manutencao', 'Manutenção', contagem.manutencao],
-                ['inativa', 'Inativas', tools.filter(t => t.status === 'inativa').length],
-                ['garantia', 'Garantia a terminar', contagem.garantia],
-              ] as [Filtro, string, number][]).map(([f, rotulo, n]) => (
-                <button key={f} onClick={() => setFiltro(f)} aria-pressed={filtro === f}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                    filtro === f ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:text-foreground'}`}>
-                  {f === 'garantia' && <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />}
-                  {rotulo}
-                  <span className={`tabular-nums ${filtro === f ? 'opacity-80' : 'opacity-70'}`}>{n}</span>
-                </button>
-              ))}
-            </div>
+            <FiltroChips ariaLabel="Filtrar por estado" valor={filtro} onChange={setFiltro}
+              opcoes={[
+                { valor: 'todas', rotulo: 'Todas', contagem: tools.length },
+                { valor: 'disponivel', rotulo: 'Disponíveis', contagem: contagem.disponivel },
+                { valor: 'emprestada', rotulo: 'Emprestadas', contagem: contagem.emprestada },
+                { valor: 'atraso', rotulo: 'Em atraso', contagem: contagem.atraso },
+                { valor: 'manutencao', rotulo: 'Manutenção', contagem: contagem.manutencao },
+                { valor: 'inativa', rotulo: 'Inativas', contagem: tools.filter(t => t.status === 'inativa').length },
+                { valor: 'garantia', rotulo: 'Garantia a terminar', contagem: contagem.garantia },
+              ]} />
           </div>
 
           {loading ? (
@@ -178,7 +163,6 @@ export function FerramentasPage() {
 function CartaoFerramenta({ t, loan, podeOperar }: { t: Ferramenta; loan?: Emprestimo; podeOperar: boolean }) {
   const atraso = loan ? emAtraso(loan) : false
   const marcaModelo = [t.marca, t.modelo].filter(Boolean).join(' ')
-  const acao = 'inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all'
 
   return (
     <li data-testid={`ferramenta-${t.id}`}
@@ -219,15 +203,17 @@ function CartaoFerramenta({ t, loan, podeOperar }: { t: Ferramenta; loan?: Empre
         {podeOperar && (t.status === 'disponivel' || (t.status === 'emprestada' && loan)) && (
           <div className="mt-auto pt-1">
             {t.status === 'disponivel' ? (
-              <Link to={`/armazem/ferramenta/emprestimo?ferramenta=${t.id}`}
-                className={`${acao} w-full bg-warning text-warning-foreground hover:bg-warning/90`}>
-                <Wrench className="w-4 h-4" aria-hidden="true" /> Emprestar
-              </Link>
+              <Button variant="outline" asChild className="w-full">
+                <Link to={`/armazem/ferramenta/emprestimo?ferramenta=${t.id}`}>
+                  <Wrench aria-hidden="true" /> Emprestar
+                </Link>
+              </Button>
             ) : (
-              <Link to={`/armazem/ferramenta/${t.id}/devolucao`}
-                className={`${acao} w-full bg-success text-success-foreground hover:bg-success/90`}>
-                <Undo2 className="w-4 h-4" aria-hidden="true" /> Devolver
-              </Link>
+              <Button asChild className="w-full bg-success text-success-foreground hover:bg-success/90">
+                <Link to={`/armazem/ferramenta/${t.id}/devolucao`}>
+                  <Undo2 aria-hidden="true" /> Devolver
+                </Link>
+              </Button>
             )}
           </div>
         )}
@@ -254,12 +240,8 @@ function HistoricoEmprestimos({ podeOperar, onTermo }: { podeOperar: boolean; on
             aria-label="Pesquisar por funcionário"
             className="w-full pl-10 pr-4 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
         </div>
-        <div className="inline-flex p-1 bg-muted rounded-xl">
-          {([['ativo', 'Em curso'], ['devolvido', 'Devolvidos'], ['todos', 'Todos']] as const).map(([v, l]) => (
-            <button key={v} onClick={() => setEstado(v)} aria-pressed={estado === v}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${estado === v ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>{l}</button>
-          ))}
-        </div>
+        <FiltroChips ariaLabel="Estado do empréstimo" valor={estado} onChange={setEstado}
+          opcoes={[{ valor: 'ativo', rotulo: 'Em curso' }, { valor: 'devolvido', rotulo: 'Devolvidos' }, { valor: 'todos', rotulo: 'Todos' }]} />
       </div>
 
       {loading ? <SkeletonList rows={5} cols={3} /> : loans.length === 0 ? (

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
 import { ToolLoanTermPrint } from '@/app/components/ToolLoanTermPrint'
 import { getToolCategoryLabel, getReturnConditionLabel } from '@/app/data/mockData'
+import { fmtEuro } from '@/app/lib/format'
 import { useRole } from '@/features/auth/useRole'
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes'
 import { useFerramenta, useArquivarFerramenta } from '@/features/ferramentas/hooks/useFerramentas'
@@ -66,7 +67,7 @@ export function FerramentaDetalhePage() {
     ['Categoria', getToolCategoryLabel(tool.category)],
     ['Marca / modelo', marcaModelo || '—'],
     ['N.º de série', tool.serialNumber || '—'],
-    ['Valor estimado', tool.estimatedValue != null ? `${tool.estimatedValue.toFixed(2)} €` : '—'],
+    ['Valor estimado', tool.estimatedValue != null ? fmtEuro(tool.estimatedValue) : '—'],
     ['Data de compra', tool.nova ? fmtDia(tool.dataCompra) : 'Usada'],
     ['Garantia', tool.garantiaAte ? <SeloGarantia garantiaAte={tool.garantiaAte} /> : '—'],
   ]

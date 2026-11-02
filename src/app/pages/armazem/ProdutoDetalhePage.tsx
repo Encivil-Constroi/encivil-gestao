@@ -5,8 +5,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/app/components/ConfirmDialog'
+import { Button } from '@/app/components/ui/button'
 import { getCategoryLabel, getUnitLabel } from '@/app/data/mockData'
-import { fmtEuro, fmtDataHora } from '@/app/lib/format'
+import { fmtEuro, fmtDataHora, fmtQuantidade } from '@/app/lib/format'
 import { useRole } from '@/features/auth/useRole'
 import {
   useProduto, useMovimentosProduto, useDesativarProduto, useDeletarProduto,
@@ -81,9 +82,9 @@ export function ProdutoDetalhePage() {
     const msg = [
       '*Pedido de Reposição — ENCIVIL*', '',
       `Produto: ${product.name} (${product.code})`,
-      `Stock atual: ${product.currentStock} ${unidade}`,
-      `Stock mínimo: ${product.minStock} ${unidade}`,
-      `Em falta: ${falta} ${unidade}`, '',
+      `Stock atual: ${fmtQuantidade(product.currentStock, unidade)}`,
+      `Stock mínimo: ${fmtQuantidade(product.minStock, unidade)}`,
+      `Em falta: ${fmtQuantidade(falta, unidade)}`, '',
       'Por favor, repor o mais brevemente possível.',
     ].join('\n')
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
@@ -108,7 +109,8 @@ export function ProdutoDetalhePage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="md:col-span-2 bg-card rounded-2xl border border-border overflow-hidden self-start">
           <FotoProduto fotoPath={product.fotoPath} categoria={product.category} nome={product.name}
-            className="w-full aspect-square" tamanhoIcone="w-20 h-20" />
+            className={product.fotoPath ? 'w-full aspect-square' : 'w-full h-40'}
+            tamanhoIcone={product.fotoPath ? 'w-20 h-20' : 'w-12 h-12'} />
         </div>
 
         <div className="md:col-span-3 space-y-4">
@@ -118,13 +120,13 @@ export function ProdutoDetalhePage() {
               <EstadoStock estado={product.status} />
             </div>
             <p className={`text-4xl font-bold ${estado.texto}`} data-testid="stock-atual">
-              {product.currentStock} <span className="text-base font-medium text-muted-foreground">{unidade}</span>
+              {fmtQuantidade(product.currentStock)} <span className="text-base font-medium text-muted-foreground">{unidade}</span>
             </p>
             <BarraStock atual={product.currentStock} minimo={product.minStock} estado={product.status} />
             <dl className="grid grid-cols-3 gap-3 pt-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Mínimo</dt>
-                <dd className="font-semibold">{product.minStock} {unidade}</dd>
+                <dd className="font-semibold">{fmtQuantidade(product.minStock, unidade)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Custo unitário</dt>
@@ -157,9 +159,9 @@ export function ProdutoDetalhePage() {
                 <Link to={`/armazem/produto/${product.id}/editar`} className={`${acao} border border-border hover:bg-accent`}>
                   <Pencil className="w-4 h-4" aria-hidden="true" /> Editar
                 </Link>
-                <button type="button" onClick={() => setDialogo('arquivar')} className={`${acao} border border-warning/40 text-warning hover:bg-warning/10`}>
-                  <Archive className="w-4 h-4" aria-hidden="true" /> Arquivar
-                </button>
+                <Button type="button" variant="outline" size="lg" onClick={() => setDialogo('arquivar')} className="flex-1">
+                  <Archive aria-hidden="true" /> Arquivar
+                </Button>
                 {semMovimentos && (
                   <button type="button" onClick={() => setDialogo('eliminar')} className={`${acao} border border-destructive/40 text-destructive hover:bg-destructive/10`}>
                     <Trash2 className="w-4 h-4" aria-hidden="true" /> Eliminar
@@ -206,7 +208,7 @@ export function ProdutoDetalhePage() {
                       {rotuloMovimento(m.tipo, m.subtipo)}
                     </span>
                     <span className="text-sm font-bold">
-                      {m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '−' : ''}{m.quantidade} {unidade}
+                      {m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '−' : ''}{fmtQuantidade(m.quantidade, unidade)}
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground">{fmtDataHora(m.data)}</span>
@@ -214,7 +216,7 @@ export function ProdutoDetalhePage() {
                 <div className="flex gap-x-4 gap-y-0.5 text-xs text-muted-foreground flex-wrap">
                   <span>{origemDestino(m)}</span>
                   {m.numeroFatura && <span>Fatura {m.numeroFatura}</span>}
-                  <span>Stock: <strong className="text-foreground">{m.stockDepois}</strong></span>
+                  <span>Stock: <strong className="text-foreground">{fmtQuantidade(m.stockDepois)}</strong></span>
                   <span>{m.responsavel}</span>
                 </div>
               </li>

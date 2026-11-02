@@ -8,6 +8,7 @@ import { getUnitLabel } from '@/app/data/mockData'
 import { exportarXlsx } from '@/app/lib/exportXlsx'
 import { fmtEuro, fmtNumber } from '@/app/lib/format'
 import { EmptyState } from '@/app/components/EmptyState'
+import { Button } from '@/app/components/ui/button'
 import { SkeletonList } from '@/app/components/Skeletons'
 import { useObras } from '@/features/obras/hooks/useObras'
 import { useArtigosArmazem, useMovimentosArmazem } from '@/features/movimentos/hooks/useArmazem'
@@ -90,6 +91,10 @@ export function MovimentosPage() {
 
   const subtiposVisiveis = tipo === 'entrada' ? SUBTIPOS_ENTRADA : tipo === 'saida' ? SUBTIPOS_SAIDA : [...SUBTIPOS_ENTRADA, ...SUBTIPOS_SAIDA]
 
+  function limparFiltros() {
+    setPeriodo('mes'); setTipo(''); setSubtipo(''); setObraId(''); setProdutoId(''); setPesquisa(''); setPagina(0)
+  }
+
   async function exportar() {
     setAExportar(true)
     try {
@@ -126,10 +131,9 @@ export function MovimentosPage() {
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {loading ? 'A carregar…' : total > 0 ? `${total} movimento${total !== 1 ? 's' : ''}${paginas > 1 ? ` · página ${pagina + 1} de ${paginas}` : ''}` : 'Nenhum movimento'}
         </p>
-        <button type="button" onClick={exportar} disabled={aExportar || loading || total === 0}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-          <Download className="w-4 h-4" aria-hidden="true" />{aExportar ? 'A exportar…' : 'Excel'}
-        </button>
+        <Button type="button" variant="outline" onClick={exportar} disabled={aExportar || loading || total === 0} className="shrink-0">
+          <Download aria-hidden="true" />{aExportar ? 'A exportar…' : 'Excel'}
+        </Button>
       </div>
 
       <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
@@ -162,7 +166,7 @@ export function MovimentosPage() {
             </select></div>
         </div>
         {comFiltros && (
-          <button type="button" onClick={() => { setPeriodo('mes'); setTipo(''); setSubtipo(''); setObraId(''); setProdutoId(''); setPesquisa(''); setPagina(0) }}
+          <button type="button" onClick={limparFiltros}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
             <X className="w-3.5 h-3.5" aria-hidden="true" />Limpar filtros
           </button>
@@ -173,12 +177,13 @@ export function MovimentosPage() {
 
       {loading && movimentos.length === 0 ? <SkeletonList rows={6} cols={3} />
         : !loading && movimentos.length === 0 && !error ? (
-          <EmptyState icon={ArrowLeftRight} title="Sem movimentos" description={comFiltros ? 'Nenhum movimento corresponde aos filtros escolhidos.' : 'Ainda não há movimentos neste período.'} />
+          <EmptyState icon={ArrowLeftRight} title="Sem movimentos" description={comFiltros ? 'Nenhum movimento corresponde aos filtros escolhidos.' : 'Ainda não há movimentos neste período.'}
+            action={comFiltros ? { label: 'Limpar filtros', onClick: limparFiltros } : undefined} />
         ) : (
           <div className="space-y-5">
             {dias.map(g => (
               <section key={g.dia} aria-label={fmtDia.format(g.data)}>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 capitalize">{fmtDia.format(g.data)}</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{fmtDia.format(g.data)}</h3>
                 <ul className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
                   {g.itens.map(m => {
                     const v = visualMovimento(m.tipo, m.subtipo)
