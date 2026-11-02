@@ -36,3 +36,19 @@ export const fmtDataCurta = (d: Date | string | null | undefined): string =>
   d ? _dateShortFormatter.format(new Date(d)) : '—'
 export const fmtMes       = (d: Date | string | null | undefined): string =>
   d ? _monthFormatter.format(new Date(d)) : '—'
+
+// Datas extensas: o Intl devolve tudo em minúsculas ("segunda-feira, 2 de novembro de 2026"); o `capitalize` do
+// Tailwind estragava ("Segunda-Feira, 2 De Novembro"), por isso só se sobe o primeiro carácter.
+const _dataExtensaFormatter = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+export function primeiraMaiuscula(s: string): string {
+  return s ? s.charAt(0).toLocaleUpperCase('pt-PT') + s.slice(1) : s
+}
+export const fmtDataExtensa = (d: Date | string | null | undefined): string =>
+  d ? primeiraMaiuscula(_dataExtensaFormatter.format(new Date(d))) : '—'
+export const fmtMesAno = (d: Date | string | null | undefined): string =>
+  d ? primeiraMaiuscula(_monthFormatter.format(new Date(d))) : '—'
+
+export function fmtQuantidade(valor: number | null | undefined, unidade?: string | null): string {
+  return unidade ? `${fmtNumber(valor)} ${unidade}` : fmtNumber(valor)
+}
