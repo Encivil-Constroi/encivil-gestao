@@ -22,5 +22,11 @@ describe('FiltroChips — tom', () => {
     ]} />)
     expect(screen.getByText('3').className).toContain('text-destructive')
   })
+  it('contagem 0 não leva cor de estado', () => {
+    render(<FiltroChips ariaLabel="x" valor="c" onChange={() => {}} opcoes={[
+      { valor: 'a', rotulo: 'Ativos', contagem: 0, tom: 'destructive' }, { valor: 'c', rotulo: 'Todos' },
+    ]} />)
+    expect(screen.getByText('0').className).not.toMatch(/text-(warning|destructive)/)
+  })
 })
 

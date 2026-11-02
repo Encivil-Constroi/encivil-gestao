@@ -26,7 +26,7 @@ export function FiltroChips<T extends string>({ opcoes, valor, onChange, ariaLab
             className={`inline-flex items-center gap-1.5 min-h-10 md:min-h-9 px-3.5 rounded-full border text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               ativo ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:bg-accent hover:text-foreground'}`}>
             {o.rotulo}
-            {o.contagem !== undefined && <span className={`tabular-nums text-xs${o.tom ? ` ${COR_TOM[o.tom]}${ativo ? ' bg-card rounded-full px-1.5' : ''}` : ''}`}>{o.contagem}</span>}
+            {o.contagem !== undefined && <span className={`tabular-nums text-xs${o.tom && o.contagem > 0 ? ` ${COR_TOM[o.tom]}${ativo ? ' bg-card rounded-full px-1.5' : ''}` : ''}`}>{o.contagem}</span>}
           </button>
         )
       })}
