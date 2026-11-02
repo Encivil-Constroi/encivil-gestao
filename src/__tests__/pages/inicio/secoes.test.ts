@@ -66,6 +66,11 @@ describe('atalhosDoInicio', () => {
   it('armazém: saída, entrada e pedir combustível', () => {
     expect(alvos(caps('armazem'))).toEqual(['/armazem/movimento/saida', '/armazem/movimento/entrada', '/abastecimento/pedir'])
   })
+  it('armazém: combustível não compete com saída/entrada; motorista mantém-no como principal', () => {
+    const tom = (c: CapacidadesInicio) => atalhosDoInicio(c).find(a => a.to === '/abastecimento/pedir')?.tom
+    expect(tom(caps('armazem'))).toBe('neutro')
+    expect(tom(caps('motorista'))).toBe('primario')
+  })
   it('mecânico: só frota (está isolado dos outros módulos)', () => {
     expect(alvos(caps('mecanico'))).toEqual(['/frota/entregar', '/frota/devolver', '/frota/manutencao/nova'])
   })

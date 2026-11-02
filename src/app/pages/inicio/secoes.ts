@@ -50,7 +50,7 @@ export function atalhosDoInicio(c: CapacidadesInicio): Atalho[] {
     atalhos.push({ to: '/frota/manutencao/nova', rotulo: 'Nova manutenção', tom: 'neutro' })
   }
   if (podePedirCombustivel(c.role)) {
-    atalhos.push({ to: '/abastecimento/pedir', rotulo: 'Pedir combustível', tom: 'primario' })
+    atalhos.push({ to: '/abastecimento/pedir', rotulo: 'Pedir combustível', tom: c.podeArmazem ? 'neutro' : 'primario' })
   }
   return atalhos
 }
