@@ -21,6 +21,14 @@ export function selecionarConfiguracaoSupabase(
   const loopback = dev && urlLoopbackValida(url)
   const chaveValida = /^sb_publishable_[A-Za-z0-9_-]+$/.test(chave)
   // URL e chave pertencem ao mesmo projeto: o fallback nunca pode misturar os pares.
-  if ((!hosted && !loopback) || !chaveValida) return { ...fallback, usaFallback: true }
+  if ((!hosted && !loopback) || !chaveValida) {
+    // Em dev, uma config preenchida mas inválida falha alto: cair em produção sem aviso é perigoso.
+    if (dev && (url || chave)) {
+      throw new Error(
+        'Configuração Supabase local inválida: VITE_SUPABASE_URL tem de ser https://<projeto>.supabase.co ou http(s)://localhost|127.0.0.1:<porta> e VITE_SUPABASE_PUBLISHABLE_KEY tem de começar por sb_publishable_. Corrija o .env.local — em desenvolvimento nunca se usa o projeto de produção por omissão.',
+      )
+    }
+    return { ...fallback, usaFallback: true }
+  }
   return { url: loopback ? new URL(url).origin : url, chave, usaFallback: false }
 }

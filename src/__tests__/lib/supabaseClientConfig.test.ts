@@ -30,21 +30,47 @@ describe('configuração do cliente Supabase', () => {
   })
 
   it.each([
-    ['http://127.0.0.1:54321', false],
-    ['http://localhost:54321', false],
-    ['http://projetoteste.supabase.co', false],
-    ['http://servidor.example:54321', true],
-    ['http://localhost.example:54321', true],
-    ['http://localhost@servidor.example:54321', true],
-    ['http://pessoa@localhost:54321', true],
-    ['http://localhost:54321/api', true],
-  ])('recusa URL %s em DEV=%s sem misturar chave local com URL fallback', async (url, dev) => {
-    const fallback = await configurar('', '', dev)
-    expect(await configurar(url, 'sb_publishable_localteste', dev)).toEqual(fallback)
+    'http://127.0.0.1:54321',
+    'http://localhost:54321',
+    'http://projetoteste.supabase.co',
+  ])('recusa URL %s em produção (DEV=false) e usa o fallback', async url => {
+    const fallback = await configurar('', '', false)
+    expect(await configurar(url, 'sb_publishable_localteste', false)).toEqual(fallback)
   })
 
-  it.each(['https://projetoteste.supabase.co', 'http://localhost:54321'])('recusa chave inválida em %s sem misturar URL configurada com chave fallback', async url => {
-    const fallback = await configurar('', '', true)
-    expect(await configurar(url, 'sb_' + 'secret_nao_publicavel', true)).toEqual(fallback)
+  it.each([
+    'http://servidor.example:54321',
+    'http://localhost.example:54321',
+    'http://localhost@servidor.example:54321',
+    'http://pessoa@localhost:54321',
+    'http://localhost:54321/api',
+    '',
+  ])('em dev lança com URL %j inválida e chave válida', async url => {
+    await expect(configurar(url, 'sb_publishable_localteste', true))
+      .rejects.toThrow(/Configuração Supabase local inválida/)
+  })
+
+  it.each(['https://projetoteste.supabase.co', 'http://localhost:54321'])('em dev lança com chave inválida em %s', async url => {
+    await expect(configurar(url, 'sb_' + 'secret_nao_publicavel', true))
+      .rejects.toThrow(/Configuração Supabase local inválida/)
+  })
+
+  it('em produção chave inválida usa o fallback completo', async () => {
+    const fallback = await configurar('', '', false)
+    expect(await configurar('https://projetoteste.supabase.co', 'sb_' + 'secret_nao_publicavel', false)).toEqual(fallback)
+  })
+
+  it('em dev com URL e chave vazias mantém o fallback', async () => {
+    const [url, chave] = await configurar('', '', true)
+    expect(url).toMatch(/^https:\/\/.+\.supabase\.co$/)
+    expect(chave).toMatch(/^sb_publishable_/)
+  })
+
+  it('a mensagem de erro não contém os valores recebidos', async () => {
+    const segredo = 'sb_' + 'secret_valor_unico_123'
+    const erro = await configurar('http://servidor.example:54321', segredo, true).catch((e: Error) => e)
+    expect(erro).toBeInstanceOf(Error)
+    expect((erro as Error).message).not.toContain(segredo)
+    expect((erro as Error).message).not.toContain('servidor.example')
   })
 })
