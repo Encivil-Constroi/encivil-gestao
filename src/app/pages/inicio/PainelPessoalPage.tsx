@@ -1,19 +1,12 @@
-import { Link } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useRole } from '@/features/auth/useRole'
 import { useMeuColaborador } from '@/features/colaboradores/hooks/useColaboradores'
 import { useContextoAbastecimento, usePodeAprovar } from '@/features/combustivel/hooks/usePedidos'
 import { PageHeader, LARGURA_PAGINA } from '@/app/components/PageHeader'
-import { atalhosDoInicio, rotuloDoPapel, saudacao, secoesDoInicio, type Atalho, type CapacidadesInicio } from './secoes'
+import { atalhosDoInicio, rotuloDoPapel, saudacao, secoesDoInicio, type CapacidadesInicio } from './secoes'
+import { AtalhoRapido } from './AtalhoRapido'
 import { VeiculoWidget } from './widgets/VeiculoWidget'
 import { ArmazemWidget, FrotaWidget, CombustivelWidget, ObrasWidget, ConsultaWidget } from './widgets/ModulosWidgets'
-
-const TOM: Record<Atalho['tom'], string> = {
-  saida:    'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-  entrada:  'bg-success text-success-foreground hover:bg-success/90',
-  primario: 'bg-primary text-primary-foreground hover:bg-primary/90',
-  neutro:   'bg-card text-foreground border border-border hover:bg-accent',
-}
 
 // O Início de quem não é CEO: só as secções que o cargo (papel definido nos Recursos Humanos) pode usar
 export function PainelPessoalPage() {
@@ -42,10 +35,7 @@ export function PainelPessoalPage() {
       {atalhos.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 enc-fade-up">
           {atalhos.map(a => (
-            <Link key={a.to} to={a.to}
-              className={`flex items-center justify-center px-3 py-4 text-sm text-center rounded-xl font-medium shadow-sm active:scale-95 transition-all ${TOM[a.tom]}`}>
-              {a.rotulo}
-            </Link>
+            <AtalhoRapido key={a.to} to={a.to} rotulo={a.rotulo} tom={a.tom} />
           ))}
         </div>
       )}

@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router'
-import { ArrowDownCircle, ArrowUpCircle, Fuel, Building2, Wallet, Banknote, ShieldAlert, RefreshCw } from 'lucide-react'
+import { Button } from '../components/ui/button'
+import { Building2, Wallet, Banknote, ShieldAlert, RefreshCw } from 'lucide-react'
 import { useAsync, invalidateCache } from '../lib/useAsync'
 import { fmtEuro, fmtDataExtensa } from '../lib/format'
-import { Button } from '../components/ui/button'
+import { AtalhoRapido } from './inicio/AtalhoRapido'
 import { PageHeader, LARGURA_PAGINA } from '../components/PageHeader'
 import { analiseObras } from '../lib/relatorios/obrasAnalise'
 import { construirAtencao } from '../lib/relatorios/atencao'
@@ -79,19 +79,11 @@ export function DashboardPage() {
       <div className={`grid gap-3 enc-fade-up ${podeMovimentos && podePedirCombustivel ? 'grid-cols-3' : podeMovimentos ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {podeMovimentos && (
           <>
-            <Button asChild size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              <Link to="/armazem/movimento/saida"><ArrowUpCircle aria-hidden="true" /><span>Registar saída</span></Link>
-            </Button>
-            <Button asChild size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm bg-success text-success-foreground hover:bg-success/90">
-              <Link to="/armazem/movimento/entrada"><ArrowDownCircle aria-hidden="true" /><span>Registar entrada</span></Link>
-            </Button>
+            <AtalhoRapido to="/armazem/movimento/saida" rotulo="Registar saída" tom="saida" />
+            <AtalhoRapido to="/armazem/movimento/entrada" rotulo="Registar entrada" tom="entrada" />
           </>
         )}
-        {podePedirCombustivel && (
-          <Button asChild variant={podeMovimentos ? 'outline' : 'default'} size="lg" className="h-auto flex-col sm:flex-row py-4 text-xs sm:text-sm">
-            <Link to="/abastecimento/pedir"><Fuel aria-hidden="true" /><span>Pedir combustível</span></Link>
-          </Button>
-        )}
+        {podePedirCombustivel && <AtalhoRapido to="/abastecimento/pedir" rotulo="Pedir combustível" tom="neutro" />}
       </div>
 
       {error && !data && (
