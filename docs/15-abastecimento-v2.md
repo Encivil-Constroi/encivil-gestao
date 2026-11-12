@@ -146,3 +146,25 @@ ano) e viatura, sempre comparado com o período anterior do mesmo tamanho.
 - Endereços antigos continuam a funcionar e redirecionam (`/combustivel…`,
   `/abastecer…`, `/pub/combustivel?v=`), incluindo as notificações já enviadas.
 - Plano: `docs/plans/2026-10-01-modulos-abastecimento-frota.md`.
+
+## Estado atual (2026-11-12)
+
+**Rotas:** `/abastecimento` (Pedidos), `/abastecimento/historico`, `/abastecimento/analise`, `/abastecimento/bomba`,
+`/abastecimento/configuracao` (só admin); `/abastecimento/pedir`, `/abastecimento/pedido/:id`,
+`/abastecimento/registo/novo|:id` (só admin). `/pub/combustivel` é pública e só redireciona.
+
+**Quem escreve:** `pode_escrever('combustivel')` = admin, gestor, armazém (o resto do fluxo vai por RPCs com regras próprias, ver quadro acima).
+Aprovar: `pode_aprovar_combustivel()` (designados em `comb_aprovadores`; sem designados, admin).
+
+**Alterações de 2026-10-05 a 2026-10-28 (as migrations estão em `supabase/migrations/`):**
+- `20261005000000`: a viatura volta a ficar livre assim que o pedido é autorizado (só `AGUARDA_AUTORIZACAO` a bloqueia).
+- `20261006000000`: RPC `cancelar_autorizacao_bomba` — o motorista desiste de "Ligar bomba" enquanto o Shelly ainda não ligou a bomba.
+- `20261020100000_bomba_fiabilidade.sql`: stop perdido volta a ser enviado; confirmação de arranque (`relay_confirmado_em`; sem ela a sessão fecha como `NAO_ARRANCOU` e o pedido volta ao passo "Ligar bomba"); concluir recusa com o relé ainda ligado; cancelar recusa depois de a bomba fornecer; quem aprova pode concluir em nome do motorista (`concluido_por`). Detalhe em `docs/21-shelly-pro3-bomba.md`.
+- `20261028120300_checkup_mfa_combustivel.sql`: aprovar, designar aprovadores, mudar preços e escrever relatórios de obra exigem MFA quando `seguranca_config.mfa_obrigatorio` está ligado (só morde em admin/gestor; o motorista aprovador não muda). Pedidos deixam de poder ser apagados pela API (sem DELETE direto; execução da RPC antiga `rejeitar_abastecimento_pendente` revogada). Alterações a `comb_abastecimentos` ficam no `audit_log` (antes/depois).
+- Histórico e exportações usam o dia de Lisboa; fotos só aceitam URL `https` (`urlSegura`).
+
+**Edge Functions:** `notificar-abastecimento` (push ao aprovador; chamada pela BD, sem JWT), `ler-foto-abastecimento` (leitura por IA; exige sessão, limite 30/10 min), `pump-status` (Shelly; segredo `PUMP_POLO2_SECRET`), `send-push-frota`.
+A `send-push` antiga foi retirada.
+
+**Testes:** `supabase/tests/abastecimento`, `bomba`, `cancelar-autorizacao-bomba`, `checkup-mfa-combustivel`; Deno em `supabase/functions/*/index_test.ts`;
+cenário de carga `aprovacao-dupla-abastecimento` (1 aprovação em 20 pedidos simultâneos).

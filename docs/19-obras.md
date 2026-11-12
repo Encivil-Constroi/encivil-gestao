@@ -40,3 +40,27 @@ Nova migration aditiva: `20261008100000_obras_concorrencia_mfa.sql`, depois das 
 
 ## Controlo de subempreitadas
 Orçamento (EAP), auto-medição com verificação, evidências com GPS, glosas, alçadas, documentos e painel do CEO: ver `docs/20-subempreitadas-controlo.md`. Migrations A e B depois da `20261003000000`.
+
+## Estado atual (2026-11-12)
+
+**Rotas** (`src/app/routes.tsx`): `/obras` (Painel), `/obras/lista`, `/obras/relatorios`, `/obras/subempreitadas`;
+`/obras/nova` e `/obras/:id/editar` (`RoleGuard require="gestor"`, isto é, gestor e admin); `/obras/:id` (ficha), `/obras/:id/custos`,
+`/obras/:id/livro`, `/obras/:id/guias`, `/obras/:id/relatorio` (impressão); `/obras/:id/relatorio-diario/novo`, `/obras/relatorio-diario/:rid`;
+`/obras/subempreitada/novo|:id|:id/editar`, `/obras/subempreitada/:subId/auto/novo`, `/obras/auto/:autoId|…/editar|…/pdf`
+(criar/editar sob `SubWriteGuard`). `/subempreiteiros…` e `/autos…` redirecionam.
+
+**Quem escreve:** `pode_escrever('obras')` = admin, gestor; `pode_escrever('subempreitadas')` = admin, gestor, medições
+(definição vigente em `20260929030000_fase9_frota.sql`). Autores designados escrevem relatórios e fotos da obra pela função
+`_autor_designado(obra)`. Guias de transporte: escrita por admin, gestor, armazém, medições; livro de obra só por quem gere obras
+(`20261020120000_obras_livro_integridade.sql`, que também torna a numeração de autos única e substitui as linhas do auto numa só transação).
+
+**Alterações de 2026-10-20 a 2026-10-28:**
+- MFA: `_autor_designado()` passa a exigir MFA quando `seguranca_config.mfa_obrigatorio` está ligado (só afeta admin/gestor com sessão sem MFA); `20261028120300_checkup_mfa_combustivel.sql`.
+- Custos consolidados da obra descontam as devoluções de material (`DEVOLUCAO_OBRA`), como `custos_materiais_por_obra`; materiais cortados por dia de Lisboa (`20261028120500`).
+- `armazem_materiais_por_obra` tem `ORDER BY` estável: o site pagina-a com `.range()` via `buscarTodas`.
+- Policies com `pode_ver_obra` avaliadas uma vez por consulta (`20261028120900`; o teste `checkup-desempenho` falha se a definição de `pode_ver_obra` mudar).
+- Mão de obra: horas efetivas das picagens (ver `docs/12-plano-v3.md`); num dia em duas obras, o custo vai para a obra da primeira entrada (limite conhecido).
+- UI: cabeçalho `PageHeader`, larguras `LARGURA_PAGINA`/`LARGURA_FORMULARIO`, materiais paginados, secções da ficha com sombra de scroll (ver `docs/06-ux-ui.md`).
+
+**Testes:** `supabase/tests/obras-completo`, `obras-producao`, `obras-mfa-autores`, `obras-linhas-concorrencia`, `livro-obra-rls`,
+`subs-controlo-a|b`; frontend em `src/__tests__/features/obras/`.

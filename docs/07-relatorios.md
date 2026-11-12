@@ -92,7 +92,7 @@ GROUP BY p.id, p.nome, p.categoria
 ORDER BY total_saidas DESC;
 ```
 
-**Critério de aceitação:** Totais por produto corretos; exportável para Excel (Fase 2).
+**Critério de aceitação:** Totais por produto corretos; exportável para Excel (entregue).
 
 ---
 
@@ -199,7 +199,7 @@ ORDER BY total_saidas DESC;
 **Dados exibidos:**
 - Lista de materiais consumidos na obra
 - Quantidade por material
-- Custo estimado (se preço unitário disponível — Fase 2)
+- Custo estimado (preço unitário existe desde `20261001000000`; custos de materiais por obra em `docs/17-armazem.md`)
 - Data do primeiro e último movimento para a obra
 
 **Cálculo:**
@@ -241,3 +241,14 @@ Regras:
 - A Visão geral carrega cada módulo à parte; um módulo em erro aparece assinalado e não derruba os outros.
 - Datas por dia civil de Lisboa (`src/app/lib/relatorios/periodo.ts`), não UTC.
 - A restrição por papel na UI é conforto; a segurança real é a RLS/RPC.
+
+---
+
+## Estado atual (2026-11-12)
+
+A página `/relatorios` (`ReportsPage`) tem separadores: **Visão geral**, **Obras**, **Subempreitadas**, **Frota** e **Pessoas** (só admin e gestor; a segurança real é a RLS/RPC), mais **Stock**, **Ferramentas** e **Combustível** (todos os papéis que acedem à página). Por omissão abre a Visão geral para a gestão e o Stock para os restantes.
+- Listas, totais e exportações usam `buscarTodas` (`src/app/lib/buscarTodas.ts`): sem corte silencioso nas 1000 linhas do PostgREST.
+- A exportação de materiais por obra desconta as devoluções (`DEVOLUCAO_OBRA`); o dia de negócio é o de Lisboa.
+- Exportações em Excel/CSV neutralizam fórmulas (`=`, `+`, `-`, `@`); impressão e PDF mantêm papel branco e tinta escura (`docs/06-ux-ui.md`).
+- Os tipos de relatório por produto, categoria e obra descritos acima continuam a calcular-se a partir de `movimentos_stock`.
+- `/relatorio-semanal` redireciona para `/relatorios`.

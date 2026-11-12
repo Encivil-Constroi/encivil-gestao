@@ -28,7 +28,7 @@
 
 **RN-CAT-02** — Um produto pertence obrigatoriamente a uma categoria.
 
-**RN-CAT-03** — Gestão de categorias personalizadas é funcionalidade da Fase 2.
+**RN-CAT-03** — Gestão de categorias personalizadas: por confirmar no código (não documentada aqui).
 
 ---
 
@@ -36,7 +36,7 @@
 
 **RN-UNID-01** — Unidades suportadas no MVP: tonelada (t), quilograma (kg), metro cúbico (m³), metro linear (ml), metro quadrado (m²), unidade (un), saco (sc), caixa (cx), litro (L), rolo (rl), paletes (pal).
 
-**RN-UNID-02** — A unidade de medida de um produto não deve ser alterada após o primeiro movimento registado.
+**RN-UNID-02** — A unidade de medida de um produto não pode ser alterada após o primeiro movimento registado (imposto na BD desde `20261028120500`; o formulário bloqueia o campo).
 
 ---
 
@@ -140,9 +140,9 @@
 
 **RN-DEST-01** — O destino/obra identifica para onde o material foi (saída) ou de onde veio (entrada, opcional).
 
-**RN-DEST-02** — No MVP, o destino/obra é texto livre.
+**RN-DEST-02** — No MVP, o destino/obra era texto livre. Hoje as saídas "para obra" escolhem uma obra cadastrada em execução (`obra_id`); o texto `destino_obra` continua obrigatório em todas as saídas.
 
-**RN-DEST-03** — Na Fase 2, obras serão entidades cadastradas com referência própria.
+**RN-DEST-03** — Implementado: obras são entidades (`obras`), ver `docs/19-obras.md`.
 
 ---
 
@@ -153,3 +153,23 @@
 **RN-DATA-02** — O timezone obrigatório é `Europe/Lisbon` (UTC+0 inverno, UTC+1 verão — WEST/WET).
 
 **RN-DATA-03** — Não é permitido ao utilizador alterar a data e hora de um movimento após o registo.
+
+---
+
+## Atualizações até 2026-11-12
+
+Fonte da verdade: `docs/00-source-of-truth.md`, `docs/17-armazem.md` e as migrations. Regras acrescentadas ou reforçadas:
+
+**RN-MOV-01** — A porta do armazém é `registar_movimento_armazem`, com tipo detalhado: `COMPRA` (exige fornecedor ou ENCIVIL), `DEVOLUCAO_OBRA` (exige obra; limitada ao líquido enviado para essa obra), `PROPRIO_ENCIVIL`, `ACERTO` (entradas); `OBRA` (exige obra em execução), `VENDA` (exige cliente), `QUEBRA` (saídas); `INVENTARIO` (ajuste). Escrita: `pode_escrever('armazem')` (admin, gestor, armazém).
+
+**RN-MOV-02** — Idempotência: cada movimento pode levar `client_id`; o reenvio da fila offline com o mesmo id devolve o movimento já gravado em vez de duplicar o stock.
+
+**RN-MOV-03** — `movimentos_stock` recusa UPDATE, DELETE e TRUNCATE (trigger e privilégios), também ao dono da tabela. `produtos.stock_atual` e `produtos.codigo` não se gravam por INSERT/UPDATE direto: o artigo nasce a 0 (`criar_produto`) e o stock inicial entra como movimento de entrada na mesma transação.
+
+**RN-CUSTO-01** — O custo de materiais de uma obra é saídas "para obra" menos devoluções (`DEVOLUCAO_OBRA`), em valor, por dia de Lisboa; vale igual em P&L, dashboard e custos consolidados. Venda comercial e quebra não contam como custo de obra.
+
+**RN-FAT-01** — Fatura de fornecedor `LANCADA` é imutável (só dados fiscais e observações); lançar bloqueia a fatura (sem duplicar stock) e exige artigo e quantidade válidos nas linhas de armazém.
+
+**RN-RH-01** — Picagens: idempotentes por `client_id` e `colaborador`; picagens atrasadas ficam `PENDENTE_VALIDACAO`, nunca são recusadas; horas efetivas calculadas no servidor (turnos noturnos incluídos). Faltas e assiduidade só visíveis a admin, gestor e ao próprio colaborador. Detalhe: `docs/12-plano-v3.md`.
+
+**RN-ACESSO-01** — Conta nova nasce com o papel `leitura`; mudança de papel só pela RPC `promover_role` (ou pela Edge Function `admin-utilizadores`). Com `seguranca_config.mfa_obrigatorio` ligado, admin e gestor sem MFA ficam só de leitura na BD.

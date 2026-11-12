@@ -1,6 +1,6 @@
 # Requisitos Funcionais — Controle Armazém ENCIVIL
 
-Versão: 1.0 | Data: 2026-06-11
+Versão: 1.0 | Data: 2026-06-11 | Nota (2026-11-12): requisitos do MVP de stock; os módulos seguintes estão em `docs/17-armazem.md`, `docs/19-obras.md`, `docs/18-frota.md`, `docs/15-abastecimento-v2.md` e `docs/12-plano-v3.md`.
 
 ---
 
@@ -14,7 +14,7 @@ Versão: 1.0 | Data: 2026-06-11
 | AUTH-04 | O utilizador deve conseguir terminar sessão | P0 | Botão de logout visível e funcional, redireciona para `/login` |
 | AUTH-05 | A sessão deve persistir entre recarregamentos da página | P1 | Após F5, utilizador mantém sessão ativa |
 | AUTH-06 | Credenciais inválidas devem mostrar mensagem de erro clara | P0 | Mensagem "E-mail ou palavra-passe incorretos" visível |
-| AUTH-07 | Sistema deve suportar dois roles (admin, gestor) com permissões distintas aplicadas no servidor (RLS), não apenas na UI | P0 | Gestor autenticado não consegue criar/editar produto mesmo chamando a API diretamente |
+| AUTH-07 | Sistema deve suportar 7 papéis (`admin`, `gestor`, `armazem`, `medicoes`, `mecanico`, `motorista`, `leitura`; originalmente só admin e gestor) com permissões distintas aplicadas no servidor (RLS), não apenas na UI | P0 | Gestor autenticado não consegue criar/editar produto mesmo chamando a API diretamente |
 | AUTH-08 | Sessão deve terminar automaticamente após período de inatividade | P1 | 30 min sem interação → logout automático com aviso |
 
 ---
@@ -92,8 +92,8 @@ Versão: 1.0 | Data: 2026-06-11
 | REL-05 | Relatório por produto | P1 | Seleção de produto; histórico de consumo e entradas |
 | REL-06 | Relatório por categoria | P1 | Seleção de categoria; totais por produto |
 | REL-07 | Relatório por obra/destino | P1 | Filtro por obra; total de materiais consumidos por obra |
-| REL-08 | Exportação para Excel | P2 | Botão "Exportar Excel" gera ficheiro .xlsx |
-| REL-09 | Exportação para PDF | P2 | Botão "Exportar PDF" gera ficheiro .pdf |
+| REL-08 | Exportação para Excel | P2 (entregue) | Botão "Exportar Excel" gera ficheiro .xlsx (`exportXlsx`; células com `=`, `+`, `-`, `@` neutralizadas) |
+| REL-09 | Exportação para PDF | P2 (entregue) | Botão "Exportar PDF" gera ficheiro .pdf (`src/app/lib/pdf`) |
 
 ---
 

@@ -172,7 +172,7 @@ CORS e validação, auditoria imutável, NIF restrito, backup cifrado, dependên
 - Plano de implementação: `docs/superpowers/plans/2026-10-06-seguranca-2026.md`
 - Operação, recuperação e incidentes: `docs/22-seguranca-operacao.md`
 - Ordem de publicação: **site → migrations → Edge Functions** (o site novo funciona com a BD antiga)
-- Migrations novas, por ordem: `20261008000000`, `20261008010000`, `20261008020000`, `20261008030000`, `20261008050000`, `20261008060000`
+- Migrations novas, por ordem: `20261008000000`, `20261008010000`, `20261008020000`, `20261008030000`, `20261008050000`, `20261008060000`, `20261008070000` (a lista completa e o estado de aplicação, incluindo `20261008080000`…`20261028120900`, estão em `docs/22-seguranca-operacao.md` §7)
 
 Estado: código e documentação concluídos no repositório; **por publicar/aplicar em produção** (passos manuais do utilizador: migrations, Dashboard do Supabase, secrets do GitHub, ligar o MFA obrigatório).
 
@@ -184,10 +184,11 @@ Estado: código e documentação concluídos no repositório; **por publicar/apl
 | 1 — Segurança | **concluída** (2026-09-29) |
 | 2 — Desempenho | em curso: 2.1 e 2.2 feitos; faltam 2.2b, 2.3 |
 | 3 — Processo | aguarda login do CLI |
-| 4 — Segurança 2026 | código e docs prontos; aguarda publicação e passos manuais (ver acima) |
+| 4 — Segurança 2026 | código e docs prontos; aguarda publicação e passos manuais (ver acima; estado das migrations em `docs/22-seguranca-operacao.md` §7) |
+| 5 — Checkup 2026-10-28 | código, testes e docs prontos (9 migrations `20261028*`); aguarda aplicação em produção (por confirmar) |
 
 ---
 
 ## Checkup geral 2026-10-28/29
-Auditoria completa (68 achados), correções com testes e testes de carga/concorrência locais.
+Auditoria completa (68 achados), correções com testes e testes de carga/concorrência locais (`scripts/carga/`). Acrescenta desempenho medido na carga: índice de movimentos por tipo e data e policies RLS com as funções de sessão avaliadas uma vez. A Etapa 3 (login do CLI) continua pendente.
 Relatório, ordem de publicação e passos manuais: `docs/auditorias/2026-10-28-checkup-geral.md`.

@@ -4,9 +4,11 @@
 > deploy). O Mickael continua a ser quem opera tudo — muda **quem é dono**,
 > não quem trabalha. Princípio: *separar identidade de operação*.
 >
-> Estado atual (2026-07-14):
+> **Atualização (2026-11-12):** o deploy está no Cloudflare Pages (`main` faz deploy) em `app.encivilconstroi.com`, com o domínio ligado desde 2026-09-30; o backup da BD passou a ser noturno por GitHub Actions (`docs/22-seguranca-operacao.md` §3). O resto da checklist (contas, 2FA, Vercel, declaração de propriedade) está por confirmar em `docs/13-infraestrutura-e-contas.md` §5. O texto abaixo é o histórico de 2026-07-14.
+>
+> Estado em 2026-07-14:
 > - Código: `github.com/mickaelorlande/armazem-encivil` (conta pessoal)
-> - Base de dados: projeto Supabase `wuruhxmbueeyhiqgvlxu` (org pessoal, free tier)
+> - Base de dados: projeto Supabase `<project-ref>` (org pessoal, free tier)
 > - Deploy: Vercel Hobby (conta pessoal — plano **proíbe uso comercial**)
 
 **Ordem das fases: Backup → Identidade → Código → Dados → Deploy → Continuidade → Papel.**
@@ -91,7 +93,7 @@ e `git push` continua a funcionar.*
 ## Fase 3 — Dados: Supabase Organization
 
 A transferência de projeto entre organizations no Supabase é **sem downtime**:
-o URL (`wuruhxmbueeyhiqgvlxu.supabase.co`), as keys e os dados não mudam.
+o URL (`<project-ref>.supabase.co`), as keys e os dados não mudam.
 Os utilizadores não notam nada.
 
 1. Com a **conta cofre** (e-mail institucional): criar conta no Supabase e
@@ -138,7 +140,7 @@ equipa reinstala a PWA uma única vez — a última.**
    `encivil` → escolher `armazem-encivil`.
    - Build command: `npm run build` · Output: `dist` · Framework: Vite
 4. Environment variables (produção):
-   - `VITE_SUPABASE_URL` = `https://wuruhxmbueeyhiqgvlxu.supabase.co`
+   - `VITE_SUPABASE_URL` = `https://<project-ref>.supabase.co`
    - `VITE_SUPABASE_PUBLISHABLE_KEY` = (a mesma da Vercel)
 5. Custom domain: `app.encivil.pt` → HTTPS automático.
 6. Testar tudo no URL novo: login, movimentos, relatórios PDF, instalação PWA,
@@ -204,13 +206,13 @@ construiu e do papel que exerce).
 ## Checklist resumo (estado em 2026-07-14)
 
 - [x] **F0** Backup do código (`git bundle`) + segredos em `C:\ENCIVIL-Backup-2026-07-14`
-- [ ] **F0** Backup da base de dados (`supabase db dump`) — **pendente: requer `supabase login`**
+- [ ] **F0** Backup da base de dados (`supabase db dump`) — substituído pelo backup noturno do GitHub Actions (por confirmar que está ativo)
 - [x] **F1** E-mail institucional criado: `encivil.sistemas@hotmail.com` (interino)
 - [ ] **F1** 2FA nas contas novas + gestor de passwords + envelope de emergência
 - [ ] **F1** Usar o domínio `encivil.pt` da empresa (e-mail `ti@encivil.pt` + `app.encivil.pt`)
 - [x] **F2** GitHub org `Encivil-Constroi` + repo `encivil-gestao` com histórico completo
-- [x] **F3** Projeto Supabase `wuruhxmbueeyhiqgvlxu` transferido para a org da empresa
-- [ ] **F3** Apagar projeto vazio `azbzqintclkovlvkxfle` + utilizador de teste do auth
+- [x] **F3** Projeto Supabase `<project-ref>` transferido para a org da empresa
+- [ ] **F3** Apagar projeto vazio `<project-ref-vazio>` + utilizador de teste do auth
 - [ ] **F3** Plano Pro com cartão da empresa (quando disponível)
 - [x] **F4** Cloudflare Workers ligado ao GitHub, app funcional em `encivil-gestao.encivil-sistemas.workers.dev` (login validado)
 - [ ] **F4** Domínio `app.encivil.pt` + PWA reinstalada pela equipa

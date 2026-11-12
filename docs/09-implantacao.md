@@ -29,16 +29,16 @@ documento cobre só os passos técnicos de implantação.
 2. Anotar: **Project URL** e a chave pública `sb_publishable_...` (em Settings → API).
    **Automatically expose new tables** vem OFF por definição — todas as
    migrations deste projeto incluem `GRANT` explícitos (ver `CLAUDE.md`)
-3. Aplicar **todas** as migrations de `supabase/migrations/` em ordem cronológica.
+3. Aplicar **todas** as migrations de `supabase/migrations/` (101 ficheiros em 2026-11-12) em ordem cronológica.
    Hoje isto é feito manualmente no SQL Editor do Dashboard (o CLI não tem
    login com a conta da organização — ver Etapa 3 de
    `docs/plano-seguranca-desempenho.md`); quando o login estiver feito:
    ```bash
    supabase db push
    ```
-4. Depois de aplicar migrations que mudem o schema, regenerar os tipos:
+4. Depois de aplicar migrations que mudem o schema, regenerar os tipos **pelo Git Bash** (o `>` do PowerShell 5.1 grava `types.ts` em UTF-16) e correr `npm run typecheck`:
    ```bash
-   npx supabase gen types typescript --project-id <project-ref> > src/integrations/supabase/types.ts
+   npx supabase gen types typescript --local > src/integrations/supabase/types.ts   # ou --project-id <project-ref>
    ```
 
 ## 2. Configurar Autenticação Supabase
@@ -49,7 +49,7 @@ documento cobre só os passos técnicos de implantação.
    como um admin existente — nunca por `UPDATE` direto: a coluna `role` em
    `profiles` está bloqueada por GRANT a nível de coluna desde 2026-06-22
 4. Reforçar política de password (Authentication → Settings → Password requirements): mínimo 10-12 caracteres
-5. MFA (TOTP): requer plano Supabase Pro — a confirmar se já ativo (ver `docs/13-infraestrutura-e-contas.md`)
+5. MFA (TOTP): funciona no plano Free (ver `docs/22-seguranca-operacao.md` §2); confirmar nas definições de Authentication que o TOTP (enroll + verify) está ligado
 
 ## 3. Configurar RLS
 
@@ -132,6 +132,24 @@ resolve; reportar o caso para investigar (não deve ser frequente).
 
 ---
 
+## Ordem de publicação (regra fixa)
+
+**Site → migrations → Edge Functions.** O site novo tem de funcionar com a BD antiga (RPC ou tabela inexistente ⇒ comportamento de antes);
+as migrations aplicam-se à mão no SQL Editor, por ordem cronológica; as Edge Functions publicam-se no fim.
+Exemplo: a `20261028120100` retira colunas do SELECT de `colaboradores`, por isso só se aplica depois de o site novo estar no ar.
+
+1. Merge para `main` (CI verde) ⇒ deploy automático no Cloudflare Pages. Confirmar o deploy e a consola sem erros.
+2. Migrations, fora do horário de trabalho. Várias levam `SET lock_timeout = '5s'` (falham depressa se houver tráfego a segurar o lock;
+   são idempotentes e repete-se noutro momento). Cada migration nova termina com um bloco `-- ROLLBACK` (SQL comentado). A tabela do que
+   está aplicado mantém-se em `docs/22-seguranca-operacao.md` §7; para comparar com a produção: `node supabase/scripts/verificar-migrations.mjs aplicadas.txt`.
+3. Tipos: `npx supabase gen types typescript --local > src/integrations/supabase/types.ts` **pelo Git Bash**, depois `npm run typecheck`.
+4. Edge Functions (`admin-utilizadores`, `enviar-resumo-alertas`, `extrair-fatura`, `ler-foto-abastecimento`, `notificar-abastecimento`,
+   `pump-status`, `send-push-frota`): só as alteradas; ver os Logs. `pump-status`, `notificar-abastecimento`, `send-push-frota` e `enviar-resumo-alertas` têm `verify_jwt = false` (`supabase/config.toml`): quem as chama é a BD ou o Shelly, com segredo próprio; publicadas pelo CLI sem esta definição devolvem 401.
+
+`npm run dev` liga à BD de **produção** quando `.env.local` está vazio (fallback em `client.ts`): só leitura. Desde 2026-11 (`src/integrations/supabase/config.ts`),
+se `VITE_SUPABASE_URL`/chave estiverem preenchidas mas inválidas em dev, o arranque falha em vez de cair em produção; para uma stack local
+aceita-se `http(s)://localhost` ou `127.0.0.1`.
+
 ## 6. Configuração Inicial do Sistema (novo ambiente)
 
 Após o primeiro deploy, aceder ao sistema e:
@@ -144,7 +162,7 @@ Após o primeiro deploy, aceder ao sistema e:
 
 ---
 
-## Checklist de Produção (estado em 2026-09-29)
+## Checklist de Produção (estado em 2026-09-29; revisto 2026-11-12 — o que é manual da Direção fica por confirmar)
 
 ### Base de dados
 - [x] Todas as migrations aplicadas (o histórico completo está em `supabase/migrations/`)
@@ -159,18 +177,18 @@ Após o primeiro deploy, aceder ao sistema e:
 - [x] HTTPS + HSTS a funcionar
 - [x] Headers de segurança completos (CSP, X-Frame-Options, etc. — `public/_headers`)
 - [x] RPCs SECURITY DEFINER e Edge Functions fechadas a `anon` sem guarda (auditoria 2026-09-29)
-- [ ] MFA (TOTP) nas contas de acesso — a confirmar (`docs/13-infraestrutura-e-contas.md`)
+- [ ] MFA (TOTP): implementado (`/seguranca/mfa`); confirmar que admins e gestores o registaram e que `seguranca_config.mfa_obrigatorio` está ligado (`docs/22-seguranca-operacao.md` §2)
 
 ### Funcionalidades
 - [x] Login/logout, RBAC por papel (RLS, não só UI)
 - [x] Armazém, obras, subempreiteiros, ferramentas, combustível, RH/picagens, EPIs, faturas por IA
 - [x] PWA instalável (iOS + Android), notificações push
-- [x] CI (typecheck + build + testes) em cada push/PR — `.github/workflows/ci.yml`
+- [x] CI em cada push/PR — `.github/workflows/ci.yml`: TypeScript (typecheck + lint) → Build; Tests (Vitest + Deno); Segurança (`npm audit` + gitleaks)
 
 ### Operacional — pendente (ver `docs/13-infraestrutura-e-contas.md`)
-- [ ] Backup completo da base de dados (nunca foi feito — depende do login do CLI)
+- [ ] Backup completo da base de dados: o workflow `.github/workflows/backup-bd.yml` (noturno, cifrado com `age`, restauro de teste) existe desde 2026-10-07; confirmar que os segredos `SUPABASE_DB_URL` e `BACKUP_AGE_PUBLIC_KEY` estão configurados e que há um artefacto recente (`docs/22-seguranca-operacao.md` §3)
 - [ ] 2FA + gestor de passwords + envelope de emergência para a Direção
-- [ ] Domínio próprio (`app.encivil.pt`) ligado ao Cloudflare Pages
+- [x] Domínio `app.encivilconstroi.com` ligado ao Cloudflare Pages (2026-09-30); `app.encivil.pt` não criado
 - [ ] Projeto Vercel antigo desligado
 
 ---
@@ -185,7 +203,7 @@ Após o primeiro deploy, aceder ao sistema e:
 - Cloudflare Pages → Deployments (histórico de builds, tempo, logs)
 
 ### Backups
-- **Nenhum backup automático da base de dados até 2026-09-29** — plano
+- Backup automático: workflow `Backup BD` (ver checklist acima e `docs/22-seguranca-operacao.md` §3); até 2026-09-29 não havia nenhum — plano
   Supabase atual não confirmado como Pro. Ver `docs/13-infraestrutura-e-contas.md`
   para o estado e o que falta decidir com a Direção
 - Exportação manual disponível em `/backup` (admin) — cobre as tabelas de
@@ -193,6 +211,6 @@ Após o primeiro deploy, aceder ao sistema e:
 
 ### Atualizações
 1. Fazer alterações em branch de feature
-2. Testar localmente (`npm run typecheck`, `npm test`, `npm run build`)
+2. Testar localmente (`npm run typecheck`, `npm test`, `npm run build`; Edge: `npm run check:edge && npm run test:edge`). O hook `pre-commit` faz scan de segredos e typecheck; nunca `--no-verify`
 3. Abrir Pull Request — a Action `pr-review.yml` corre um code review automático
 4. Merge para `main` → deploy automático no Cloudflare Pages

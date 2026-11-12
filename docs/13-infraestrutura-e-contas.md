@@ -19,8 +19,8 @@
 
 | Sistema | O que é | URL |
 |---|---|---|
-| ENCIVIL Gestão | ERP interno — armazém, obras, subempreiteiros, ferramentas, combustível/frota, RH, faturas | https://encivil-gestao.pages.dev |
-| Pedido de abastecimento | Com conta (papel `motorista` ou outro); o QR da viatura abre o pedido com a viatura escolhida — ver `docs/15-abastecimento-v2.md` | `/abastecer` (o QR antigo `/pub/combustivel?v=...` redireciona) |
+| ENCIVIL Gestão | ERP interno — armazém, obras, subempreiteiros, ferramentas, combustível/frota, RH, faturas | https://app.encivilconstroi.com (e https://encivil-gestao.pages.dev) |
+| Pedido de abastecimento | Com conta (papel `motorista` ou outro); o QR da viatura abre o pedido com a viatura escolhida — ver `docs/15-abastecimento-v2.md` | `/abastecimento/pedir` (o QR `/pub/combustivel?v=...` e o antigo `/abastecer` redirecionam) |
 
 Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 
@@ -58,7 +58,7 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 
 - **Função:** todo o backend — PostgreSQL (dados), Auth (login), Storage
   (fotos de abastecimentos/faturas), Edge Functions (IA, notificações, bomba Polo 2)
-- **Projeto:** `wuruhxmbueeyhiqgvlxu` — transferido para a organização da
+- **Projeto:** `<project-ref>` — transferido para a organização da
   empresa em 14/07/2026 (`docs/11-transferencia-titularidade.md`)
 - **Chave pública** (`sb_publishable_...`): pode estar no frontend, é segura
   para expor — a segurança real é a Row Level Security no banco
@@ -77,7 +77,7 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
     ver migration `20260930010000`)
   - `EDGE_FUNCTION_SECRET` — chamadas entre funções. **Obrigatório** para os alertas por e-mail: `enviar-resumo-alertas` recusa tudo (falha fechada) se não existir, e o valor tem de ser igual ao `app.edge_function_secret` da BD
   - URL do projeto, chave anónima e a chave de papel de serviço — geridas automaticamente pelo próprio Supabase, não precisam de configuração manual
-- **Acesso ao CLI:** **ainda não configurado** com a conta da organização —
+- **Acesso ao CLI:** **ainda não configurado** com a conta da organização (por confirmar em 2026-11-12; o repositório não mostra o contrário) —
   todas as migrations são aplicadas manualmente no SQL Editor do Dashboard, o
   que já causou divergências entre produção e o repositório (ver Etapa 3 de
   `docs/plano-seguranca-desempenho.md`)
@@ -144,8 +144,8 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 | O quê | Estado | Ação |
 |---|---|---|
 | Vercel (`antigo-vercel` remote, repo pessoal `mickaelorlande/armazem-encivil`) | Congelado, sem pushes desde a migração para Cloudflare Pages | Desligar o projeto na Vercel quando a equipa deixar de o usar (docs/11 Fase 4) |
-| Projeto Supabase `azbzqintclkovlvkxfle` | Criado por engano, vazio | Apagar |
-| Utilizador de teste `encivil.sistemas@hotmail.com` no Auth (password `admin123`, papel admin) | A confirmar se ainda existe | **Verificar e apagar com prioridade** — é um acesso de administrador com password fraca, se ainda existir |
+| Projeto Supabase `<project-ref-vazio>` | Criado por engano, vazio | Apagar |
+| Utilizador de teste `encivil.sistemas@hotmail.com` no Auth (senha fraca, papel admin) | A confirmar se ainda existe | **Verificar e apagar com prioridade** — é um acesso de administrador com password fraca, se ainda existir |
 | `vercel.json`, `pnpm-workspace.yaml` no repositório | Removidos em 2026-09-29 (ver commit de limpeza) | — |
 
 ---
@@ -155,7 +155,7 @@ Stack e arquitetura completas: `CLAUDE.md` e `ARCHITECTURE.md`.
 Conforme o mandato da função, qualquer compromisso financeiro (subscrições
 pagas) precisa de autorização prévia. Candidatos identificados hoje:
 
-- **Supabase Pro** — necessário para backup automático do banco de dados e
+- **Supabase Pro** — já não é necessário para o backup (existe o backup noturno por GitHub Actions) nem para o MFA TOTP; acrescenta PITR, senhas vazadas e timebox de sessão. Antes dizia-se necessário para backup e
   MFA para os utilizadores. Sem isto, o sistema não tem rede de segurança
   real contra perda de dados.
 - **Domínio `app.encivil.pt`** — se o registo não estiver já pago/ativo.
@@ -164,7 +164,7 @@ pagas) precisa de autorização prévia. Candidatos identificados hoje:
 
 ---
 
-## 5. Continuidade — checklist (estado em 2026-09-29)
+## 5. Continuidade — checklist (estado em 2026-09-29; itens de contas por confirmar em 2026-11-12)
 
 Origem: `docs/11-transferencia-titularidade.md` (checklist completo lá).
 
@@ -172,7 +172,7 @@ Origem: `docs/11-transferencia-titularidade.md` (checklist completo lá).
 |---|---|
 | Backup do código (GitHub, histórico completo) | ✅ |
 | Backup da base de dados | 🟡 Automático (GitHub Actions, noturno, cifrado, com restauro de teste) — fica ✅ quando os secrets `SUPABASE_DB_URL` e `BACKUP_AGE_PUBLIC_KEY` existirem e a primeira execução passar. Não cobre contas de `auth.users` nem ficheiros do Storage (exportação manual trimestral) |
-| Exportação manual de tabelas de negócio (`/backup` no sistema, admin) | 🟡 Existe, mas tinha um erro (tabela `comb_viaturas` não existe — a corrigir) e não cobre todas as tabelas |
+| Exportação manual de tabelas de negócio (`/backup` no sistema, admin) | 🟡 Existe (`features/backup`); a exportação de auditoria é paginada até 5000 linhas; não cobre todas as tabelas nem substitui o backup noturno |
 | 2FA nas contas novas | ❌ |
 | Gestor de passwords partilhado + envelope de emergência para a Direção | ❌ |
 | E-mail institucional definitivo (`ti@encivil.pt`) | ❌ Ainda no hotmail interino |
@@ -201,7 +201,7 @@ constar do inventário completo:
 1. Quem são hoje os titulares/administradores de cada conta acima (GitHub, Cloudflare, Supabase, Google AI Studio, Resend, Sentry, Anthropic)?
 2. Existe algum gestor de passwords em uso? Se não, qual escolher?
 3. Quais destas contas têm 2FA ativo?
-4. O utilizador de teste `admin123` ainda existe no Auth do Supabase?
+4. O utilizador de teste com senha fraca ainda existe no Auth do Supabase?
 5. O plano do Supabase é Free ou Pro? Se Free, aprovar a mudança para Pro (backup + MFA)?
 6. O domínio `encivil.pt` está registado em nome da empresa? Onde?
 7. Existe orçamento definido para as assinaturas listadas em §4?

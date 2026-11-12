@@ -1,144 +1,97 @@
 # Arquitetura — Controle Armazém ENCIVIL
 
+> Revisto em 2026-11-12. A visão de módulos e fronteiras está em `ARCHITECTURE.md`; as regras de código em `CLAUDE.md`. Este documento descreve a stack e a organização do código.
+
 ---
 
 ## Visão Geral
 
-Arquitetura frontend-only (SPA + PWA) com backend gerido pelo Supabase. Sem servidor dedicado. Bundle único (sem code-splitting por rota — ver ADR-008), service worker via Workbox para instalação como PWA e cache de assets estáticos.
+SPA + PWA sem servidor dedicado: o browser fala diretamente com o Supabase (Auth, PostgreSQL com RLS, Storage, Edge Functions em Deno). A segurança real está na BD (RLS, GRANTs, RPCs); a UI é só conforto.
 
 ```
-┌─────────────────────────────────────────┐
-│               Browser                   │
-│   React + TypeScript + Vite (SPA)       │
-│                                         │
-│  ┌──────────┐  ┌──────────────────────┐ │
-│  │  React   │  │   React Router v7    │ │
-│  │  Estado  │  │   (client-side)      │ │
-│  └──────────┘  └──────────────────────┘ │
-└────────────────────┬────────────────────┘
-                     │ HTTPS / REST / WebSocket
-                     ▼
-┌─────────────────────────────────────────┐
-│              Supabase                   │
-│                                         │
-│  ┌──────────┐  ┌──────────────────────┐ │
-│  │  Auth    │  │  PostgreSQL + RLS    │ │
-│  │ (JWT)    │  │  (Base de dados)     │ │
-│  └──────────┘  └──────────────────────┘ │
-│  ┌──────────┐                           │
-│  │ Storage  │  (logótipo, futuro)       │
-│  └──────────┘                           │
-└─────────────────────────────────────────┘
-                     │
-                     ▼ Deploy
-┌─────────────────────────────────────────┐
-│                Vercel                   │
-│  (CDN global, HTTPS automático, CI/CD)  │
-└─────────────────────────────────────────┘
+Browser (React 18 + Vite + TypeScript, PWA com service worker Workbox)
+   │  HTTPS: REST (PostgREST), RPC, Storage, Edge Functions
+   ▼
+Supabase: Auth (JWT, MFA TOTP) · PostgreSQL + RLS + pg_cron + pg_net · Storage (buckets) · Edge Functions (Deno)
+   ▲
+   └── Shelly Pro 3 (bomba Polo 2) → Edge Function pump-status
+
+Deploy: GitHub (org Encivil-Constroi) → Cloudflare Pages (main = deploy automático; cabeçalhos em public/_headers)
+Erros: Sentry · Backup: GitHub Actions (backup-bd.yml)
 ```
+
+Rotas por `lazy()` (ADR-010, que substituiu a ADR-008); a atualização da PWA é tratada em `UpdatePrompt.tsx`.
 
 ---
 
-## Stack Completa
+## Stack (versões em `package.json`)
 
-| Camada | Tecnologia | Versão |
-|--------|-----------|--------|
-| UI Framework | React | 18 |
-| Linguagem | TypeScript | 5 |
-| Build Tool | Vite | 6 |
-| Estilização | Tailwind CSS | 4 |
-| Roteamento | React Router | 7 |
-| Backend | Supabase | Cloud |
-| Autenticação | Supabase Auth | — |
-| Base de dados | Supabase PostgreSQL | 15+ |
-| Segurança | Supabase RLS | — |
-| Deploy | Cloudflare Pages | — |
-
-> Nota (2026-09-29): o diagrama acima e a frase "sem code-splitting por rota"
-> refletem a decisão original da ADR-008. Essa decisão foi revertida em
-> 28/07/2026 (lazy loading está em uso desde então) — ver ADR-010. O deploy
-> também mudou de Vercel para Cloudflare Pages — ver `docs/09-implantacao.md`.
+| Camada | Tecnologia |
+|--------|-----------|
+| UI | React 18.3, TypeScript 5 (strict, `noUnusedLocals/Parameters`) |
+| Build | Vite 6, `vite-plugin-pwa` (`injectManifest`, SW em `src/sw.ts`) |
+| Estilos | Tailwind CSS 4 (plugin Vite), shadcn/ui + Radix (`src/app/components/ui`), tokens em `src/styles/theme.css` |
+| Rotas | React Router 7 |
+| Gráficos / mapas / avisos | Recharts, Leaflet, Sonner |
+| Backend | Supabase (`@supabase/supabase-js` 2): Auth, PostgreSQL, Storage, RLS, Edge Functions |
+| Testes | Vitest 4 (jsdom), PGlite para a BD, Deno para as Edge Functions |
+| Deploy | Cloudflare Pages |
 
 ---
 
-## Organização do Código (atual — ver a secção "Arquitetura" em `CLAUDE.md` para o detalhe completo)
+## Organização do Código
 
 ```
 src/
+├── main.tsx, sw.ts
 ├── app/
-│   ├── App.tsx                   # AuthProvider + RouterProvider
-│   ├── routes.tsx                # Rotas — bundle único, sem lazy() (ADR-008)
-│   ├── types.ts                  # Product, Movement, DashboardStats, LowStockItem
-│   ├── layouts/MainLayout.tsx    # Sidebar (desktop) + MobileBottomNav + Header
-│   ├── pages/                    # 11 páginas (Login, Dashboard, Produtos, ProdutoDetalhe,
-│   │                              # NovoMovimento, Histórico, Relatórios, Configurações,
-│   │                              # Docs, Ajuda, NotFound)
-│   ├── components/
-│   │   ├── ui/                   # shadcn/ui + Radix
-│   │   ├── Header.tsx            # Nome real + role do utilizador (useRole, não email)
-│   │   ├── NotificationPanel.tsx # Recebe dados via props — não faz query própria
-│   │   ├── MobileBottomNav.tsx
-│   │   ├── PWAInstallHint.tsx
-│   │   └── StatCard.tsx          # useCountUp + skeleton
-│   └── data/mockData.ts          # Só helpers de label (getCategoryLabel/getUnitLabel) — sem dados mock
-│
-├── features/                     # Lógica de negócio por módulo
-│   ├── auth/
-│   │   ├── AuthContext.tsx       # session + profile (role, nome); auto-logout 30min
-│   │   ├── AuthGuard.tsx         # Bloqueia sem sessão
-│   │   ├── RoleGuard.tsx         # Bloqueia sem role suficiente
-│   │   └── useRole.ts            # Lê do context — zero queries extra
-│   ├── produtos/{hooks,services}/
-│   ├── movimentos/{hooks,services}/   # useMovimentos + useMovimentosPaginados
-│   ├── dashboard/hooks/useDashboard.ts
-│   ├── notificacoes/hooks/useNotifications.ts
-│   └── configuracoes/services/
-│
-├── integrations/supabase/
-│   ├── client.ts                 # Cliente com anon key apenas
-│   └── types.ts                  # RoleUtilizador = 'admin' | 'gestor'
-│
-├── hooks/useCountUp.ts           # Compartilhado fora de features/
-│
-└── styles/index.css              # Tailwind v4 @theme
+│   ├── App.tsx, routes.tsx (lazy() por rota), types.ts
+│   ├── layouts/MainLayout.tsx        # Sidebar (desktop) + MobileBottomNav + Header
+│   ├── pages/                        # ecrãs transversais (Início, Dashboard, Relatórios, Auditoria, Backup,
+│   │                                 #   Configurações…) e pages/armazem/* (junta produtos + movimentos + ferramentas)
+│   ├── components/                   # UI partilhada (PageHeader, SeparadoresNav, FiltroChips, CampoSelect, Sidebar…) e ui/ (shadcn)
+│   └── lib/                          # useAsync, useMutation, stockUtils, format, buscarTodas, exportCsv/Json/Xlsx, rpcSemTipos, sentry, push…
+├── features/<módulo>/                # components/ hooks/ services/ lib/ (+ db.ts, index.ts)
+│   # alertas, auth, autos, backup, colaboradores, combustivel, configuracoes, contabilidade, custos, dashboard,
+│   # epis, faturas, ferramentas, frota, horarios, livro-obra, movimentos, notificacoes, obras, picagens,
+│   # produtos, search, subempreiteiros, theme
+├── integrations/supabase/            # client.ts, config.ts (guarda de dev), types.ts (GERADO)
+├── hooks/                            # useCountUp, useLockBodyScroll
+├── styles/                           # theme.css (tokens), index.css
+└── __tests__/                        # Vitest
 
-supabase/migrations/              # 10 migrations, todas aplicadas — fonte de verdade do schema
+supabase/migrations/                  # 101 ficheiros; fonte de verdade do schema
+supabase/functions/                   # admin-utilizadores, enviar-resumo-alertas, extrair-fatura, ler-foto-abastecimento,
+                                      #   notificar-abastecimento, pump-status, send-push-frota (+ _shared)
+supabase/tests/                       # testes de BD (PGlite)
 ```
 
-**Diferenças relevantes face ao plano original:** sem `integrations/supabase/queries/` (queries inline nos services), sem `shared/` (hooks pequenos foram para `src/hooks/`), sem `utils/date.ts`/`utils/stock.ts` separados (lógica de stock vive na RPC `registar_movimento`, não no frontend).
+Fronteiras: um módulo de `features/` importa só de `auth`, `@/app/lib`, `@/integrations`, `@/app/components`; quem junta módulos vive em `src/app/pages`. Exceções históricas (obras como núcleo) em `CLAUDE.md`.
 
 ---
 
 ## Responsabilidades por Camada
 
 ### `app/pages/`
-- Páginas de alto nível; composição de componentes.
-- **Não** contém lógica de negócio — delega para `features/`.
-- Apenas UI, navegação e estado local de formulário.
+- Composição de componentes, navegação e estado local de formulário; sem regra de negócio.
 
 ### `app/components/`
-- Componentes visuais reutilizáveis sem lógica de negócio.
-- Aceitam dados por props; não chamam Supabase diretamente.
+- Componentes visuais reutilizáveis; recebem dados por props e não chamam o Supabase.
 
 ### `features/*/services/`
-- Toda a lógica de negócio e comunicação com Supabase.
-- Funções puras sempre que possível.
-- Validações de regras de negócio aqui (ex: stock insuficiente).
+- Toda a lógica de negócio e a comunicação com o Supabase; funções puras sempre que possível. Constante `SELECT` no topo; sem N+1.
 
 ### `features/*/hooks/`
-- React hooks que encapsulam estado e chamadas aos services.
-- Expõem `data`, `loading`, `error` e funções de mutação.
+- Hooks sobre `useAsync` / `useMutation` (`src/app/lib`): expõem `data`, `loading`, `error` e mutações.
 
 ### `integrations/supabase/`
-- Cliente Supabase configurado com variáveis de ambiente.
-- Tipos gerados automaticamente pelo CLI Supabase.
-- Queries SQL reutilizáveis (evitar SQL inline nos services).
+- Cliente configurado por variáveis de ambiente (`config.ts` valida o par URL/chave) e tipos gerados pelo CLI. Nunca editar `types.ts` à mão.
 
-### `utils/`
-- Funções puras utilitárias sem dependências de React.
-- Formatação, cálculos, manipulação de datas.
+### `app/lib/`
+- Funções puras e utilitários sem regra de módulo: formatação (`format.ts`), datas de Lisboa (`dataLisboa.ts`), paginação (`buscarTodas.ts`), exportações.
 
 ---
+
 
 ## Regra para Agents
 

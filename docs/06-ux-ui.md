@@ -62,7 +62,38 @@ Gráficos usam `chart-1..5` (azul, verde, vermelho, âmbar, púrpura), `chart-gr
 
 ---
 
-## Telas
+## Polimento de 2026-11 (plano em `docs/superpowers/plans/2026-11-02-design-polimento.md`)
+
+### Componentes partilhados (`src/app/components/`)
+
+| Componente | Para quê |
+|---|---|
+| `PageHeader` | Cabeçalho de página: `titulo`, `descricao?`, `acoes?`, `voltar?` (rota). Sem ícone no título. Exporta as duas únicas larguras: `LARGURA_PAGINA` (`max-w-6xl`, listas e painéis) e `LARGURA_FORMULARIO` (`max-w-3xl`) |
+| `SeparadoresNav` | Separadores de módulo por rota (`NavLink`), com `contagem?` (pastilha de aviso), sombra de scroll nas pontas e item ativo centrado no arranque |
+| `FiltroChips` | Único estilo de filtros e sub-vistas dentro de uma página (`aria-pressed`); `contagem?` e `tom?` (`destructive`/`warning`) pintam só a contagem; contagem a zero não leva cor de estado |
+| `CampoSelect` | `<select>` nativo (no telemóvel abre o seletor do sistema) com seta; `CLASSE_CAMPO` para os restantes campos |
+| `EmptyState` | Estado vazio com `descricao?` e `compacto?` |
+| `useSombraScroll` | Hook que deteta conteúdo escondido nas pontas de um scroll horizontal e recalcula quando o conteúdo muda; usado nos separadores e nas secções da ficha de obra |
+| `ToasterTema` | Toasts do Sonner que seguem o tema da app (o Sonner não vê a classe `.dark`) e ficam acima da barra inferior no telemóvel |
+| `AtalhoRapido` (`src/app/pages/inicio/`) | Ações rápidas do Início: saída e entrada com tinta suave destrutiva/de sucesso, restantes neutras |
+
+O Início (`/`) é um painel pessoal por cargo; quem movimenta stock vê "Registar saída" e "Registar entrada" em destaque.
+
+### Regras
+
+- **Toque:** botões `h-10` no telemóvel e `md:h-9` no desktop (`sm`: `h-9 md:h-8`; `lg`: `h-11 md:h-10`; `icon`: `size-10 md:size-9`). Links e chips pequenos ganham `max-md:min-h-10` (com margem negativa para não alterar o layout). Campos: `min-h-11`.
+- **Desativado:** botões desativados usam `bg-muted text-muted-foreground` (não `opacity-50`), por variante.
+- **Cor:** só tokens semânticos de `theme.css`, em pares (`bg-primary text-primary-foreground`); nada de `text-white`, cinzentos ou hex em ecrã. Animações novas com `motion-safe:`. Impressão mantém tinta explícita.
+- **Números** (pt-PT, `src/app/lib/format.ts`): `fmtEuro`, `fmtNumber` (até 3 casas, vírgula decimal), `fmtQuantidade(valor, unidade?)` → "1453,52 kg". Números em tabelas com `tabular-nums`.
+- **Datas:** `fmtData` (dd/mm/aaaa), `fmtDataHora`, `fmtDataCurta`, `fmtMes`, `fmtDataExtensa` ("Segunda-feira, 2 de novembro de 2026"), `fmtMesAno`, `primeiraMaiuscula`. Nunca `capitalize` do Tailwind em datas (dava "De"/"Feira" em maiúscula). O dia de negócio é o de Lisboa (`Europe/Lisbon`, `src/app/lib/dataLisboa.ts`).
+- **Texto:** pt-PT, forma neutra/formal ("Selecione", nunca "Seleciona"); botões e títulos só com a 1.ª palavra em maiúscula. O nome da marca no menu lateral não é `h1` (cada página tem o seu `h1`, no `PageHeader`).
+- **Listas longas:** paginar no servidor; totais e exportações com `buscarTodas` (sem corte nas 1000 linhas do PostgREST).
+
+---
+
+## Telas (desenho original do MVP)
+
+> As telas abaixo descrevem o MVP de junho de 2026 (Produtos, Novo Movimento, Histórico). Hoje vivem em `/armazem/*` (Inventário, Movimentos, formulários de entrada e saída); critérios de aceitação e estados continuam válidos como referência. Para o comportamento atual ver `docs/17-armazem.md`.
 
 ### Login
 

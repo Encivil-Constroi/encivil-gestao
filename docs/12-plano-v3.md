@@ -7,6 +7,36 @@
 
 ---
 
+## Estado atual (2026-11-12)
+
+Fases 0 a 9 implementadas no código (a aplicação de cada migration em produção confirma-se com `supabase/scripts/verificar-migrations.mjs`, ver `docs/22-seguranca-operacao.md` §7; as `20261028*` estavam por aplicar em 2026-10-29); este plano é o histórico do desenho. O que vale hoje é o código e as migrations
+(101 ficheiros, última `20261028120900`). Regras que mudaram desde o desenho original:
+
+**Rotas RH** (`src/app/routes.tsx`): `/colaboradores`, `/rh`, `/picagens/validacao`, `/epis`, `/formacoes`, `/seguranca`, `/alertas` exigem
+admin ou gestor (`RoleGuard require="gestor"`); `/picagens` (picar) é de qualquer utilizador com sessão. `/horarios` e `/faltas` redirecionam
+para `/colaboradores?aba=…`; `/gestao-utilizadores` para `/colaboradores?aba=utilizadores`. `colaboradores` não passa por `pode_escrever`:
+policy própria `auth_role() IN ('admin','gestor')`.
+
+**Privacidade RH (`20261028120100_checkup_rh_privacidade.sql`):**
+- `faltas` (justificações, dado de saúde) e `resumo_assiduidade_dia`: só admin, gestor e o próprio colaborador.
+- `telemovel`, `email` e `notas` saíram do SELECT de `colaboradores` (como o NIF): admin, gestor e o próprio leem-nos pela RPC `colaboradores_contactos()`; o NIF só pela RPC `colaborador_nif`.
+- Coluna nova em `colaboradores` ⇒ `GRANT SELECT (coluna)` próprio.
+
+**Picagens normalizadas e idempotentes (`20261020130000`, `20261028120200`, `20261028120800`):**
+- O INSERT direto (site) só grava a picagem do próprio colaborador (admin/gestor podem em nome de outro); quem não é admin/gestor deixa de gravar picagens já autorizadas ou com validação/carimbo de servidor forjados (trigger `_picagem_normalizar_insert`).
+- A geofence (`registar_picagem_geofence`, com `p_client_id`) só autoriza automaticamente com o relógio do dispositivo a ≤ 5 min do servidor. Picagens atrasadas (fila offline) nunca são recusadas: ficam `PENDENTE_VALIDACAO` com o desvio gravado, para o gestor decidir.
+- `picagens.client_id` (uuid gerado no dispositivo, índice único parcial): o reenvio da fila offline com o mesmo `client_id` e colaborador não cria outra linha; noutro colaborador é recusado (23505). Site antigo, sem `client_id`, funciona como antes.
+- Nova atribuição de horário fecha a anterior.
+- Horas efetivas e obra calculadas no servidor (turnos noturnos incluídos; a pausa depois da meia-noite não é descontada), recalculadas quando o gestor valida e pelo pg_cron `calcular-resumo-assiduidade` (22:30 UTC, `calcular_resumo_recentes(14)`: últimos 14 dias). Dias passados com horas a zero recalculam-se com `calcular_resumo_dia(data)`.
+
+**Faturas (`20261028120400_checkup_faturas.sql`):** lançar a fatura bloqueia-a (dois lançamentos simultâneos já não duplicam stock); linhas de armazém sem artigo ou sem quantidade válida recusam o lançamento; cada linha fica ligada ao movimento (`movimento_id`); fatura `LANCADA` é imutável (linhas e dados, exceto dados fiscais e observações). Faturas lançadas antes da correção com stock duplicado não se corrigem sozinhas. Rotas `/faturas` e `/faturas/:id/classificar` (gestor); Edge Function `extrair-fatura` (Gemini; valida intervalos e só apaga as linhas antigas depois de inserir as novas).
+
+**Custos (`20261028120500`):** custos consolidados descontam as devoluções à obra e usam o dia de Lisboa. Mão de obra: num dia em duas obras, o custo vai para a obra da primeira entrada.
+
+**Alertas e push (`20261028120700`):** a vista `alertas_detalhados` mostra o nome do colaborador nos alertas de EPI e formação; `registar_subscricao_push` (RPC) fixa o endpoint ao utilizador que o regista e a tabela só aceita endpoints de serviços de push conhecidos (mesma regra que `supabase/functions/_shared/pushEndpoint.ts`); bucket privado `certificados` (admin/gestor carregam e leem). Edge Functions: `enviar-resumo-alertas` (e-mail diário, Resend), `send-push-frota`.
+
+**Conta nova nasce `leitura`** (`20261028120600`), em vez de `gestor`; a Edge Function `admin-utilizadores` define sempre o papel pedido logo a seguir.
+
 ## Como usar este documento (para agentes de IA)
 
 1. Escolher a fase de menor número que ainda não está `[CONCLUÍDA]`
@@ -430,7 +460,7 @@ src/features/horarios/
 
 ---
 
-## Fase 3 — Picagem de Presenças MVP (sem geofence) `[ ]`
+## Fase 3 — Picagem de Presenças MVP (sem geofence) `[CONCLUÍDA — implementada no código]`
 
 **Semanas:** 9–10  
 **Depende de:** F0, F2  
@@ -526,7 +556,7 @@ src/features/picagens/
 
 ---
 
-## Fase 4 — EPIs e Formações `[ ]`
+## Fase 4 — EPIs e Formações `[CONCLUÍDA — implementada no código]`
 
 **Semanas:** 11–12  
 **Depende de:** F0, F1
@@ -624,7 +654,7 @@ src/features/epis/
 
 ---
 
-## Fase 5 — Picagem com Validação por Geofence (PostGIS) `[ ]`
+## Fase 5 — Picagem com Validação por Geofence (PostGIS) `[CONCLUÍDA — implementada no código]`
 
 **Semanas:** 13–14  
 **Depende de:** F3
@@ -736,7 +766,7 @@ GRANT EXECUTE ON FUNCTION public.registar_picagem_geofence(uuid,uuid,text,float8
 
 ---
 
-## Fase 6 — Ingestão e Classificação de Faturas de Fornecedor `[ ]`
+## Fase 6 — Ingestão e Classificação de Faturas de Fornecedor `[CONCLUÍDA — implementada no código]`
 
 **Semanas:** 15–18  
 **Depende de:** F0 (fornecedores já existem em `subempreiteiros`)
@@ -866,7 +896,7 @@ Ao confirmar classificação de uma linha:
 
 ---
 
-## Fase 7 — Custeio Consolidado por Obra `[ ]`
+## Fase 7 — Custeio Consolidado por Obra `[CONCLUÍDA — implementada no código]`
 
 **Semanas:** 19–20  
 **Depende de:** F2 (mão de obra), F6 (faturas)
@@ -962,7 +992,7 @@ src/features/custos/
 
 ---
 
-## Fase 8 — Livro de Obra Digital e Guias de Transporte `[ ]`
+## Fase 8 — Livro de Obra Digital e Guias de Transporte `[CONCLUÍDA — implementada no código]`
 
 **Semanas:** 21–22  
 **Depende de:** F7

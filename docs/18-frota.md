@@ -62,3 +62,22 @@ Leitura: todos menos o motorista. O mecânico continua isolado na Frota.
 1. SQL Editor: `supabase/migrations/20261002000000_frota_completa.sql`.
 2. Site: push para `main` (sem Edge Functions novas). **Aplicar a migration antes do push:** a
    lista da frota passa a usar colunas e funções novas.
+
+## Estado atual (2026-11-12)
+
+**Rotas** (`src/app/routes.tsx`): `/frota` (Visão geral), `/frota/viaturas`, `/frota/entregas`, `/frota/manutencao`, `/frota/configuracao`;
+`/frota/viatura/nova|:id|:id/editar|:id/configurar|:id/checklist|:id/imprimir`, `/frota/entregar`, `/frota/devolver`,
+`/frota/manutencao/nova|:id/editar`, `/frota/catalogo`, `/frota/notificacoes` (só admin, `RoleGuard`).
+
+**Quem escreve:** `pode_escrever('frota')` = admin, gestor, mecânico (`20260929030000_fase9_frota.sql`, vigente; espelho `MATRIZ_ESCRITA`).
+O mecânico fica isolado na Frota; o motorista não vê a Frota.
+
+**Edge Function:** `send-push-frota` (push dos alertas da frota só a `frota_alerta_destinatarios`; chamada pelo pg_cron com o cabeçalho `x-frota-secret` (segredo gerado na BD)).
+
+**Relação com o Abastecimento:** viaturas e QR vivem aqui; o consumo abre a Análise filtrada (`docs/15-abastecimento-v2.md`).
+A viatura atribuída ao colaborador (conta ligada) pré-preenche o pedido de combustível.
+
+**UI (2026-11):** cabeçalho `PageHeader`, `SeparadoresNav`, chips `FiltroChips` com contagem e datas por extenso (`docs/06-ux-ui.md`).
+Prazos de revisão/seguro/IPO calculados em `src/app/lib/prazoFrota.ts`.
+
+**Testes:** `supabase/tests/frota.test.mjs`, `frota-completa.test.mjs`; `src/__tests__/features/frota/`.

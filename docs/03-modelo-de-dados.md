@@ -8,7 +8,7 @@ Base de dados: Supabase / PostgreSQL
 
 ```sql
 CREATE TYPE tipo_movimento AS ENUM ('entrada', 'saida', 'ajuste');
-CREATE TYPE role_utilizador AS ENUM ('admin', 'gestor');  -- 'gestor' adicionado em 20260611000002_gestor_role.sql
+CREATE TYPE role_utilizador AS ENUM ('admin', 'gestor', 'armazem', 'medicoes', 'leitura', 'mecanico', 'motorista');  -- valores acrescentados por ALTER TYPE ... ADD VALUE (ver abaixo)
 CREATE TYPE estado_stock AS ENUM ('normal', 'baixo', 'sem_stock');
 ```
 
@@ -267,9 +267,24 @@ Os seguintes campos em `movimentos_stock` são necessários para os relatórios:
 
 ---
 
+## Estado do schema em 2026-11-12
+
+Este documento descreve o **núcleo original** (junho de 2026). O schema atual tem 101 migrations (`supabase/migrations/`, última `20261028120900`); ler as migrations, e os documentos de módulo, para o resto. Diferenças principais:
+
+- **Enum `role_utilizador`:** `admin`, `gestor`, `armazem`, `medicoes`, `leitura` (`20260702000003`), `mecanico` (`20260929020000`), `motorista` (`20260930000000`). Conta nova nasce `leitura` (`20261028120600`; antes nascia `gestor`).
+- **`movimentos_stock`** ganhou `obra_id` (`20260702000007`), `subtipo`, `fornecedor`, `cliente`, `numero_fatura`, `preco_unitario` (`20261001000000`) e `client_id` (idempotência, `20261020110000`). Recusa UPDATE, DELETE e TRUNCATE. Índice `(tipo, created_at DESC)` (`20261028120900`).
+- **`produtos`:** `stock_atual` e `codigo` só mudam por movimentos/sequência (GRANT UPDATE por coluna); artigo criado por `criar_produto(jsonb)`.
+- **`colaboradores`:** `nif` só pela RPC `colaborador_nif`; `telemovel`, `email`, `notas` só pela RPC `colaboradores_contactos()` (SELECT de coluna revogado). Colunas novas precisam de `GRANT SELECT (coluna)`.
+- **`picagens.client_id`** (uuid, índice único parcial) para reenvio idempotente (`20261028120800`).
+- **`faltas`, `resumo_assiduidade_dia`:** SELECT só admin, gestor e o próprio colaborador.
+- **Módulos posteriores** (tabelas próprias, todas com RLS e GRANT explícito): obras e relatórios diários, subempreitadas/autos/orçamento EAP, frota e manutenção, combustível/bomba (`comb_*`, `pump_*`), RH (horários, faltas, picagens, EPIs, formações), alertas, faturas de fornecedor, custos, livro de obra, `seguranca_config`, `eventos_seguranca`, schema `privado` (segredos, rate limit).
+- **Tipos TypeScript:** `src/integrations/supabase/types.ts` é gerado; tabela ou RPC ainda sem tipos declara-se em `db.ts` do módulo ou usa `rpcSemTipos`.
+
+---
+
 ## Migrations Aplicadas (ordem cronológica)
 
-A migration única inicial foi superada por 10 migrations incrementais, todas aplicadas em produção. **A fonte de verdade do schema é sempre `supabase/migrations/`, não este documento.** Lista para referência:
+A migration única inicial foi superada por dezenas de migrations incrementais (a lista abaixo cobre só as de junho de 2026; as restantes estão em `supabase/migrations/`, 101 ficheiros em 2026-11-12). O estado de aplicação em produção confirma-se com `supabase/scripts/verificar-migrations.mjs` (`docs/22-seguranca-operacao.md` §7). **A fonte de verdade do schema é sempre `supabase/migrations/`, não este documento.** Lista para referência:
 
 | Ficheiro | O que faz |
 |---|---|
@@ -278,7 +293,7 @@ A migration única inicial foi superada por 10 migrations incrementais, todas ap
 | `20260611000002_gestor_role.sql` | Adiciona `'gestor'` ao enum; restringe INSERT/UPDATE de produtos e config a admin |
 | `20260611000003_seed_users.sql` | Confirma emails e ajusta roles dos utilizadores iniciais |
 | `20260611000004_produto_crud.sql` | Policy de DELETE em produtos (admin); permite gestor inserir movimentos |
-| `20260612000001_default_role_gestor.sql` | Novo signup recebe `'gestor'` por defeito (mínimo privilégio) |
+| `20260612000001_default_role_gestor.sql` | Novo signup recebia `gestor` por defeito (substituído por `leitura` em `20261028120600`) |
 | `20260612000002_secure_registar_movimento.sql` | Adiciona verificação de role dentro da RPC `registar_movimento` |
 | `20260612000003_produto_codigo_seq.sql` | Sequência + RPC `gerar_codigo_produto()` |
 | `20260612000004_movimentos_idx_produto.sql` | Índice `(produto_id, created_at DESC)` |

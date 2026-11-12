@@ -13,14 +13,14 @@
 |---|---|---|---|---|
 | 1 | HTTPS | Cloudflare força HTTPS; HSTS 2 anos com `includeSubDomains; preload` | `public/_headers` | `curl -sI https://app.encivilconstroi.com` mostra `strict-transport-security` |
 | 2 | Senhas com hash | Hash bcrypt do Supabase Auth; política 12+ caracteres com maiúscula, minúscula e dígito (UI e `config.toml` local) | `src/features/auth/lib/politicaSenha.ts`, `supabase/config.toml`; Dashboard → Authentication (manual) | Tentar criar utilizador com senha fraca: é recusada |
-| 3 | MFA | TOTP em `/seguranca/mfa`, desafio depois do login; imposto na BD por `auth_role()` quando `seguranca_config.mfa_obrigatorio` está ligado (começa desligado) | `src/features/auth`, migration `20261008010000` | Secção 2; testes de BD (papel × AAL) |
+| 3 | MFA | TOTP em `/seguranca/mfa`, desafio depois do login; imposto na BD por `auth_role()` e, desde `20261028120300`, também por `pode_aprovar_combustivel()` e `_autor_designado()` (aprovadores de combustível e autores de relatórios de obra) quando `seguranca_config.mfa_obrigatorio` está ligado (começa desligado) | `src/features/auth`, migration `20261008010000` | Secção 2; testes de BD (papel × AAL) |
 | 4 | Rate limit | `privado.rate_limit` + `rate_limit_consumir`. `extrair-fatura` 20/10 min, `ler-foto-abastecimento` 30/10 min, `admin-utilizadores` 60/10 min por utilizador; `pump-status` só após segredo falhado: 30/10 min por IP + 100/10 min global. Falha aberta (com log) se a RPC não existir | `supabase/functions/*`, migration `20261008020000` | Logs da função mostram 429 |
 | 5 | Validação de inputs | Validação de corpo em todas as Edge Functions; política de senha na UI | `supabase/functions/_shared/`, `src/features/auth` | `npm run test:edge` |
 | 6 | Sanitização | `HelpPage` sem `innerHTML`; exportações CSV/Excel neutralizam fórmulas (`=`, `+`, `-`, `@`) | `src/app/lib/exportCsv.ts`, `exportXlsx.ts`, `HelpPage` | Exportar uma observação "=1+1": abre como texto |
 | 7 | SQL injection | Queries parametrizadas (SDK); `EXECUTE` dinâmico só com `format(%I/%L)` | `supabase/tests/seguranca-guardas.test.mjs` | `npm test` |
 | 8 | Migrations | Convenção + deteção de divergência produção × repositório | `supabase/scripts/verificar-migrations.mjs` | Secção 7 |
 | 9 | Rollback | Bloco `-- ROLLBACK` obrigatório nas migrations novas; rollback do site e das funções | fim de cada migration `20261008*`; secção 4 | Teste-guarda de BD |
-| 10 | Controlo de acesso | RLS + `pode_escrever`; **todas** as verificações de papel passam por `auth_role()`; NIF só para admin/gestor/próprio (RPC `colaborador_nif`); INSERT direto em `movimentos_stock` revogado | migrations `20261008000000`, `20261008030000`; `src/features/auth/useRole.ts` | Testes-guarda de BD; `npm test` |
+| 10 | Controlo de acesso | RLS + `pode_escrever`; **todas** as verificações de papel passam por `auth_role()`; NIF só para admin/gestor/próprio (RPC `colaborador_nif`); INSERT direto em `movimentos_stock` revogado; desde o checkup de 2026-10-28: `faltas`, assiduidade e contactos dos colaboradores só para admin, gestor e o próprio (`20261028120100`), `movimentos_stock` sem UPDATE/DELETE/TRUNCATE, `spatial_ref_sys` só de leitura para a app, conta nova nasce `leitura` (`20261028120600`) | migrations `20261008000000`, `20261008030000`; `src/features/auth/useRole.ts` | Testes-guarda de BD; `npm test` |
 | 11 | Expiração de sessão | Inatividade 30 min no browser; em cada `SIGNED_OUT` limpa-se o cache em memória do `useAsync` (`clearAsyncCache`), o `sessionStorage` e, se existir, o cache `supabase-api` do SW (legado: hoje o SW serve o Supabase só pela rede, `NetworkOnly`, e não o enche; também é apagado ao mudar de identidade); filas offline (movimentos e picagens) só enviadas por quem as criou. Timebox no servidor: só no Pro (secção 8) | `src/features/auth` (`limparDadosLocais`), `src/features/movimentos/offlineQueue.ts` | Sair e entrar com outro utilizador: a fila do anterior não é enviada |
 | 12 | Secrets | Pre-commit local + gitleaks no CI (histórico completo, `.gitleaks.toml`); inventário em doc 13 | `.githooks/`, `.github/workflows/ci.yml` | Job "Segurança" do CI |
 | 13 | CORS | Lista de origens: `app.encivilconstroi.com`, `encivil-gestao.pages.dev` (e previews), `localhost:5173`. Origem diferente recebe 403; sem `Origin` (cron, Shelly, servidor) funciona | `supabase/functions/_shared/cors.ts` | `npm run test:edge` |
@@ -201,7 +201,11 @@ Nota sobre dados pessoais: o `audit_log` guarda linhas completas (incluindo dado
 - **Ordem de publicação desta entrega: site → migrations → Edge Functions.** O site novo funciona com a BD antiga; as Edge Functions novas funcionam sem a RPC de rate limit (falham abertas, com log).
 - Aplicação à mão no SQL Editor, por esta ordem: `20261008000000`, `20261008010000`, `20261008020000`, `20261008030000`, `20261008050000`, `20261008060000`, `20261008070000` (não existe `…040000`: os buckets já estavam corretos). Depois regenerar tipos (`npx supabase gen types typescript --local > src/integrations/supabase/types.ts`) e `npm run typecheck`.
 - Colunas novas em `colaboradores` precisam do seu próprio `GRANT SELECT` de coluna (o SELECT global foi revogado por causa do NIF).
-- O bucket `certificados` foi criado à mão no Dashboard (não está nas migrations): confirmar o limite de tamanho e os tipos permitidos em produção.
+- O bucket `certificados` (privado) passou a ser criado pela migration `20261028120700`, com policies só para admin e gestor. Se já existia criado à mão, confirmar antes que não tem policies manuais com outros nomes.
+- **Migrations seguintes (por esta ordem, sempre depois das anteriores):** `20261008080000` (contabilidade, dados laborais por RPC), `20261008090000` (eventos de recuperação), `20261008100000` (obras: concorrência e MFA), `20261020100000` (bomba: fiabilidade), `20261020110000` (armazém: integridade), `20261020120000` (obras: livro e autos), `20261020130000` (picagens: segurança), `20261020140000` (views e sequências), e as nove do checkup de 2026-10-28: `20261028120100` → `120200` → `120300` → `120400` → `120500` → `120600` → `120700` → `120800` → `120900` (detalhe em `docs/auditorias/2026-10-28-checkup-geral.md` §5; aplicar fora do horário de trabalho).
+- **`lock_timeout`:** as migrations `120500`, `120700`, `120800` e `120900` começam por um `lock_timeout` de 5 s: se houver tráfego a segurar o lock, falham depressa em vez de bloquear a produção. Se falharem, repetir noutro momento (são idempotentes). O `CREATE INDEX` da `120900` bloqueia escritas em `movimentos_stock` durante segundos.
+- Antes de aplicar a `120100`, o site novo tem de estar publicado (o site antigo pede `telemovel`/`email`/`notas` e receberia erro 42501).
+- Ao regenerar os tipos, usar o Git Bash: `>` no PowerShell 5.1 grava `types.ts` em UTF-16.
 
 **Detetar divergências.** No SQL Editor: `SELECT version FROM supabase_migrations.schema_migrations ORDER BY 1;` → guardar o resultado num ficheiro (uma versão por linha) → `node supabase/scripts/verificar-migrations.mjs aplicadas.txt`. Mostra o que falta aplicar e o que está só na BD.
 
@@ -216,6 +220,9 @@ Nota sobre dados pessoais: o `audit_log` guarda linhas completas (incluindo dado
 | `20261008050000` seguranca_search_path | por aplicar | — |
 | `20261008060000` seguranca_auditoria | por aplicar | — |
 | `20261008070000` seguranca_mfa_listagem | por aplicar | — |
+| `20261008080000` … `20261008100000` (3 migrations) | por confirmar | — |
+| `20261020100000` … `20261020140000` (5 migrations) | por confirmar | — |
+| `20261028120100` … `20261028120900` (9 migrations do checkup) | por aplicar em 2026-10-29 (confirmar) | — |
 
 As migrations anteriores a `20261008*` não foram comparadas com a produção: correr o script acima e anotar o resultado aqui. A CONFIRMAR pelo utilizador (só ele lê a produção).
 

@@ -78,6 +78,10 @@
 | T-SEC-06 | Sessão expira por inatividade | 1. Login 2. Não interagir por 30 min | Logout automático + toast informativo | P1 |
 | T-SEC-07 | Headers de segurança presentes | 1. Inspecionar resposta HTTP de qualquer página | CSP, X-Frame-Options, HSTS, etc. presentes | P1 |
 | T-SEC-08 | Utilizador não autenticado não lê nenhuma tabela | 1. Chamada à API Supabase sem token (anon) | RLS bloqueia tudo, dados vazios ou 401 | P0 |
+| T-SEC-09 | Privacidade RH | 1. Login como `armazem` ou `leitura` 2. Consultar `faltas`, `resumo_assiduidade_dia` e `colaboradores` (`telemovel`, `email`, `notas`, `nif`) pela API | Faltas e assiduidade só do próprio colaborador; colunas de contacto e NIF recusadas (42501); admin/gestor leem contactos por `colaboradores_contactos()` | P0 |
+| T-SEC-10 | Picagem não forjável | 1. Login como colaborador sem papel de gestão 2. INSERT direto em `picagens` com estado autorizado ou outro colaborador | Recusado ou normalizado para pendente; o reenvio com o mesmo `client_id` não duplica | P0 |
+| T-SEC-11 | Conta nova | 1. Criar utilizador por Gestão de utilizadores | Nasce `leitura` até o admin definir o papel | P1 |
+| T-SEC-12 | Fatura lançada imutável | 1. Lançar uma fatura 2. Tentar alterar linhas ou lançar de novo | Recusado; o stock não duplica | P0 |
 
 ---
 
@@ -90,31 +94,21 @@
 
 ---
 
-## Testes Automatizados (Fase 2)
+## Testes automatizados (estado em 2026-11-12)
 
-### Unit Tests (Vitest)
+Os cenários manuais acima descrevem o MVP original (módulos "Produtos", "Movimentos", "Histórico"; hoje no Armazém, `/armazem/*`). Servem de roteiro de aceitação; a cobertura automática é a seguinte.
 
-```ts
-// utils/stock.test.ts
-describe('calcularNovoStock', () => {
-  it('entrada soma ao stock', () => {
-    expect(calcularNovoStock(100, 50, 'entrada')).toBe(150);
-  });
-  it('saída subtrai do stock', () => {
-    expect(calcularNovoStock(100, 30, 'saida')).toBe(70);
-  });
-  it('lança erro se saída > stock', () => {
-    expect(() => calcularNovoStock(50, 100, 'saida')).toThrow('Stock insuficiente');
-  });
-  it('stock não pode ser negativo', () => {
-    expect(() => calcularNovoStock(0, 1, 'saida')).toThrow();
-  });
-});
-```
+| Suite | Onde | Comando | O que cobre |
+|---|---|---|---|
+| Vitest (frontend), jsdom | `src/__tests__/` (≈210 ficheiros: `features/<módulo>/`, `lib/`, `components/`, `pages/`) | `npm test` ou `npx vitest run src/__tests__/features/frota` | services, hooks, páginas, componentes partilhados (`fundacoes`, `separadoresContagem`, `toasterTema`, `useSombraScroll`…), cabeçalhos de segurança, configuração do cliente Supabase (`supabaseClientConfig`), paginação (`buscarTodas`, `paginacaoServices`), PWA e push |
+| BD em memória (PGlite) | `supabase/tests/*.test.mjs` (37 ficheiros) | `npm test` (corre com o Vitest) ou `npx vitest run supabase/tests/frota.test.mjs` | `pg-harness.mjs` aplica **todas** as migrations por ordem sobre stubs de `auth`/`storage`: papéis, validações, imutabilidade, RLS, teste-guarda do bloco `-- ROLLBACK`, espelho SQL × `MATRIZ_ESCRITA` (`permissoes-espelho`). Um ficheiro por módulo ou lote (ex.: `checkup-*` para as migrations `20261028*`, `obras-*`, `subs-controlo-*`, `bomba`, `abastecimento`, `frota*`, `seguranca-*`, `picagens-insert-rls`) |
+| Scripts | `supabase/scripts/*.test.mjs` | `npm test` | `verificar-migrations`, instalador e verificação do Shelly, validação local de obras |
+| Edge Functions (Deno) | `supabase/functions/**/*_test.ts` (13 ficheiros) | `npm run check:edge && npm run test:edge` | tipos e testes de `_shared` (CORS, segredo, HTML, limite, `pushEndpoint`, validação), `admin-utilizadores`, `extrair-fatura` (linhas), `ler-foto-abastecimento`, `notificar-abastecimento`, `pump-status`, `send-push-frota`. Corre via `npx deno` |
+| Carga e concorrência | `scripts/carga/` | `node scripts/carga/seed.mjs`, `concorrencia.mjs`, `runner.mjs --perfil=leve\|medio\|pesado\|rutura` | **Só contra Supabase local** (`env.mjs` aborta se a API ou a BD não forem `127.0.0.1`/`localhost`). 8 cenários de concorrência (saídas no mesmo artigo, autos, códigos, aprovação dupla de abastecimento, empréstimo duplo, picagem duplicada, fatura lançada 2×); perfis de carga e baseline em `scripts/carga/BASELINE-2026-10-28.md`; instruções em `scripts/carga/README.md` |
 
-### Integration Tests
+**CI** (`.github/workflows/ci.yml`, Node 24): `TypeScript` (typecheck + lint) → `Build` (variáveis fictícias); `Tests` (`npm test` + Deno); `Segurança` (`npm audit --omit=dev --audit-level=high` + gitleaks). Nada corre contra o Supabase real.
+Hooks: pre-commit = scan de segredos + typecheck; pre-push = `npm run build`.
 
-- Criar produto → aparece na lista
-- Registar entrada → stock atualizado
-- Registar saída → stock atualizado; saída > stock bloqueia
-- Relatório diário → contém movimentos do dia
+**Contagens de referência** (2026-10-29, commit `49d5064`): 239 ficheiros e 3707 testes Vitest (frontend + BD) verdes em 3 de 4 corridas completas; numa corrida 2 ficheiros pesados de BD (PGlite) falharam por tempo-limite com a máquina carregada e não voltaram a falhar; 84 testes Deno, 0 falhas. Os números mudam a cada alteração: correr `npm test` para o valor atual.
+
+**Regras:** correção de regra ou de RLS ⇒ teste de BD que falha sem a correção; migration nova ⇒ o seu `*.test.mjs` (um erro SQL numa migration parte a suite toda); correção de comportamento no site ⇒ teste Vitest que falha antes. Dados de teste nunca em produção: `npm run dev` liga à BD real, por isso testar fluxos de escrita só em Supabase local (`npx supabase start`, `[auth.email] enable_signup` ver `scripts/carga/README.md`).

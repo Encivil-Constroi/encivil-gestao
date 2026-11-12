@@ -1,6 +1,6 @@
 # Segurança e Controlo de Acesso — Controle Armazém ENCIVIL
 
-> Última revisão: 2026-10-07 (entrega "Segurança 2026"). Operação, recuperação e incidentes: `docs/22-seguranca-operacao.md`. Auditoria anterior: 2026-06-22. Ver `TASKS/SEGURANÇA/` para o histórico de tarefas e `docs/adrs/ADR-007.md` para a decisão da correção crítica.
+> Última revisão: 2026-11-12 (inclui o checkup de 2026-10-28; entrega "Segurança 2026" em 2026-10-07). Operação, recuperação e incidentes: `docs/22-seguranca-operacao.md`. Auditoria anterior: 2026-06-22. Ver `TASKS/SEGURANÇA/` para o histórico de tarefas e `docs/adrs/ADR-007.md` para a decisão da correção crítica.
 
 ---
 
@@ -184,7 +184,7 @@ deploy saiu da Vercel — ver `docs/09-implantacao.md`):
 
 `script-src 'self'` sem inline nem eval: o script anti-FOUC do tema está em `public/tema-inicial.js`. `style-src` mantém `'unsafe-inline'` (Radix/Recharts).
 
-CSP permite `connect-src` apenas para `self`, `*.supabase.co` (REST/Auth/Realtime) e Sentry — nenhum outro destino de rede é usado pela app.
+CSP permite `connect-src` apenas para `self`, `*.supabase.co` (REST, Auth e WebSocket) e Sentry — nenhum outro destino de rede é usado pela app.
 
 ---
 
@@ -193,7 +193,7 @@ CSP permite `connect-src` apenas para `self`, `*.supabase.co` (REST/Auth/Realtim
 ### O que usar no frontend
 
 ```env
-VITE_SUPABASE_URL=https://wuruhxmbueeyhiqgvlxu.supabase.co
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
@@ -240,11 +240,29 @@ Recomendação: correr `npm audit` periodicamente, idealmente em CI.
 
 ---
 
+## Checkup de 2026-10-28 — o que mudou no acesso
+
+Relatório: `docs/auditorias/2026-10-28-checkup-geral.md`. Migrations `20261028120100` … `120900` (por aplicar até confirmação em `docs/22-seguranca-operacao.md` §7).
+
+| Tema | Regra atual |
+|---|---|
+| Privacidade RH (RGPD) | `faltas` (justificações, dados de saúde, comprovativos) e `resumo_assiduidade_dia`: SELECT só admin, gestor e o próprio colaborador. `telemovel`, `email`, `notas` de `colaboradores`: sem SELECT direto; leitura pela RPC `colaboradores_contactos()` (admin, gestor, o próprio). NIF: RPC `colaborador_nif`. Policies gémeas duplicadas removidas |
+| Picagens | INSERT direto só do próprio colaborador (admin/gestor em nome de outro), sem estado autorizado nem validação forjados; reenvio idempotente por `client_id`; geofence só autoriza com relógio a ≤ 5 min do servidor |
+| MFA e combustível | `pode_aprovar_combustivel()` e `_autor_designado()` exigem MFA quando o interruptor está ligado (só morde em admin/gestor) |
+| Combustível | Sem DELETE direto em pedidos pendentes; alterações a `comb_abastecimentos` no `audit_log` |
+| Faturas | Fatura `LANCADA` imutável; lançamento serializado |
+| Stock | `movimentos_stock` sem UPDATE/DELETE/TRUNCATE para a API; `produtos` sem escrita direta de `stock_atual`/`codigo` |
+| Contas | Conta nova nasce `leitura`; `promover_role`, `contabilidade_mapa_assiduidade` e `custos_materiais_por_obra` sem EXECUTE para `anon`; `spatial_ref_sys` (PostGIS) só de leitura para a app; `anon` sem SELECT em `colaboradores` |
+| Push e ficheiros | `push_subscriptions.endpoint` só de serviços de push conhecidos (BD e `_shared/pushEndpoint.ts`); subscrição por RPC `registar_subscricao_push`; bucket privado `certificados` só admin/gestor; push removido do dispositivo no logout |
+| Edge Functions | `verify_jwt` correto nas de push/resumo; `extrair-fatura` valida intervalos e insere antes de apagar |
+| Desempenho das policies | Funções de sessão avaliadas uma vez por consulta (`(SELECT …)`), sem mudar o resultado |
+
+
 ## Pendente (requer Supabase Dashboard ou ação manual)
 
 - [ ] Confirmar "Allow new users to sign up" desativado (Authentication -> Settings)
 - [ ] Política de senha no Dashboard igual à da UI (12 + maiúscula/minúscula/dígito); `secure_password_change` ligado; MFA TOTP ativado
-- [ ] Aplicar as 6 migrations `20261008*` (ordem em `docs/22-seguranca-operacao.md` secção 7) e ligar `mfa_obrigatorio` depois de admins/gestores registarem o MFA
+- [ ] Aplicar as migrations `20261008*`, `20261020*` e `20261028*` (ordem e estado em `docs/22-seguranca-operacao.md` secção 7; confirmar com `supabase/scripts/verificar-migrations.mjs`) e ligar `mfa_obrigatorio` depois de admins/gestores registarem o MFA
 - [ ] Secrets do GitHub `SUPABASE_DB_URL` e `BACKUP_AGE_PUBLIC_KEY` (backup noturno)
 - [ ] Só no plano Pro: senhas vazadas, timebox/inatividade de sessão no servidor, PITR
 

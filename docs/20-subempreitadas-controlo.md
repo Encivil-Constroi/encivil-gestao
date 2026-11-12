@@ -33,3 +33,11 @@ Certidão da Segurança Social, certidão das Finanças (AT), seguro de acidente
 
 ## Testes
 `supabase/tests/subs-controlo-a.test.mjs`, `subs-controlo-b.test.mjs` (Postgres em memória) e `src/__tests__/features/obras/`.
+
+## Estado atual (2026-11-12)
+
+- Rotas: `/obras/subempreitadas` (painel), `/obras/subempreitada/…` e `/obras/auto/…` (ver `docs/19-obras.md`); criar e editar subempreitadas e autos passam por `SubWriteGuard`.
+- Escrita: `pode_escrever('subempreitadas')` = admin, gestor, medições; aprovação acima da alçada só admin (regra 5, no servidor).
+- `20261008100000_obras_concorrencia_mfa.sql` serializa alterações às linhas com a submissão do auto; `20261020120000` torna única a numeração de autos (RPC `criar_auto_rpc`) e substitui as linhas do auto numa só transação.
+- Teste de concorrência real (`scripts/carga/concorrencia.mjs`, cenário `autos-numeracao`): 50 autos em simultâneo, números 1..50 sem colisão.
+- `features/subempreiteiros` e `features/autos` reexportam `features/obras/legacy/`; continuam em uso.
