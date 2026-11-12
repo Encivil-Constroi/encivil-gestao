@@ -20,9 +20,10 @@ projeto prevalecem sobre as skills.
 
 1. **Ler `CLAUDE.md`** — stack, arquitetura, padrões obrigatórios, regras "nunca fazer".
 2. **Ler `docs/00-source-of-truth.md`** — a verdade principal do produto.
-3. **Ler a SPEC do módulo** que vai alterar, se existir (em `docs/specs/SPEC-*.md`
-   — cobrem os módulos originais de armazém; módulos mais recentes não têm SPEC
-   dedicada, ver `docs/12-plano-v3.md`).
+3. **Ler a doc do módulo** que vai alterar (tabela "Módulos" do `CLAUDE.md`:
+   `docs/17-armazem.md`, `18-frota.md`, `19-obras.md`, `20-subempreitadas-controlo.md`,
+   `15-abastecimento-v2.md`; RH e restantes em `docs/12-plano-v3.md`). As
+   `docs/specs/SPEC-*.md` cobrem os módulos originais de armazém.
 4. **Ler `docs/02-regras-de-negocio.md`** se a tarefa envolve stock ou movimentos.
 5. **Se a tarefa é de expansão ERP (RH, picagens, alertas, faturas, custeio):** ler `docs/12-plano-v3.md` — contém schema SQL completo, ficheiros a criar e critérios de conclusão para cada fase.
 6. Histórico de tarefas anteriores (todas concluídas) em `docs/archive/` — não é o backlog ativo.
@@ -35,7 +36,11 @@ projeto prevalecem sobre as skills.
 
 - Fazer alterações pequenas e isoladas — uma funcionalidade por vez
 - Manter separação entre UI (`app/pages/`, `app/components/`) e lógica de negócio (`features/*/services/`)
-- Usar funções puras em `utils/` para cálculos (ex: `calcularNovoStock`)
+- Usar funções puras em `lib/` do módulo ou em `src/app/lib` para cálculos (ex.: `calcStatus` em `stockUtils.ts`)
+- Dados remotos sempre por `useAsync`/`useMutation` (`src/app/lib`), nunca `useEffect`+`useState` manual
+- Listas/exportações que precisam de todas as linhas: `buscarTodas` (`src/app/lib/buscarTodas.ts`) — o PostgREST corta em 1000 sem erro
+- Páginas novas com os componentes partilhados de `src/app/components`: `PageHeader` (+ `LARGURA_PAGINA`/`LARGURA_FORMULARIO`),
+  `SeparadoresNav`, `FiltroChips`, `CampoSelect`, `EmptyState`, `Skeletons`, `ConfirmDialog` (detalhe em `CLAUDE.md` › Identidade visual)
 - Preservar todos os registos de `movimentos_stock` — nunca apagar
 - Validar stock antes de registar saída (bloquear se insuficiente)
 - Usar timezone `Europe/Lisbon` em todas as datas
@@ -55,6 +60,9 @@ projeto prevalecem sobre as skills.
 - ❌ Não alterar a estrutura da base de dados sem criar uma migration SQL, com `GRANT` explícito (a exposição automática de novas tabelas está desligada — ver `CLAUDE.md`). Colunas novas em `colaboradores` precisam de `GRANT SELECT (coluna)` próprio; migrations novas terminam com bloco `-- ROLLBACK`; ordem de publicação: site → migrations → Edge Functions (`docs/22-seguranca-operacao.md`)
 - ❌ Não fazer `UPDATE profiles SET role = ...` direto — está bloqueado por GRANT a nível de coluna; usar sempre a RPC `promover_role()`
 - ❌ Não usar `as any` para contornar tipos do Supabase — filtros ficam inline, nunca em helpers genéricos
+- ❌ Não criar ou alterar dados com `npm run dev`: liga à BD de **produção**. Para testar com dados usar a stack local
+  (`npx supabase start` + `scripts/carga/`); em dev, uma env Supabase preenchida mas inválida faz `config.ts` lançar erro de propósito
+- ❌ Não aplicar migrations nem publicar Edge Functions em produção — entrega-se o ficheiro e a ordem; o utilizador aplica
 - ❌ Não confiar só no frontend (`RoleGuard`, esconder botões) para restringir acesso — a defesa real é RLS/GRANT na DB; toda nova funcionalidade sensível precisa de policy ou RPC com verificação de papel no servidor (`public.pode_escrever()`/`public.auth_role()`)
 
 ---
@@ -76,6 +84,8 @@ produtos.stock_atual: NUNCA editar diretamente
 
 ```
 docs/
+  README.md               ← Índice de toda a pasta (atual/histórico/obsoleto)
+  PASSAGEM-DE-PROJETO.md  ← Guia curto para quem continua o projeto
   00-source-of-truth.md   ← Ler sempre primeiro
   01-requisitos-funcionais.md
   02-regras-de-negocio.md ← Ler para tarefas de stock/movimentos
@@ -85,7 +95,10 @@ docs/
   06-ux-ui.md a 10-roadmap.md
   12-plano-v3.md          ← Plano faseado da expansão ERP (RH, alertas, faturas, custeio…)
   13-infraestrutura-e-contas.md ← Contas, segredos, assinaturas
-  plano-seguranca-desempenho.md ← Plano de correções em curso
+  15..21                  ← Abastecimento, Armazém, Frota, Obras, Subempreitadas, bomba Shelly (tabela "Módulos" do CLAUDE.md)
+  22-seguranca-operacao.md ← Backups, MFA, recuperação, incidentes
+  auditorias/             ← Checkups; o último é 2026-10-28-checkup-geral.md
+  plano-seguranca-desempenho.md ← Plano de correções (estado no próprio ficheiro)
   specs/
     SPEC-AUTH.md
     SPEC-DASHBOARD.md
@@ -94,7 +107,8 @@ docs/
     SPEC-HISTORICO.md
     SPEC-RELATORIOS.md
     SPEC-CONFIGURACOES.md
-    (módulos mais recentes não têm SPEC dedicada — ver docs/12-plano-v3.md)
+    SPEC-MOBILE.md, SPEC-PWA.md
+    (módulos mais recentes têm doc própria 15–20 em vez de SPEC)
   adrs/
     ADR-001.md a ADR-010.md
   archive/                 ← Histórico superado (backlog inicial TASKS/, brief original)
@@ -118,9 +132,13 @@ docs/
 ### Testes executados
 - T-MOV-03: saída maior que stock bloqueada ✅
 - T-MOV-01: entrada aumenta stock ✅
+- npm run typecheck (0 erros) · npm run lint · npm test · npm run build
 
 ### Riscos conhecidos
 - Nenhum identificado para esta alteração
+
+### Passos manuais para o utilizador
+- Ex.: aplicar no SQL Editor, por esta ordem: 2026…_x.sql; depois regenerar types.ts
 ```
 
 ---
@@ -137,7 +155,7 @@ throw new Error('Stock insuficiente. Disponível: ' + stockAtual + ' ' + unidade
 // Tipos: sempre explícitos
 function registarMovimento(dados: DadosMovimento): Promise<Movimento> {}
 
-// Queries Supabase: em integrations/supabase/queries/
+// Queries Supabase: em src/features/<módulo>/services/ (constante SELECT no topo, filtros inline)
 // Nunca SQL inline em componentes
 ```
 

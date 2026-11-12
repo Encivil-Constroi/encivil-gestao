@@ -24,13 +24,14 @@ URL: https://app.encivilconstroi.com (e https://encivil-gestao.pages.dev). Remot
 ## Estrutura
 ```
 src/app/            App.tsx, routes.tsx (lazy() por rota, ADR-010), types.ts, layouts/MainLayout.tsx
-  pages/            ecrãs transversais (Dashboard, Reports, Settings, Auditoria, Backup…) e pages/armazem/*
-  components/       UI partilhada (Sidebar, Header, StatCard, FotoInput…) e components/ui/ (shadcn)
-  lib/              useAsync, useMutation, stockUtils, format, exportCsv/Json/Xlsx, rpcSemTipos, sentry, push…
+  pages/            ecrãs transversais (Dashboard, Reports, Settings, Auditoria, Backup…), pages/armazem/*, pages/inicio/* (início por cargo)
+  components/       UI partilhada (PageHeader, SeparadoresNav, FiltroChips, CampoSelect, EmptyState, Sidebar…) e ui/ (shadcn)
+  lib/              useAsync, useMutation, buscarTodas, stockUtils, format, dataLisboa, exportCsv/Json/Xlsx, rpcSemTipos…
 src/features/<m>/   um módulo por domínio, tipicamente components/ hooks/ services/ lib/ (+ db.ts, index.ts)
-src/integrations/supabase/  client.ts + types.ts (GERADO, não editar à mão)
-src/__tests__/      Vitest (features/<m>/, lib/)      src/sw.ts   service worker
-supabase/migrations/  SQL (≈70)    supabase/functions/  Edge Functions    supabase/tests/  testes de BD (PGlite)
+src/integrations/supabase/  client.ts, config.ts (escolha de URL/chave) + types.ts (GERADO, não editar à mão)
+src/__tests__/      Vitest (features/<m>/, lib/, components/)      src/sw.ts   service worker
+supabase/migrations/  SQL (101 em 2026-11-12)    supabase/functions/  Edge Functions (+ _shared/)    supabase/tests/  BD (PGlite)
+scripts/carga/      seed, carga e concorrência só contra Supabase LOCAL (README próprio)    scripts/backup/
 docs/               specs, ADRs, planos, docs por módulo      public/_headers  CSP (Cloudflare)
 ```
 Módulos em `src/features`: alertas, auth, autos, backup, colaboradores, combustivel, configuracoes, contabilidade,
@@ -51,7 +52,8 @@ subempreitadas/autos estão em `features/obras`, mas `features/subempreiteiros|a
 | Abastecimento (pedidos, histórico, bomba Polo 2) | `/abastecimento` | `docs/15-abastecimento-v2.md`, `docs/16-jev-gateway.md` |
 | RH: colaboradores, picagens, EPIs, formações, segurança, alertas | `/colaboradores`, `/rh`, `/picagens`, `/epis`, `/alertas` | `docs/12-plano-v3.md` |
 | Faturas, contabilidade, backup, auditoria, utilizadores, definições | `/faturas`, `/exportacao-contabilidade`, `/backup`, `/auditoria`, `/gestao-utilizadores`, `/configuracoes` | `docs/12-plano-v3.md` |
-Contas, segredos, titularidade: `docs/13-infraestrutura-e-contas.md`. Segurança/desempenho em curso:
+Índice de toda a pasta `docs/` (atual/histórico/obsoleto): `docs/README.md`. Passagem a um novo dono: `docs/PASSAGEM-DE-PROJETO.md`.
+Último checkup (segurança, bugs, carga): `docs/auditorias/2026-10-28-checkup-geral.md`. Contas, segredos, titularidade: `docs/13-infraestrutura-e-contas.md`. Segurança/desempenho em curso:
 `docs/plano-seguranca-desempenho.md`. Decisões: `docs/adrs/ADR-001..010`. Planos feitos: `docs/plans/`. Specs: `docs/specs/`
 (armazém original) e `docs/superpowers/specs/` (desenhos recentes, ex.: obras) — em conflito vale a mais recente.
 
@@ -99,12 +101,21 @@ const { mutate: salvar, loading } = useMutation(salvarFoo, 'Erro ao guardar', { 
 - Erros mostrados ao utilizador: mensagem em pt-PT (`parseSupabaseError`). Exportações: `exportCsv/Json/Xlsx`.
 - Comentários só para o **porquê** não óbvio, nunca o quê. Alterações pequenas, uma funcionalidade de cada vez, código no estilo vizinho.
 - Offline: fila em `src/features/movimentos/offlineQueue.ts` + `hooks/useOfflineQueue.ts`; fotos reduzidas por `reduzirFoto`.
+- **Listas sem corte**: o PostgREST corta cada resposta em 1000 linhas, sem erro. Listas, exportações e totais que precisam de tudo
+  usam `buscarTodas((de, ate) => query.range(de, ate))` (`src/app/lib/buscarTodas.ts`), com ordem determinística (`id` a desempatar).
+- Datas: dia de hoje/limites do dia em Lisboa com `hojeLisboa`/`limitesDiaLisboa` (`dataLisboa.ts`); texto com `fmtDataExtensa`,
+  `fmtMesAno`, `fmtQuantidade` (`format.ts`) — nunca `capitalize` do Tailwind em datas.
 
 ## Identidade visual
 - Fonte dos tokens: `src/styles/theme.css`; guia: `docs/06-ux-ui.md`. Base neutra, preto oficial `#04090F`, azul de marca `#001C7D`, Geist/Geist Mono locais em `public/fonts/`.
 - Usar pares semânticos (`bg-primary text-primary-foreground`, `bg-warning text-warning-foreground`); primary inverte no escuro. Nunca fixar texto branco sobre primary/success/warning/destructive.
 - Sidebar ativa: `bg-sidebar-primary text-sidebar-primary-foreground`. Informação usa `info`; estados mantêm cor e texto/ícone. Campos usam `input`/`input-background`, foco `ring`.
 - Gráficos de ecrã usam `--chart-1..5`, `--chart-grid` e `--chart-text`. Impressão mantém papel branco e tinta escura explícitos. Raio base 8px, sombras neutras e redução de movimento.
+- **Páginas novas usam os componentes partilhados** (`src/app/components`, polimento de 2026-11 — `docs/superpowers/plans/2026-11-02-design-polimento.md`):
+  `PageHeader` (título, descrição, ações, `voltar`; sem ícone no título) com `LARGURA_PAGINA`/`LARGURA_FORMULARIO` (as duas únicas larguras);
+  `SeparadoresNav` (separadores por rota, com `contagem`); `FiltroChips` (único estilo de filtros e sub-vistas); `CampoSelect` + `CLASSE_CAMPO`
+  (select nativo); `EmptyState`, `Skeletons`, `ConfirmDialog`; `useSombraScroll`/`SombrasScroll` em scroll horizontal; toasts pelo `ToasterTema`.
+  Alvos de toque ≥ 40px no telemóvel (as variantes de `ui/button.tsx` já o garantem).
 
 ## Supabase — regras críticas
 - Migrations: `supabase/migrations/YYYYMMDDHHMMSS_nome.sql`, cronologia estritamente crescente (a última é a de maior timestamp).
@@ -120,17 +131,24 @@ const { mutate: salvar, loading } = useMutation(salvarFoo, 'Erro ao guardar', { 
   Entrega o ficheiro, diz a ordem e o que testar. Depois: `npx supabase gen types typescript --local > src/integrations/supabase/types.ts`
   e `npm run typecheck`. `types.ts` é gerado — nunca editar à mão.
 - **`npm run dev` liga à BD de PRODUÇÃO** (`.env.local` e o fallback de `client.ts` apontam para o projeto real): dados e
-  utilizadores reais. Não cries, alteres nem apagues registos para "testar"; só leitura, ou pede uma conta/ambiente de teste.
-- Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_*`), `VITE_SENTRY_DSN` (ver `.env.example`; `.env*` não se commita).
+  utilizadores reais. Não cries, alteres nem apagues registos para "testar"; só leitura, ou usa o ambiente local abaixo.
+- Guarda de dev em `config.ts` (`selecionarConfiguracaoSupabase`): aceita `https://<projeto>.supabase.co` ou, só em dev,
+  `http(s)://localhost|127.0.0.1:<porta>`, sempre com chave `sb_publishable_*`. Em dev, env **preenchida mas inválida lança erro**
+  (nunca cai em produção às escondidas); env vazia usa o fallback de produção (com `console.warn`).
+- **Ambiente local seguro**: `npx supabase start` (Docker) e `.env` com `http://127.0.0.1:54321` + chave publicável local; dados
+  fictícios e testes de carga/concorrência em `scripts/carga/` (`env.mjs` aborta se o alvo não for local; ver o README da pasta).
+- Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_*`), `VITE_SENTRY_DSN`, `VITE_VAPID_PUBLIC_KEY` (Web Push) (ver `.env.example`; `.env*` não se commita).
   `client.ts` tem credenciais públicas de produção como fallback. `sb_secret_*` e a chave secreta de serviço do Supabase: **nunca** no frontend nem em `VITE_`
   (o pre-commit bloqueia). Edge Functions leem segredos com `Deno.env.get()`.
 - Edge Functions (`supabase/functions/`): admin-utilizadores, enviar-resumo-alertas, extrair-fatura, ler-foto-abastecimento,
-  notificar-abastecimento, pump-status, send-push-frota.
+  notificar-abastecimento, pump-status, send-push-frota; código comum em `_shared/`. `verify_jwt` por função em
+  `supabase/config.toml` (as chamadas por pg_cron ou segredo próprio precisam de `verify_jwt = false`).
 
 ## Comandos
 ```sh
 npm run dev           # Vite HMR (porta por defeito 5173)
 npm run typecheck     # tsc --noEmit — tem de dar 0 erros
+npm run lint          # eslint src --max-warnings=0 (corre no CI)
 npm test              # Vitest: src/__tests__ (jsdom) + supabase/tests/*.test.mjs (Postgres real em memória, PGlite)
 npm run build         # bundle de produção
 npm run check:edge && npm run test:edge   # Edge Functions (Deno via npx)
@@ -140,7 +158,7 @@ npx vitest run supabase/tests/frota.test.mjs       # um ficheiro de BD (~4 s; co
 Testes de BD: `supabase/tests/pg-harness.mjs` aplica **todas** as migrations por ordem sobre stubs de `auth`/`storage`; um
 novo módulo SQL traz o seu `*.test.mjs` (papéis, validações, imutabilidade, RLS); um erro SQL numa migration nova parte a
 suite toda. CI (`.github/workflows/ci.yml`, Node 24; o build usa variáveis fictícias, nada corre contra o Supabase real):
-jobs typecheck → build, e testes + edge em paralelo. Hooks git (`core.hooksPath=.githooks`): pre-commit = scan de secrets + typecheck;
+jobs typecheck+lint → build; testes + edge; segurança (`npm audit --omit=dev`, gitleaks). Outros workflows: `backup-bd.yml`, `pr-review.yml`. Hooks git (`core.hooksPath=.githooks`): pre-commit = scan de secrets + typecheck;
 pre-push = `npm run build`. Nunca `--no-verify`.
 
 ## Verificar antes de dizer "feito"

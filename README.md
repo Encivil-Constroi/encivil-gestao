@@ -22,6 +22,7 @@ com stock em tempo real, histórico auditável e alertas automáticos.
 | `armazem` | Registar em armazém, ferramentas e combustível; sem gestão |
 | `medicoes` | Registar em subempreitadas (contratos/autos); sem gestão |
 | `mecanico` | Só a Frota: manutenções, checklists, prazos e condutores das viaturas |
+| `motorista` | Só pede abastecimentos e vê os seus pedidos (aprovar é de `comb_aprovadores`) |
 | `leitura` | Só consulta, em todos os módulos |
 
 O papel é definido na tabela `profiles` e aplicado via Row Level Security —
@@ -35,7 +36,8 @@ Postgres é a fonte real). Ver `docs/05-seguranca-e-acesso.md`.
 | Componente | Tecnologia |
 |---|---|
 | Frontend | React 18 + TypeScript (strict) + Vite 6 |
-| Estilização | Tailwind CSS v4 |
+| Estilização | Tailwind CSS v4, shadcn/ui + Radix; tokens em `src/styles/theme.css` |
+| Gráficos e mapas | Recharts, Leaflet |
 | Roteamento | React Router v7, `lazy()` por rota (ver ADR-010) |
 | PWA | vite-plugin-pwa / Workbox — instalável em iOS e Android, push notifications |
 | Backend | Supabase (PostgreSQL + Auth + Storage + RLS + Edge Functions) |
@@ -48,12 +50,13 @@ Postgres é a fonte real). Ver `docs/05-seguranca-e-acesso.md`.
 Armazém e stock · Obras (painel, progresso, equipa, recursos e relatórios diários;
 ver `docs/19-obras.md`) · Subempreiteiros (contratos, ocorrências e autos de medição
 integrados em Obras) · Ferramentas (empréstimos + termo de responsabilidade) ·
-Combustível (abastecimentos por QR, viaturas, bomba Polo 2 automatizada) ·
+Abastecimento (pedidos por QR com aprovação, histórico, bomba Polo 2 automatizada) ·
 Frota (manutenção, checklists, prazos legais e condutor responsável por viatura) ·
 Colaboradores, horários, faltas, picagem de ponto (GPS/geofence), EPIs e
 formações · Faturas de fornecedor (classificação por IA) · Custos
-consolidados e livro de obra digital · Alertas de manutenção · Dashboard e
-relatórios · Backup manual (exportação por tabela).
+consolidados e livro de obra digital · Exportação para a contabilidade ·
+Alertas · Início por cargo, dashboard e relatórios · Auditoria · Gestão de
+utilizadores (MFA) · Backup manual (exportação por tabela).
 
 Lista completa e estado de cada fase: `docs/10-roadmap.md` e `docs/12-plano-v3.md`.
 
@@ -85,14 +88,23 @@ cp .env.example .env.local
 ### Executar em desenvolvimento
 
 ```bash
-npm run dev
+npm run dev          # http://localhost:5173
 ```
+
+> ⚠️ Com o `.env.local` de produção (ou sem `.env.local`), `npm run dev` liga à
+> **base de dados de produção**: só para consulta. Para testar com dados, usar
+> o Supabase local (`npx supabase start`, precisa de Docker) com
+> `VITE_SUPABASE_URL=http://127.0.0.1:54321` e a chave publicável local; dados
+> fictícios e testes de carga em `scripts/carga/` (ver o `README.md` da pasta).
+> Em dev, uma configuração preenchida mas inválida faz a app **falhar com erro**
+> em vez de cair em produção (`src/integrations/supabase/config.ts`).
 
 ### Comandos úteis
 
 ```bash
 npm run typecheck    # TypeScript — deve dar 0 erros
-npm test             # Vitest (unitários + integração, sem Supabase)
+npm run lint         # ESLint sem avisos (corre no CI)
+npm test             # Vitest: frontend (jsdom) + BD em Postgres em memória (PGlite); sem Supabase real
 npm run build        # bundle de produção
 npm run check:edge    # deno check nas Edge Functions
 npm run test:edge     # testes Deno das Edge Functions
@@ -105,6 +117,8 @@ npm run test:edge     # testes Deno das Edge Functions
 ```env
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+VITE_SENTRY_DSN=            # opcional; vazio desativa o Sentry
+VITE_VAPID_PUBLIC_KEY=      # chave pública Web Push (no Cloudflare Pages)
 ```
 
 > **Regra inegociável:** nunca usar a chave `sb_secret_...` no frontend.
@@ -115,20 +129,22 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
 ## Estrutura do Código
 
-Ver a secção "Arquitetura" em `CLAUDE.md` para a árvore completa e
+Ver a secção "Estrutura" em `CLAUDE.md` para a árvore completa e
 responsabilidades por camada. Resumo:
 
 ```
 src/
-├── app/          # Páginas, rotas, layout, hooks base (useAsync/useMutation), tipos partilhados
-├── features/     # Lógica de negócio por módulo — um módulo nunca importa de outro
-├── integrations/supabase/   # Cliente Supabase + tipos gerados (não editar types.ts à mão)
+├── app/          # Páginas, rotas, layout, componentes partilhados, hooks base (useAsync/useMutation, buscarTodas)
+├── features/     # Lógica de negócio por módulo — sem novas importações entre módulos (exceções em CLAUDE.md)
+├── integrations/supabase/   # Cliente, config.ts (guarda de dev) + tipos gerados (não editar types.ts à mão)
+├── __tests__/    # Testes Vitest do frontend
 └── build/        # Configuração de build testável (ex.: divisão de chunks do Vite)
 supabase/
-├── migrations/   # Todas as migrations SQL, em ordem cronológica
-├── functions/    # Edge Functions (Deno)
-└── tests/        # Testes de banco num Postgres real em memória (PGlite)
-docs/             # Especificação, arquitetura, segurança, ADRs — ver "Documentação" abaixo
+├── migrations/   # Todas as migrations SQL, em ordem cronológica (101 em 2026-11-12)
+├── functions/    # Edge Functions (Deno) + _shared/
+└── tests/        # Testes de BD num Postgres real em memória (PGlite)
+scripts/carga/    # Seed, carga e concorrência — só contra Supabase local
+docs/             # Ver docs/README.md (índice)
 ```
 
 ---
@@ -158,6 +174,9 @@ Resumo — ver `docs/05-seguranca-e-acesso.md` para o detalhe completo:
 - Headers de segurança em `public/_headers` (convenção Cloudflare Pages): CSP, HSTS, X-Frame-Options, etc.
 - Pre-commit hook bloqueia commits com padrões de segredo (chave secreta, papel de serviço, JWTs longos) e corre o typecheck
 - Pre-push hook corre `npm run build` antes de deixar o push sair
+- CI: `npm audit` e gitleaks (segredos no histórico); backup da BD por workflow (`backup-bd.yml`)
+- MFA TOTP (obrigatório para admin/gestor quando ligado) e logout automático após 30 min de inatividade
+- Operação, backups, recuperação e incidentes: `docs/22-seguranca-operacao.md`; reportar falhas: `SECURITY.md`
 
 Inventário de contas, segredos e assinaturas: `docs/13-infraestrutura-e-contas.md`.
 
@@ -165,33 +184,19 @@ Inventário de contas, segredos e assinaturas: `docs/13-infraestrutura-e-contas.
 
 ## Documentação
 
-```
-docs/
-  00-source-of-truth.md       ← Ler sempre primeiro
-  01-requisitos-funcionais.md
-  02-regras-de-negocio.md
-  03-modelo-de-dados.md
-  04-arquitetura.md
-  05-seguranca-e-acesso.md     ← Modelo de papéis, RLS, RPCs, audit log
-  06-ux-ui.md
-  07-relatorios.md
-  08-testes.md
-  09-implantacao.md            ← Deploy, variáveis de ambiente, checklist de produção
-  10-roadmap.md
-  11-transferencia-titularidade.md  ← Migração para contas da empresa
-  12-plano-v3.md                ← Plano faseado da expansão ERP
-  13-infraestrutura-e-contas.md ← Contas, segredos, assinaturas — para a Direção
-  14-referencia-flutterflow.md  ← O que aproveitar do protótipo FlutterFlow
-  15-abastecimento-v2.md        ← Pedido com conta, aprovação do CEO, bomba, relatório
-  16-jev-gateway.md             ← JEV no desenvolvimento (Claude Code): uso, riscos, medição
-  17-armazem.md                 ← Módulo Armazém: entradas/saídas, ferramentas, obras, fotos
-  18-frota.md                   ← Módulo Frota: viaturas e máquinas, entregas, manutenção
-  19-obras.md                   ← Módulo Obras: ficha, relatórios, subempreitadas e publicação
-  plano-seguranca-desempenho.md ← Plano de correções em curso
-  specs/SPEC-*.md               ← Spec funcional por módulo
-  adrs/ADR-*.md                 ← Decisões arquiteturais
-  archive/                      ← Material histórico superado (backlog inicial, brief original)
-```
+Índice completo, com o estado de cada ficheiro (atual/histórico/obsoleto):
+**`docs/README.md`**. Para começar:
+
+| Documento | Para quê |
+|---|---|
+| `docs/PASSAGEM-DE-PROJETO.md` | Guia curto para quem continua o projeto |
+| `docs/00-source-of-truth.md`, `docs/02-regras-de-negocio.md` | Verdade do produto e regras de stock |
+| `docs/17-armazem.md` … `docs/20-subempreitadas-controlo.md`, `docs/15-abastecimento-v2.md` | Um doc por módulo |
+| `docs/05-seguranca-e-acesso.md`, `docs/22-seguranca-operacao.md` | Papéis/RLS; backups, MFA, incidentes |
+| `docs/09-implantacao.md` | Deploy e checklist de produção |
+| `docs/13-infraestrutura-e-contas.md` | Contas, segredos, assinaturas |
+| `docs/auditorias/2026-10-28-checkup-geral.md` | Último checkup (segurança, bugs, carga) e pendentes |
+| `docs/adrs/` | Decisões arquiteturais |
 
 Ler `CLAUDE.md` (regras obrigatórias de código) e `AGENTS.md` antes de
 contribuir com IA.

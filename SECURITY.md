@@ -14,4 +14,13 @@ Não abra issues públicas no GitHub para vulnerabilidades.
 
 ## O que fazemos
 
-Operação, recuperação e resposta a incidentes: `docs/22-seguranca-operacao.md`.
+- A segurança real está na base de dados: RLS em todas as tabelas, `GRANT` explícitos e RPCs
+  `SECURITY DEFINER` com verificação de papel no servidor (`public.pode_escrever()`, `public.auth_role()`).
+- MFA TOTP (obrigatório para admin/gestor quando ligado em `seguranca_config`) e logout após 30 min de inatividade.
+- Segredos só no servidor (Edge Functions, `Deno.env.get()`); no site só a chave pública `sb_publishable_*`.
+  O pre-commit bloqueia padrões de segredo; o CI corre `npm audit` e gitleaks sobre o histórico.
+- Cabeçalhos de segurança (CSP, HSTS…) em `public/_headers`.
+- Último checkup de segurança: `docs/auditorias/2026-10-28-checkup-geral.md` (2026-10-28/29).
+
+Modelo de acesso: `docs/05-seguranca-e-acesso.md`. Operação, backups, recuperação e resposta a
+incidentes: `docs/22-seguranca-operacao.md`.
