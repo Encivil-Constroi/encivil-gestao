@@ -213,18 +213,18 @@ Nota sobre dados pessoais: o `audit_log` guarda linhas completas (incluindo dado
 
 | Versão | Aplicada em | Por quem |
 |---|---|---|
-| `20261008000000` seguranca_auth_role_unificado | por aplicar | — |
-| `20261008010000` seguranca_mfa | por aplicar | — |
-| `20261008020000` seguranca_eventos_rate_limit | por aplicar | — |
-| `20261008030000` seguranca_colaboradores_nif | por aplicar | — |
-| `20261008050000` seguranca_search_path | por aplicar | — |
-| `20261008060000` seguranca_auditoria | por aplicar | — |
-| `20261008070000` seguranca_mfa_listagem | por aplicar | — |
-| `20261008080000` … `20261008100000` (3 migrations) | por confirmar | — |
-| `20261020100000` … `20261020140000` (5 migrations) | por confirmar | — |
-| `20261028120100` … `20261028120900` (9 migrations do checkup) | por aplicar em 2026-10-29 (confirmar) | — |
+| `20261008000000` seguranca_auth_role_unificado | aplicada | objetos presentes nos tipos gerados de produção em 2026-11 |
+| `20261008010000` seguranca_mfa | aplicada | objetos presentes nos tipos gerados de produção em 2026-11 |
+| `20261008020000` seguranca_eventos_rate_limit | aplicada | objetos presentes nos tipos gerados de produção em 2026-11 |
+| `20261008030000` seguranca_colaboradores_nif | aplicada | objetos presentes nos tipos gerados de produção em 2026-11 |
+| `20261008050000` seguranca_search_path | aplicada (provável) | só altera funções/triggers, invisível nos tipos; as migrations seguintes, aplicadas, vieram depois — confirmar com o script acima |
+| `20261008060000` seguranca_auditoria | aplicada (provável) | só altera funções/triggers, invisível nos tipos; as migrations seguintes, aplicadas, vieram depois — confirmar com o script acima |
+| `20261008070000` seguranca_mfa_listagem | aplicada | objetos presentes nos tipos gerados de produção em 2026-11 |
+| `20261008080000` … `20261008100000` (3 migrations) | aplicadas | objetos presentes nos tipos gerados de produção em 2026-11 |
+| `20261020100000` … `20261020140000` (5 migrations) | aplicadas | idem; tipos regenerados no commit c39e82b |
+| `20261028120100` … `20261028120900` (9 migrations do checkup) | aplicadas (2026-10-29) | sondagem anónima em produção: RPCs novas existem e recusam anon; Edge Functions publicadas |
 
-As migrations anteriores a `20261008*` não foram comparadas com a produção: correr o script acima e anotar o resultado aqui. A CONFIRMAR pelo utilizador (só ele lê a produção).
+As migrations anteriores a `20261008*` não foram comparadas uma a uma com a produção (o site em produção depende delas e funciona). Para confirmar: correr o script acima no SQL Editor.
 
 ---
 

@@ -185,7 +185,7 @@ Estado: código e documentação concluídos no repositório; **por publicar/apl
 | 2 — Desempenho | em curso: 2.1 e 2.2 feitos; faltam 2.2b, 2.3 |
 | 3 — Processo | aguarda login do CLI |
 | 4 — Segurança 2026 | código e docs prontos; aguarda publicação e passos manuais (ver acima; estado das migrations em `docs/22-seguranca-operacao.md` §7) |
-| 5 — Checkup 2026-10-28 | código, testes e docs prontos (9 migrations `20261028*`); aguarda aplicação em produção (por confirmar) |
+| 5 — Checkup 2026-10-28 | código, testes e docs prontos (9 migrations `20261028*`); aplicado em produção em 2026-10-29 (migrations, site e Edge Functions) |
 
 ---
 
